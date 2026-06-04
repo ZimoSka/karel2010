@@ -1,0 +1,1542 @@
+#!/usr/bin/env python3
+"""
+Karel 2010 – Python port  (3D perspektívny pohľad + multiwindow UI)
+Originál: Turbo Pascal/Delphi, Zimo 2010.   Python port: 2024.
+Spustenie:  python karel2010.py
+"""
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import threading, time, re, os, json, math, struct
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
+from enum import Enum
+from copy import deepcopy
+
+# Z-buffer renderer — vyžaduje numpy + Pillow (pip install pillow numpy)
+try:
+    import numpy as np
+    from PIL import Image, ImageTk
+    _ZBUF = True
+except ImportError:
+    _ZBUF = False
+
+
+# =========================================================================
+# SVET  /  WORLD MODEL
+# =========================================================================
+
+class Direction(Enum):
+    NORTH = 0
+    EAST  = 1
+    SOUTH = 2
+    WEST  = 3
+    def left(self):     return Direction((self.value-1)%4)
+    def right(self):    return Direction((self.value+1)%4)
+    def opposite(self): return Direction((self.value+2)%4)
+    def to_str(self):
+        return {Direction.NORTH:'N',Direction.SOUTH:'S',
+                Direction.EAST:'E', Direction.WEST:'W'}[self]
+    @staticmethod
+    def from_str(s):
+        return {'N':Direction.NORTH,'S':Direction.SOUTH,
+                'E':Direction.EAST,'W':Direction.WEST,
+                'NORTH':Direction.NORTH,'SOUTH':Direction.SOUTH,
+                'EAST':Direction.EAST,'WEST':Direction.WEST}[s.upper()]
+
+class KarelError(Exception): pass
+
+class World:
+    """Karelova mriežková mapa.  x=0 vľavo, y=0 dole."""
+    BIG_BRICK_UNITS = 5   # veľká tehla = 5 malých
+
+    def __init__(self, width=12, height=10):
+        self.width=width; self.height=height
+        self.walls      = [[set() for _ in range(width)] for _ in range(height)]
+        self.bricks     = [[0     for _ in range(width)] for _ in range(height)]
+        self.big_bricks = [[0     for _ in range(width)] for _ in range(height)]
+        self.marks      = [[False  for _ in range(width)] for _ in range(height)]
+        self.karel_x=0; self.karel_y=0; self.karel_dir=Direction.EAST
+        self._add_border_walls()
+
+    def _add_border_walls(self):
+        for x in range(self.width):
+            self.walls[0][x].add('S'); self.walls[self.height-1][x].add('N')
+        for y in range(self.height):
+            self.walls[y][0].add('W'); self.walls[y][self.width-1].add('E')
+
+    def _step(self,x,y,d):
+        return (x+1,y) if d==Direction.EAST  else \
+               (x-1,y) if d==Direction.WEST  else \
+               (x,y+1) if d==Direction.NORTH else (x,y-1)
+
+    def _front(self): return self._step(self.karel_x,self.karel_y,self.karel_dir)
+
+    def add_wall(self,x,y,s):
+        self.walls[y][x].add(s)
+        opp={'N':'S','S':'N','E':'W','W':'E'}[s]
+        nx,ny={'N':(x,y+1),'S':(x,y-1),'E':(x+1,y),'W':(x-1,y)}[s]
+        if 0<=nx<self.width and 0<=ny<self.height: self.walls[ny][nx].add(opp)
+
+    def remove_wall(self,x,y,s):
+        self.walls[y][x].discard(s)
+        opp={'N':'S','S':'N','E':'W','W':'E'}[s]
+        nx,ny={'N':(x,y+1),'S':(x,y-1),'E':(x+1,y),'W':(x-1,y)}[s]
+        if 0<=nx<self.width and 0<=ny<self.height: self.walls[ny][nx].discard(opp)
+
+    def is_wall_ahead(self):
+        return self.karel_dir.to_str() in self.walls[self.karel_y][self.karel_x]
+
+    def _height(self, x, y):
+        """Celková výška bunky v jednotkách malých tehál."""
+        return self.bricks[y][x] + self.big_bricks[y][x] * self.BIG_BRICK_UNITS
+
+    def move_forward(self):
+        if self.is_wall_ahead(): raise KarelError("Karel narazil do steny!")
+        nx,ny = self._front()
+        dh = self._height(nx,ny) - self._height(self.karel_x,self.karel_y)
+        if dh > 1: raise KarelError("Karel nevie vylesť na tehlu (príliš vysoké)!")
+        self.karel_x,self.karel_y = nx,ny
+
+    def move_back(self):
+        back=self.karel_dir.opposite()
+        if back.to_str() in self.walls[self.karel_y][self.karel_x]:
+            raise KarelError("Karel narazil do steny (dozadu)!")
+        self.karel_x,self.karel_y = self._step(self.karel_x,self.karel_y,back)
+
+    def turn_left(self):  self.karel_dir=self.karel_dir.left()
+    def turn_right(self): self.karel_dir=self.karel_dir.right()
+
+    # Tehly/bricks: kladú/dvíhajú sa PRED Karelom; znacka je POD nim
+    def drop_brick(self):
+        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
+        nx,ny=self._front(); self.bricks[ny][nx]+=1
+    def drop_big_brick(self):
+        """Veľká tehla = BIG_BRICK_UNITS malých — ukladá sa do big_bricks."""
+        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
+        nx,ny=self._front(); self.big_bricks[ny][nx]+=1
+    def pick_brick(self):
+        if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť tehlu cez stenu!")
+        nx,ny=self._front()
+        if self.bricks[ny][nx]<=0: raise KarelError("Žiadna (malá) tehla na zdvihnutie!")
+        self.bricks[ny][nx]-=1
+    def mark(self):  self.marks[self.karel_y][self.karel_x]=True
+    def clear(self): self.marks[self.karel_y][self.karel_x]=False
+
+    def check_wall(self):  return self.is_wall_ahead()
+    def check_brick(self):
+        nx,ny=self._front()
+        return (0<=nx<self.width and 0<=ny<self.height and
+                (self.bricks[ny][nx]>0 or self.big_bricks[ny][nx]>0))
+    def check_free(self):
+        nx,ny=self._front()
+        return not (0<=nx<self.width and 0<=ny<self.height and
+                    (self.bricks[ny][nx]>0 or self.big_bricks[ny][nx]>0))
+    def check_sign(self):  return self.marks[self.karel_y][self.karel_x]
+
+    # Voliteľné metadáta pre predefinované svety
+    title      = ''
+    intro_html = ''
+    success_html = ''
+    failure_html = ''
+    program_text = ''
+    next_level = ''
+    prev_level = ''
+
+    def to_json(self):
+        return dict(width=self.width,height=self.height,
+                    karel_x=self.karel_x,karel_y=self.karel_y,
+                    karel_dir=self.karel_dir.to_str(),
+                    walls=[[x,y,s] for y in range(self.height) for x in range(self.width) for s in self.walls[y][x]],
+                    bricks=[[x,y,self.bricks[y][x]] for y in range(self.height) for x in range(self.width) if self.bricks[y][x]>0],
+                    big_bricks=[[x,y,self.big_bricks[y][x]] for y in range(self.height) for x in range(self.width) if self.big_bricks[y][x]>0],
+                    marks=[[x,y] for y in range(self.height) for x in range(self.width) if self.marks[y][x]])
+    @staticmethod
+    def from_json(d):
+        w=World(d['width'],d['height'])
+        w.karel_x=d['karel_x']; w.karel_y=d['karel_y']
+        w.karel_dir=Direction.from_str(d['karel_dir'])
+        for x,y,s in d.get('walls',[]): w.walls[y][x].add(s)
+        for x,y,c in d.get('bricks',[]): w.bricks[y][x]=c
+        for x,y,c in d.get('big_bricks',[]): w.big_bricks[y][x]=c
+        for x,y   in d.get('marks',[]): w.marks[y][x]=True
+        return w
+
+    # ---- XML  ---------------------------------------------------------------
+    def to_xml(self):
+        """Vráti XML reťazec (.karxml formát)."""
+        root = ET.Element('world', width=str(self.width), height=str(self.height))
+        ET.SubElement(root, 'karel',
+                      x=str(self.karel_x), y=str(self.karel_y),
+                      dir=self.karel_dir.to_str())
+        # steny
+        ws = ET.SubElement(root, 'walls')
+        for y in range(self.height):
+            for x in range(self.width):
+                for s in sorted(self.walls[y][x]):
+                    ET.SubElement(ws, 'wall', x=str(x), y=str(y), side=s)
+        # malé tehly
+        br = ET.SubElement(root, 'bricks')
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.bricks[y][x] > 0:
+                    ET.SubElement(br, 'brick', x=str(x), y=str(y), count=str(self.bricks[y][x]))
+        # veľké tehly
+        bb = ET.SubElement(root, 'bigbricks')
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.big_bricks[y][x] > 0:
+                    ET.SubElement(bb, 'bigbrick', x=str(x), y=str(y), count=str(self.big_bricks[y][x]))
+        # značky
+        mk = ET.SubElement(root, 'marks')
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.marks[y][x]:
+                    ET.SubElement(mk, 'mark', x=str(x), y=str(y))
+        # metadáta
+        def _txt(tag, val):
+            if val:
+                el = ET.SubElement(root, tag)
+                el.text = val
+        _txt('title',        self.title)
+        _txt('intro',        self.intro_html)
+        _txt('success',      self.success_html)
+        _txt('failure',      self.failure_html)
+        _txt('program',      self.program_text)
+        _txt('next_level',   self.next_level)
+        _txt('prev_level',   self.prev_level)
+        # pekné formátovanie
+        raw = ET.tostring(root, encoding='unicode')
+        dom = minidom.parseString(raw)
+        return dom.toprettyxml(indent='  ', encoding=None)
+
+    @staticmethod
+    def from_xml(xml_str):
+        """Načíta svet z XML reťazca alebo cesty k súboru."""
+        if os.path.isfile(xml_str):
+            tree = ET.parse(xml_str)
+            root = tree.getroot()
+        else:
+            root = ET.fromstring(xml_str)
+        w = World(int(root.get('width')), int(root.get('height')))
+        k = root.find('karel')
+        if k is not None:
+            w.karel_x = int(k.get('x', 0))
+            w.karel_y = int(k.get('y', 0))
+            w.karel_dir = Direction.from_str(k.get('dir', 'E'))
+        for el in root.findall('walls/wall'):
+            x, y, s = int(el.get('x')), int(el.get('y')), el.get('side')
+            if 0 <= x < w.width and 0 <= y < w.height:
+                w.walls[y][x].add(s)
+        for el in root.findall('bricks/brick'):
+            x, y = int(el.get('x')), int(el.get('y'))
+            if 0 <= x < w.width and 0 <= y < w.height:
+                w.bricks[y][x] = int(el.get('count', 1))
+        for el in root.findall('bigbricks/bigbrick'):
+            x, y = int(el.get('x')), int(el.get('y'))
+            if 0 <= x < w.width and 0 <= y < w.height:
+                w.big_bricks[y][x] = int(el.get('count', 1))
+        for el in root.findall('marks/mark'):
+            x, y = int(el.get('x')), int(el.get('y'))
+            if 0 <= x < w.width and 0 <= y < w.height:
+                w.marks[y][x] = True
+        def _gtxt(tag): el = root.find(tag); return el.text.strip() if el is not None and el.text else ''
+        w.title        = _gtxt('title')
+        w.intro_html   = _gtxt('intro')
+        w.success_html = _gtxt('success')
+        w.failure_html = _gtxt('failure')
+        w.program_text = _gtxt('program')
+        w.next_level   = _gtxt('next_level')
+        w.prev_level   = _gtxt('prev_level')
+        return w
+
+    def copy(self): return deepcopy(self)
+
+
+# =========================================================================
+# LEXER  +  PARSER  +  INTERPRETER
+# =========================================================================
+
+KW={}
+def _bkw():
+    for t,vs in [
+        ('BEGIN',['begin','zaciatok','začiatok']),('END',['end','koniec']),
+        ('PROCEDURE',['procedure','prikaz','príkaz']),
+        ('REPEAT',['repeat','opakuj']),('TIMES',['times','krat','krát']),
+        ('END_REPEAT',['*repeat','*opakuj']),
+        ('WHILE',['while','kym','kým']),('NOT',['not','nie']),('DO',['do','rob']),
+        ('END_WHILE',['*while','*kym','*kým']),
+        ('IF',['if','ak']),('THEN',['then','tak','potom']),
+        ('ELSE',['else','inak']),('END_IF',['*if','*ak']),
+        ('FORWARD',['forward','dopredu']),('BACK',['back','dozadu','vzad']),
+        ('LEFT',['left','vlavo','dolava','vľavo','doľava']),
+        ('RIGHT',['right','vpravo','doprava']),
+        ('DROP',['drop','poloz','polož']),('PICK',['pick','zdvihni','zodvihni']),
+        ('DROP_BIG',['drop_big','drop_b','dropb','poloz_velku','poloz_v','polozv']),
+        ('MARK',['mark','oznac','označ']),
+        ('CLEAR',['clear','unmark','odznac','ocisti','cisti','odznač','očisti','čisti']),
+        ('WALL',['wall','stena','je_stena','is_wall']),
+        ('BRICK',['brick','tehla','je_tehla','is_brick']),
+        ('FREE',['free','volno','voľno','is_free']),
+        ('SIGN',['sign','znacka','značka','je_znacka','is_sign']),
+        ('FALSE',['false','nepravda']),('TRUE',['true','pravda']),
+        ('SLOWLY',['slowly','slow','pomaly','spomal']),
+        ('QUICKLY',['quickly','quick','rychlo','rýchlo','pridaj']),
+    ]:
+        for v in vs: KW[v]=t
+_bkw()
+CMD_T={'FORWARD','BACK','LEFT','RIGHT','DROP','PICK','DROP_BIG','MARK','CLEAR','SLOWLY','QUICKLY'}
+COND_T={'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
+CLOSE_T={'END','END_REPEAT','END_WHILE','END_IF'}
+
+class Tok:
+    __slots__=('t','v','ln')
+    def __init__(self,t,v,ln=0): self.t=t;self.v=v;self.ln=ln
+
+def tokenize(src):
+    src=re.sub(r'//[^\n]*',' ',src); src=re.sub(r'#[^\n]*',' ',src)
+    src=re.sub(r'\{[^}]*\}',' ',src)
+    toks=[]; ln=1; i=0; n=len(src)
+    while i<n:
+        c=src[i]
+        if c=='\n': ln+=1;i+=1;continue
+        if c.isspace(): i+=1;continue
+        if c=='*':
+            j=i+1
+            while j<n and (src[j].isalpha() or src[j]=='_' or ord(src[j])>127): j+=1
+            w=src[i:j].lower(); toks.append(Tok(KW.get(w,'UNK'),src[i:j],ln)); i=j;continue
+        if c.isdigit():
+            j=i
+            while j<n and src[j].isdigit(): j+=1
+            toks.append(Tok('NUM',src[i:j],ln)); i=j;continue
+        if c.isalpha() or c=='_' or ord(c)>127:
+            j=i
+            while j<n and (src[j].isalnum() or src[j]=='_' or ord(src[j])>127): j+=1
+            w=src[i:j]; toks.append(Tok(KW.get(w.lower(),'ID'),w,ln)); i=j;continue
+        i+=1
+    toks.append(Tok('EOF','',ln)); return toks
+
+class AN: pass
+class ProgN(AN):
+    def __init__(self,p,m): self.procedures=p;self.main_stmts=m
+class CmdN(AN):
+    def __init__(self,c,ln=0): self.cmd=c;self.line=ln
+class CallN(AN):
+    def __init__(self,n,ln=0): self.name=n;self.line=ln
+class RepN(AN):
+    def __init__(self,n,b,ln=0): self.count=n;self.body=b;self.line=ln
+class WhileN(AN):
+    def __init__(self,c,b,ln=0): self.cond=c;self.body=b;self.line=ln
+class IfN(AN):
+    def __init__(self,c,t,e,ln=0): self.cond=c;self.then_body=t;self.else_body=e;self.line=ln
+class CondN(AN):
+    def __init__(self,ct,neg=False): self.cond_type=ct;self.negated=neg
+
+class ParseErr(Exception):
+    def __init__(self,m,ln=0): super().__init__(f"Riadok {ln}: {m}");self.line=ln
+
+class Parser:
+    def __init__(self,toks): self.toks=toks;self.pos=0
+    def pk(self): return self.toks[self.pos]
+    def eat(self,exp=None):
+        t=self.toks[self.pos]
+        if exp and t.t!=exp: raise ParseErr(f"Čakal som '{exp}', dostal '{t.t}'('{t.v}')",t.ln)
+        self.pos+=1; return t
+    def parse(self):
+        ps={}; main=None
+        while self.pk().t!='EOF':
+            t=self.pk()
+            if t.t=='PROCEDURE': n,b=self._proc(); ps[n.lower()]=b
+            elif t.t=='BEGIN': self.eat(); main=self._stmts()
+            if self.pk().t in CLOSE_T: self.eat()
+            elif t.t not in ('PROCEDURE','BEGIN'): self.pos+=1
+        return ProgN(ps,main or [])
+    def _proc(self):
+        self.eat('PROCEDURE'); t=self.pk()
+        if t.t in ('ID','NUM'): name=self.eat().v
+        else: raise ParseErr(f"Čakám meno príkazu",t.ln)
+        if self.pk().t=='BEGIN': self.eat()
+        body=self._stmts()
+        if self.pk().t in CLOSE_T: self.eat()
+        return name,body
+    def _stmts(self):
+        s=[]
+        while self.pk().t not in CLOSE_T and self.pk().t not in ('ELSE','EOF'):
+            n=self._stmt()
+            if n: s.append(n)
+        return s
+    def _stmt(self):
+        t=self.pk()
+        if t.t in CMD_T: self.eat(); return CmdN(t.t,t.ln)
+        if t.t=='REPEAT': return self._rep()
+        if t.t=='WHILE':  return self._whl()
+        if t.t=='IF':     return self._if()
+        if t.t in ('ID','NUM'): self.eat(); return CallN(t.v,t.ln)
+        if t.t=='BEGIN': self.eat(); return None
+        self.pos+=1; return None
+    def _rep(self):
+        t=self.eat('REPEAT'); n=int(self.eat('NUM').v)
+        if self.pk().t=='TIMES': self.eat()
+        b=self._stmts()
+        if self.pk().t in CLOSE_T: self.eat()
+        return RepN(n,b,t.ln)
+    def _whl(self):
+        t=self.eat('WHILE'); c=self._cond()
+        if self.pk().t=='DO': self.eat()
+        b=self._stmts()
+        if self.pk().t in CLOSE_T: self.eat()
+        return WhileN(c,b,t.ln)
+    def _if(self):
+        t=self.eat('IF'); c=self._cond()
+        if self.pk().t in ('THEN','BEGIN'): self.eat()
+        tb=self._stmts(); eb=[]
+        if self.pk().t=='ELSE': self.eat(); eb=self._stmts()
+        if self.pk().t in CLOSE_T: self.eat()
+        return IfN(c,tb,eb,t.ln)
+    def _cond(self):
+        neg=False
+        if self.pk().t=='NOT': self.eat(); neg=True
+        t=self.pk()
+        if t.t in COND_T: self.eat(); return CondN(t.t,neg)
+        raise ParseErr(f"Podmienka očakávaná, dostal '{t.v}'",t.ln)
+
+def parse(src): return Parser(tokenize(src)).parse()
+
+class StopEx(Exception): pass
+
+class KarelInterpreter:
+    MAX_D=500
+    def __init__(self,world):
+        self.world=world; self.delay=0.25
+        self._stop=False; self._d=0; self.procedures={}
+        self.on_step=self.on_error=self.on_finish=None
+    def stop(self): self._stop=True
+    def run(self,prog):
+        self._stop=False; self._d=0; self.procedures=prog.procedures
+        try:
+            self._ex(prog.main_stmts)
+            if self.on_finish: self.on_finish(None)
+        except StopEx:
+            if self.on_finish: self.on_finish("Zastavené.")
+        except (KarelError,RecursionError) as e:
+            m="Príliš hlboká rekurzia!" if isinstance(e,RecursionError) else str(e)
+            if self.on_error: self.on_error(m)
+        except Exception as e:
+            if self.on_error: self.on_error(f"Chyba: {e}")
+    def _ex(self,stmts):
+        for s in stmts:
+            if self._stop: raise StopEx()
+            self._rs(s)
+    def _rs(self,s):
+        if isinstance(s,CmdN): self._cmd(s)
+        elif isinstance(s,CallN): self._call(s.name)
+        elif isinstance(s,RepN):
+            for _ in range(s.count):
+                if self._stop: raise StopEx()
+                self._ex(s.body)
+        elif isinstance(s,WhileN):
+            while self._ev(s.cond):
+                if self._stop: raise StopEx()
+                self._ex(s.body)
+        elif isinstance(s,IfN):
+            self._ex(s.then_body if self._ev(s.cond) else s.else_body)
+    def _call(self,name):
+        self._d+=1
+        if self._d>self.MAX_D: raise KarelError("Príliš hlboká rekurzia!")
+        try:
+            nl=name.lower()
+            if nl not in self.procedures: raise KarelError(f"Neznámy príkaz '{name}'")
+            self._ex(self.procedures[nl])
+        finally: self._d-=1
+    def _cmd(self,node):
+        w=self.world; c=node.cmd
+        if   c=='FORWARD':  w.move_forward()
+        elif c=='BACK':     w.move_back()
+        elif c=='LEFT':     w.turn_left()
+        elif c=='RIGHT':    w.turn_right()
+        elif c=='DROP':     w.drop_brick()
+        elif c=='PICK':     w.pick_brick()
+        elif c=='DROP_BIG': w.drop_big_brick()
+        elif c=='MARK':     w.mark()
+        elif c=='CLEAR':    w.clear()
+        elif c=='SLOWLY':   self.delay=min(self.delay*2,3.0)
+        elif c=='QUICKLY':  self.delay=max(self.delay/2,0.02)
+        if self.on_step: self.on_step()
+        if self.delay>0: time.sleep(self.delay)
+    def _ev(self,cond):
+        w=self.world; ct=cond.cond_type
+        r=(w.check_wall() if ct=='WALL' else w.check_brick() if ct=='BRICK'
+           else w.check_free() if ct=='FREE' else w.check_sign() if ct=='SIGN'
+           else True if ct=='TRUE' else False)
+        return (not r) if cond.negated else r
+
+
+# =========================================================================
+# VSTAVANÝ SVET  +  PRÍKLADY
+# =========================================================================
+
+BUILTIN_WORLD={
+    "width":10,"height":8,"karel_x":1,"karel_y":1,"karel_dir":"E",
+    "walls":[],
+    "bricks":[],
+    "marks":[]
+}
+
+EXAMPLES={
+"Prázdny/Empty":"""\
+# Karel 2010 – program
+# Slovak: zaciatok/koniec, dopredu, vlavo, vpravo, dozadu
+#   poloz=pred seba, zdvihni=z pred seba, oznac=pod seba
+#   opakuj N krat ... koniec
+#   kym podmienka rob ... koniec
+#   ak podmienka potom ... inak ... koniec
+zaciatok
+  dopredu
+  dopredu
+  vlavo
+  dopredu
+koniec
+""",
+"Štvorec/Square":"""\
+prikaz Strana
+zaciatok
+  opakuj 3 krat dopredu koniec
+  vlavo
+koniec
+
+zaciatok
+  opakuj 4 krat Strana koniec
+koniec
+""",
+"Stavanie múru/Build wall":"""\
+# Karel stavia múr z tehál pred sebou
+zaciatok
+  opakuj 4 krat
+    poloz
+    dopredu
+  koniec
+koniec
+""",
+"Zbieranie tehál/Collect":"""\
+prikaz ZdvihniVsetko
+zaciatok
+  kym tehla rob zdvihni koniec
+koniec
+
+zaciatok
+  kym nie stena rob
+    ZdvihniVsetko
+    dopredu
+  koniec
+koniec
+""",
+"Samba":"""\
+prikaz Samba
+zaciatok
+  vlavo dopredu vpravo dozadu dopredu vpravo
+  opakuj 2 krat dopredu vlavo vpravo koniec
+  vlavo dozadu dopredu vlavo dopredu vpravo
+  Samba
+koniec
+Zaciatok Samba Koniec
+""",
+"Valčík/Waltz":"""\
+prikaz Valcik
+zaciatok
+  opakuj 4 krat
+    opakuj 2 krat dopredu koniec
+    vlavo
+  koniec
+koniec
+zaciatok opakuj 6 krat Valcik koniec koniec
+""",
+"Označenie trate/Mark path":"""\
+zaciatok
+  kym nie stena rob oznac dopredu koniec
+  oznac
+koniec
+""",
+"Bludisko/Maze":"""\
+prikaz Krok
+zaciatok
+  ak stena potom vlavo inak dopredu koniec
+koniec
+zaciatok opakuj 80 krat Krok koniec koniec
+""",
+}
+
+
+# =========================================================================
+# 3D  PERSPEKTÍVNY  RENDERER
+# =========================================================================
+
+def _norm(v):
+    l=math.sqrt(sum(x*x for x in v)); return [x/l for x in v] if l>1e-9 else [0,0,1]
+def _cross(a,b):
+    return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
+def _dot(a,b): return sum(x*y for x,y in zip(a,b))
+
+# Farby sveta
+FC={
+    'floor_a':'#0000bb','floor_b':'#0000aa','floor_mark':'#2244cc',
+    'grid':'#3344dd',
+    'wall':'#dddd00','wall_dark':'#aaaa00','wall_top':'#ffff44',
+    'wall_inner':'#888800',
+    'brick_top':'#cc4422','brick_s':'#882200','brick_d':'#661100',
+    # veľká tehla — hnedočervená, výraznejšia
+    'bbrick_top':'#993311','bbrick_s':'#661100','bbrick_d':'#440a00',
+    'mark':'#44ff88','mark2':'#ffff44',
+    'ground':'#000033',
+    'sky':'#000011',
+}
+WALL_H=1.2; BRICK_H=0.27; FLOOR_T=0.06   # BRICK_H = 2/3 pôvodnej výšky
+
+class Camera:
+    def __init__(self):
+        self.az=math.radians(225); self.el=math.radians(28)
+        self.dist=16.0; self.fov=50; self.target=[5.0,4.0,0.0]
+    def set_center(self,w,h): self.target=[w/2,h/2,0.0]
+    def _basis(self):
+        az,el,r=self.az,self.el,self.dist
+        cam=[self.target[0]+r*math.cos(el)*math.cos(az),
+             self.target[1]+r*math.cos(el)*math.sin(az),
+             self.target[2]+r*math.sin(el)]
+        look=_norm([self.target[i]-cam[i] for i in range(3)])
+        right=_norm(_cross(look,[0,0,1]))
+        up=_cross(right,look)
+        return cam,look,right,up
+    def project(self,pts3d,cw,ch):
+        cam,look,right,up=self._basis()
+        f=ch/(2*math.tan(math.radians(self.fov)/2))
+        out=[]
+        for wx,wy,wz in pts3d:
+            dx=wx-cam[0];dy=wy-cam[1];dz=wz-cam[2]
+            rx=dx*right[0]+dy*right[1]+dz*right[2]
+            ry=dx*up[0]+dy*up[1]+dz*up[2]
+            rz=dx*look[0]+dy*look[1]+dz*look[2]
+            if rz<0.05: out.append(None); continue
+            out.append((cw/2+f*rx/rz, ch/2-f*ry/rz, rz))
+        return out
+
+
+# prio=0 → podlaha (vždy vzadu, vykreslí sa pred 3D objektmi)
+# prio=1 → steny, tehly, Karel (depth-sorted)
+def _face(pts,col,ol=False,oc='#000000',normal=None,prio=1): return (pts,col,ol,oc,normal,prio)
+
+def world_faces(w):
+    """Vráti všetky 3D plochy sveta ako [(verts,color,outline),...]."""
+    W,H=w.width,w.height; F=[]
+
+    # Dlaždice / tiles  — jednotná farba, outline = mriežka
+    for gy in range(H):
+        for gx in range(W):
+            x0,y0,x1,y1=gx,gy,gx+1,gy+1
+            c=FC['floor_mark'] if w.marks[gy][gx] else FC['floor_a']
+            F.append(_face([(x0,y0,0),(x1,y0,0),(x1,y1,0),(x0,y1,0)],c,True,FC['grid'],None,0))
+            if w.marks[gy][gx]:
+                m=0.2
+                F.append(_face([(x0+m,y0+m,0.02),(x1-m,y1-m,0.02),(x1-m+0.05,y1-m,0.02),(x0+m+0.05,y0+m,0.02)],FC['mark2'],False,'',None,0))
+                F.append(_face([(x1-m,y0+m,0.02),(x0+m,y1-m,0.02),(x0+m,y1-m+0.05,0.02),(x1-m,y0+m+0.05,0.02)],FC['mark2'],False,'',None,0))
+
+    # Steny / walls
+    for gy in range(H):
+        for gx in range(W):
+            x0,y0,x1,y1=gx,gy,gx+1,gy+1
+            for side in w.walls[gy][gx]:
+                # Normála ukazuje DOVNÚTRA miestnosti — back-face culling skryje stenu
+                # keď sa na ňu pozeráme zvonku
+                if side=='N':
+                    n=(0,-1,0)  # severná stena, interiér smeruje na juh
+                    F.append(_face([(x0,y1,0),(x1,y1,0),(x1,y1,WALL_H),(x0,y1,WALL_H)],FC['wall'],False,'',n))
+                    F.append(_face([(x0,y1,WALL_H),(x1,y1,WALL_H),(x1,y1-0.06,WALL_H),(x0,y1-0.06,WALL_H)],FC['wall_top'],False,'',n))
+                elif side=='S':
+                    n=(0,1,0)   # južná stena, interiér smeruje na sever
+                    F.append(_face([(x0,y0,0),(x1,y0,0),(x1,y0,WALL_H),(x0,y0,WALL_H)],FC['wall_dark'],False,'',n))
+                    F.append(_face([(x0,y0,WALL_H),(x1,y0,WALL_H),(x1,y0+0.06,WALL_H),(x0,y0+0.06,WALL_H)],FC['wall_top'],False,'',n))
+                elif side=='E':
+                    n=(-1,0,0)  # východná stena, interiér smeruje na západ
+                    F.append(_face([(x1,y0,0),(x1,y1,0),(x1,y1,WALL_H),(x1,y0,WALL_H)],FC['wall'],False,'',n))
+                    F.append(_face([(x1,y0,WALL_H),(x1,y1,WALL_H),(x1-0.06,y1,WALL_H),(x1-0.06,y0,WALL_H)],FC['wall_top'],False,'',n))
+                elif side=='W':
+                    n=(1,0,0)   # západná stena, interiér smeruje na východ
+                    F.append(_face([(x0,y0,0),(x0,y1,0),(x0,y1,WALL_H),(x0,y0,WALL_H)],FC['wall_dark'],False,'',n))
+                    F.append(_face([(x0,y0,WALL_H),(x0,y1,WALL_H),(x0+0.06,y1,WALL_H),(x0+0.06,y0,WALL_H)],FC['wall_top'],False,'',n))
+
+    # Malé tehly / small bricks  — normály = back-face culling, žiadne artefakty
+    for gy in range(H):
+        for gx in range(W):
+            n=w.bricks[gy][gx]
+            for z in range(n):
+                z0,z1=z*BRICK_H,(z+1)*BRICK_H
+                m=0.07; bx0,bx1,by0,by1=gx+m,gx+1-m,gy+m,gy+1-m
+                F.append(_face([(bx0,by0,z1),(bx1,by0,z1),(bx1,by1,z1),(bx0,by1,z1)],FC['brick_top'],True,'#441100',(0,0,1)))
+                F.append(_face([(bx0,by0,z0),(bx1,by0,z0),(bx1,by0,z1),(bx0,by0,z1)],FC['brick_s'],True,'#330000',(0,-1,0)))
+                F.append(_face([(bx1,by0,z0),(bx1,by1,z0),(bx1,by1,z1),(bx1,by0,z1)],FC['brick_d'],True,'#330000',(1,0,0)))
+                F.append(_face([(bx1,by1,z0),(bx0,by1,z0),(bx0,by1,z1),(bx1,by1,z1)],FC['brick_s'],True,'#330000',(0,1,0)))
+                F.append(_face([(bx0,by1,z0),(bx0,by0,z0),(bx0,by0,z1),(bx0,by1,z1)],FC['brick_d'],True,'#330000',(-1,0,0)))
+
+    # Veľké tehly / big bricks
+    # Každá z 5 vrstiev je SAMOSTATNÁ plocha — painter's algorithm tak správne zoradzuje.
+    # Jeden obrovský polygon by mal nesprávne priemerné hĺbky a spôsoboval artefakty.
+    BIG_H = BRICK_H * World.BIG_BRICK_UNITS
+    for gy in range(H):
+        for gx in range(W):
+            nb = w.big_bricks[gy][gx]
+            base_z = w.bricks[gy][gx] * BRICK_H
+            for z in range(nb):
+                z0 = base_z + z * BIG_H
+                m  = 0.05
+                bx0,bx1,by0,by1 = gx+m, gx+1-m, gy+m, gy+1-m
+
+                # 5 vrstiev — každá má vlastné bočné plochy + normály (back-face culling)
+                for layer in range(World.BIG_BRICK_UNITS):
+                    lz0 = z0 + layer * BRICK_H
+                    lz1 = lz0 + BRICK_H
+                    F.append(_face([(bx0,by0,lz0),(bx1,by0,lz0),(bx1,by0,lz1),(bx0,by0,lz1)],FC['bbrick_s'],True,'#220500',(0,-1,0)))
+                    F.append(_face([(bx1,by0,lz0),(bx1,by1,lz0),(bx1,by1,lz1),(bx1,by0,lz1)],FC['bbrick_d'],True,'#220500',(1,0,0)))
+                    F.append(_face([(bx1,by1,lz0),(bx0,by1,lz0),(bx0,by1,lz1),(bx1,by1,lz1)],FC['bbrick_s'],True,'#220500',(0,1,0)))
+                    F.append(_face([(bx0,by1,lz0),(bx0,by0,lz0),(bx0,by0,lz1),(bx0,by1,lz1)],FC['bbrick_d'],True,'#220500',(-1,0,0)))
+
+                # Horná plocha — len na vrchu celej tehly
+                z_top = z0 + BIG_H
+                F.append(_face([(bx0,by0,z_top),(bx1,by0,z_top),(bx1,by1,z_top),(bx0,by1,z_top)],FC['bbrick_top'],True,'#330800',(0,0,1)))
+    return F
+
+
+def karel_faces(w):
+    """3D humanoidná postavička Karela (tan/béžová farba ako originál)."""
+    gx,gy=w.karel_x,w.karel_y; d=w.karel_dir
+    zb = w.bricks[gy][gx]*BRICK_H + w.big_bricks[gy][gx]*BRICK_H*World.BIG_BRICK_UNITS
+    cx,cy=gx+0.5,gy+0.5
+
+    # Smer dopredu a doprava v súradniciach sveta
+    _FW = {Direction.EAST:(1,0), Direction.WEST:(-1,0),
+           Direction.NORTH:(0,1), Direction.SOUTH:(0,-1)}
+    _RT = {Direction.EAST:(0,1), Direction.WEST:(0,-1),
+           Direction.NORTH:(1,0), Direction.SOUTH:(-1,0)}
+    FW = _FW[d]
+    RT = _RT[d]
+
+    SK='#c8a870'; DK='#a08858'; FC2='#d8b880'; EY='#ffffff'; PU='#003300'
+
+    def w2(fx,ry,z):
+        return (cx+fx*FW[0]+ry*RT[0], cy+fx*FW[1]+ry*RT[1], zb+z)
+
+    F=[]
+    def box(fx0,ry0,z0,fx1,ry1,z1,top,front,side,back=None):
+        if back is None: back=side
+        def v(a,b,c): return w2(a,b,c)
+        # Normály v lokálnych osiach → transformujeme na svetové súradnice
+        nfwd  = (FW[0], FW[1], 0)      # smer dopredu (+fx)
+        nbck  = (-FW[0],-FW[1], 0)     # smer dozadu  (-fx)
+        nrgt  = (RT[0],  RT[1], 0)     # smer doprava (+ry)
+        nlft  = (-RT[0],-RT[1], 0)     # smer doľava  (-ry)
+        # top — normála hore
+        F.append(_face([v(fx0,ry0,z1),v(fx1,ry0,z1),v(fx1,ry1,z1),v(fx0,ry1,z1)],top,False,'', (0,0,1)))
+        # front (fx1 = čelná, smer pohybu)
+        F.append(_face([v(fx1,ry0,z0),v(fx1,ry1,z0),v(fx1,ry1,z1),v(fx1,ry0,z1)],front,False,'',nfwd))
+        # back (fx0 = zadná)
+        F.append(_face([v(fx0,ry0,z0),v(fx0,ry1,z0),v(fx0,ry1,z1),v(fx0,ry0,z1)],back,False,'', nbck))
+        # right side (ry1)
+        F.append(_face([v(fx0,ry1,z0),v(fx1,ry1,z0),v(fx1,ry1,z1),v(fx0,ry1,z1)],side,False,'',nrgt))
+        # left side (ry0)
+        F.append(_face([v(fx0,ry0,z0),v(fx1,ry0,z0),v(fx1,ry0,z1),v(fx0,ry0,z1)],DK,False,'',  nlft))
+
+    # Nohy / legs
+    box(-0.12,-0.17,0, 0.12,-0.03,0.38, SK,SK,SK,DK)
+    box(-0.12, 0.03,0, 0.12, 0.17,0.38, SK,SK,SK,DK)
+    # Trup / torso
+    box(-0.16,-0.20,0.38, 0.16,0.20,0.86, SK,FC2,DK,DK)
+    # Ramená / shoulders (thin)
+    box(-0.10,-0.25,0.64, 0.10,-0.20,0.82, SK,DK,DK,DK)
+    box(-0.10, 0.20,0.64, 0.10, 0.25,0.82, SK,DK,DK,DK)
+    # Hlava / head
+    box(-0.14,-0.16,0.86, 0.14,0.16,1.26, SK,FC2,DK,DK)
+    # Oči / eyes — rovnaká normála ako čelná strana hlavy
+    nfwd=(FW[0],FW[1],0)
+    for ry_eye in (-0.08, 0.08):
+        er=0.04
+        F.append(_face([w2(0.145,ry_eye-er,1.06),w2(0.145,ry_eye+er,1.06),
+                        w2(0.145,ry_eye+er,1.14),w2(0.145,ry_eye-er,1.14)],EY,False,'',nfwd))
+        pr=0.02
+        F.append(_face([w2(0.148,ry_eye-pr,1.08),w2(0.148,ry_eye+pr,1.08),
+                        w2(0.148,ry_eye+pr,1.12),w2(0.148,ry_eye-pr,1.12)],PU,False,'',nfwd))
+    return F
+
+
+# =========================================================================
+# 3D  CANVAS  (mouse rotate/zoom/pan)
+# =========================================================================
+
+class World3D(tk.Canvas):
+    def __init__(self,parent,world,**kw):
+        super().__init__(parent,bg=FC['sky'],highlightthickness=0,**kw)
+        self.world=world; self.cam=Camera()
+        self.cam.set_center(world.width,world.height)
+        self._ds=None; self._db=None
+        self.on_cam_change=None   # nastaví App — po každej zmene kamery
+        self.bind('<Configure>',      lambda e:self.render())
+        self.bind('<ButtonPress-1>',   self._ds1)
+        self.bind('<B1-Motion>',       self._dm1)
+        self.bind('<ButtonRelease-1>', lambda e:setattr(self,'_ds',None))
+        self.bind('<ButtonPress-3>',   self._ds1)
+        self.bind('<B3-Motion>',       self._dm3)
+        self.bind('<ButtonRelease-3>', lambda e:setattr(self,'_ds',None))
+        self.bind('<MouseWheel>',      self._mw)
+        self.bind('<Button-4>',        self._mw)
+        self.bind('<Button-5>',        self._mw)
+
+    def set_world(self,w):
+        self.world=w; self.cam.set_center(w.width,w.height); self.render()
+
+    def _ds1(self,e): self._ds=(e.x,e.y); self._db=e.num
+    def _notify_cam(self):
+        if self.on_cam_change: self.on_cam_change()
+    def _dm1(self,e):
+        if not self._ds: return
+        dx=e.x-self._ds[0]; dy=e.y-self._ds[1]; self._ds=(e.x,e.y)
+        self.cam.az-=dx*0.007
+        self.cam.el=max(math.radians(4),min(math.radians(82),self.cam.el+dy*0.007))
+        self.render(); self._notify_cam()
+    def _dm3(self,e):
+        if not self._ds: return
+        dx=e.x-self._ds[0]; dy=e.y-self._ds[1]; self._ds=(e.x,e.y)
+        _,_,right,up=self.cam._basis()
+        s=self.cam.dist*0.0022
+        for i in range(3):
+            self.cam.target[i]-=dx*right[i]*s
+            self.cam.target[i]+=dy*up[i]*s
+        self.render(); self._notify_cam()
+    def _mw(self,e):
+        f=0.9 if (e.num==4 or getattr(e,'delta',0)>0) else 1.1
+        self.cam.dist=max(3,min(80,self.cam.dist*f))
+        self.render(); self._notify_cam()
+
+    def render(self):
+        cw=self.winfo_width() or 600; ch=self.winfo_height() or 400
+        if cw<20 or ch<20: return
+        if _ZBUF:
+            self._render_zbuf(cw,ch)
+        else:
+            self._render_painters(cw,ch)
+
+    # ------------------------------------------------------------------
+    # Z-BUFFER renderer  (numpy + PIL) — pixel-presný, žiadne artefakty
+    # ------------------------------------------------------------------
+    def _render_zbuf(self,cw,ch):
+        z_buf = np.full((ch,cw), np.inf, dtype=np.float32)
+        # BGR canal usporiadanie → RGB pri PIL
+        bg = int(FC['sky'][1:3],16), int(FC['sky'][3:5],16), int(FC['sky'][5:7],16)
+        c_buf = np.full((ch,cw,3), bg, dtype=np.uint8)
+
+        all_faces  = world_faces(self.world)+karel_faces(self.world)
+        cam_pos,_,_,_ = self.cam._basis()
+        all_pts    = [p for f,_,_,_,_,_ in all_faces for p in f]
+        proj       = self.cam.project(all_pts,cw,ch)
+
+        idx=0
+        draw=[]
+        for face,col,ol,oc,nrm,prio in all_faces:
+            n=len(face); ps=proj[idx:idx+n]; idx+=n
+            if nrm is not None:
+                fc=[sum(face[i][k] for i in range(n))/n for k in range(3)]
+                if sum(nrm[k]*(cam_pos[k]-fc[k]) for k in range(3))<=0: continue
+            if any(p is None for p in ps): continue
+            pts2  = [(p[0],p[1]) for p in ps]
+            deps  = [p[2]         for p in ps]
+            avg_d = sum(deps)/n
+            cr,cg,cb = int(col[1:3],16),int(col[3:5],16),int(col[5:7],16)
+            draw.append((prio, avg_d, pts2, deps, cr,cg,cb, ol,oc))
+
+        # Podlaha vždy vzadu (prio=0), pak 3D objekty depth-sorted
+        draw.sort(key=lambda x: (x[0], -x[1]))
+
+        for prio,avg_d,pts2,deps,cr,cg,cb,ol,oc in draw:
+            self._rast_poly(pts2,deps,cr,cg,cb,z_buf,c_buf,ch,cw)
+            if ol and oc and oc!='':
+                # Obrysy — nakreslíme jednopixelové čiary pozdĺž hrán
+                ocr,ocg,ocb = int(oc[1:3],16) if len(oc)==7 else (0,0,0), \
+                              int(oc[3:5],16) if len(oc)==7 else (0,0,0), \
+                              int(oc[5:7],16) if len(oc)==7 else (0,0,0)
+                n=len(pts2)
+                for i in range(n):
+                    x0,y0=pts2[i]; x1,y1=pts2[(i+1)%n]
+                    self._rast_line(int(x0),int(y0),int(x1),int(y1),
+                                    ocr,ocg,ocb,c_buf,ch,cw)
+
+        img   = Image.fromarray(c_buf,'RGB')
+        photo = ImageTk.PhotoImage(img)
+        self.delete('all')
+        self.create_image(0,0,anchor='nw',image=photo)
+        self._photo = photo   # udržať referenciu
+
+    @staticmethod
+    def _rast_poly(pts2,deps,cr,cg,cb,z_buf,c_buf,ch,cw):
+        """Rasterizuj polygón s Z-buffer testom (triangle fan)."""
+        n=len(pts2)
+        if n<3: return
+        col=np.array([cr,cg,cb],dtype=np.uint8)
+        for i in range(1,n-1):
+            World3D._rast_tri(
+                pts2[0],deps[0], pts2[i],deps[i], pts2[i+1],deps[i+1],
+                col, z_buf, c_buf, ch, cw)
+
+    @staticmethod
+    def _rast_tri(p0,z0, p1,z1, p2,z2, col, z_buf, c_buf, ch, cw):
+        x0,y0=p0; x1,y1=p1; x2,y2=p2
+        xmn=max(0,  int(min(x0,x1,x2)))
+        xmx=min(cw-1,int(max(x0,x1,x2))+1)
+        ymn=max(0,  int(min(y0,y1,y2)))
+        ymx=min(ch-1,int(max(y0,y1,y2))+1)
+        if xmn>=xmx or ymn>=ymx: return
+        denom=(y1-y2)*(x0-x2)+(x2-x1)*(y0-y2)
+        if abs(denom)<1e-6: return
+        xs=np.arange(xmn,xmx+1,dtype=np.float32)
+        ys=np.arange(ymn,ymx+1,dtype=np.float32)
+        XX,YY=np.meshgrid(xs,ys)
+        w0=((y1-y2)*(XX-x2)+(x2-x1)*(YY-y2))/denom
+        w1=((y2-y0)*(XX-x2)+(x0-x2)*(YY-y2))/denom
+        w2=1.0-w0-w1
+        inside=(w0>=0)&(w1>=0)&(w2>=0)
+        Z=w0*z0+w1*z1+w2*z2
+        cur_z=z_buf[ymn:ymx+1,xmn:xmx+1]
+        upd=inside&(Z<cur_z)
+        cur_z[upd]=Z[upd]
+        c_buf[ymn:ymx+1,xmn:xmx+1][upd]=col
+
+    @staticmethod
+    def _rast_line(x0,y0,x1,y1,cr,cg,cb,c_buf,ch,cw):
+        """Bresenham čiara — pre obrysy."""
+        col=np.array([cr,cg,cb],dtype=np.uint8)
+        dx,dy=abs(x1-x0),abs(y1-y0)
+        sx=1 if x0<x1 else -1; sy=1 if y0<y1 else -1
+        err=dx-dy
+        for _ in range(dx+dy+2):
+            if 0<=x0<cw and 0<=y0<ch: c_buf[y0,x0]=col
+            if x0==x1 and y0==y1: break
+            e2=2*err
+            if e2>-dy: err-=dy; x0+=sx
+            if e2< dx: err+=dx; y0+=sy
+
+    # ------------------------------------------------------------------
+    # Fallback: painter's algorithm (bez numpy/PIL)
+    # ------------------------------------------------------------------
+    def _render_painters(self,cw,ch):
+        self.delete('all')
+        all_faces=world_faces(self.world)+karel_faces(self.world)
+        cam_pos,_,_,_=self.cam._basis()
+        all_pts=[p for face,_,_,_,_,_ in all_faces for p in face]
+        proj=self.cam.project(all_pts,cw,ch)
+        floor_pass=[]; solid_pass=[]; idx=0
+        for face,col,ol,oc,nrm,prio in all_faces:
+            n=len(face); ps=proj[idx:idx+n]; idx+=n
+            if nrm is not None:
+                fc=[sum(face[i][k] for i in range(n))/n for k in range(3)]
+                if sum(nrm[k]*(cam_pos[k]-fc[k]) for k in range(3))<=0: continue
+            if any(p is None for p in ps): continue
+            pts2=[(p[0],p[1]) for p in ps]
+            if prio==0: floor_pass.append((pts2,col,ol,oc))
+            else:
+                dep=sum(p[2] for p in ps)/n
+                solid_pass.append((dep,pts2,col,ol,oc))
+        for pts2,col,ol,oc in floor_pass:
+            flat=[c for pt in pts2 for c in pt]
+            if len(flat)>=6:
+                self.create_polygon(flat,fill=col,outline=oc if ol else '',width=1 if ol else 0)
+        solid_pass.sort(key=lambda x:-x[0])
+        for dep,pts2,col,ol,oc in solid_pass:
+            flat=[c for pt in pts2 for c in pt]
+            if len(flat)>=6:
+                self.create_polygon(flat,fill=col,outline=oc if ol else '',width=1 if ol else 0)
+
+
+# =========================================================================
+# NAVIGATOR  PANEL
+# =========================================================================
+
+class NavigatorPanel(tk.Frame):
+    def __init__(self,parent,cam,on_change=None,**kw):
+        super().__init__(parent,bg='#0a0a1c',relief='flat',**kw)
+        self.cam=cam; self.on_change=on_change; self._build()
+
+    def _build(self):
+        tk.Label(self,text="Navigátor",bg='#111130',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=3).pack(fill='x')
+
+        # Inventár
+        ifr=tk.Frame(self,bg='#0a0a1c'); ifr.pack(fill='x',padx=4,pady=2)
+        for c,(h,fg) in enumerate([('Menú','#8888cc'),('Počet','#88ffcc')]):
+            tk.Label(ifr,text=h,bg='#141430',fg=fg,font=('Arial',8,'bold'),
+                     padx=4,relief='flat').grid(row=0,column=c,sticky='ew')
+        ifr.columnconfigure(1,weight=1)
+        for r,(n,v) in enumerate([('Malá Tehla','∞'),('Veľká Tehla','∞'),('Značka','∞')],1):
+            tk.Label(ifr,text=n,bg='#0a0a1c',fg='#ccccdd',font=('Arial',8),
+                     anchor='w',padx=4).grid(row=r,column=0,sticky='ew')
+            tk.Label(ifr,text=v,bg='#0a0a1c',fg='#44ffaa',
+                     font=('Arial',9,'bold')).grid(row=r,column=1)
+
+        # Preset tlačidlá
+        bf=tk.Frame(self,bg='#0a0a1c'); bf.pack(fill='x',padx=4)
+        for txt,az,el in [("↙ Def",225,28),("↖ Pred",180,20),
+                           ("⬆ Vrch",225,85),("↔ Bok",135,18)]:
+            def mk(a,e):
+                def f():
+                    self.cam.az=math.radians(a); self.cam.el=math.radians(e)
+                    self.render_axes()
+                    if self.on_change: self.on_change()
+                return f
+            tk.Button(bf,text=txt,command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
+                      relief='flat',font=('Arial',8),padx=3,pady=2,
+                      cursor='hand2',activebackground='#3333aa',
+                      activeforeground='white').pack(side='left',expand=True,fill='x',padx=1)
+
+        tk.Checkbutton(self,text="Voľný pohyb",bg='#0a0a1c',fg='#888899',
+                       selectcolor='#1a1a44',activebackground='#0a0a1c',
+                       font=('Arial',8)).pack(anchor='w',padx=6,pady=2)
+        self.render_axes()
+
+    def render_axes(self):
+        pass   # os-canvas odstránený
+
+
+# =========================================================================
+# PROGRAM  PANEL  (editor + zoznam príkazov + filter)
+# =========================================================================
+
+def _hlidx(src,pos):
+    ln=src[:pos].count('\n')+1; col=pos-src[:pos].rfind('\n')-1; return f'{ln}.{col}'
+
+def highlight(tw):
+    src=tw.get('1.0','end')
+    for tag in ('kw','cmd','cond','comment','number'): tw.tag_remove(tag,'1.0','end')
+    for m in re.finditer(r'#[^\n]*',src):
+        tw.tag_add('comment',_hlidx(src,m.start()),_hlidx(src,m.end()))
+    for m in re.finditer(r'\b\d+\b',src):
+        tw.tag_add('number',_hlidx(src,m.start()),_hlidx(src,m.end()))
+    CTRL={'begin','zaciatok','začiatok','end','koniec','procedure','prikaz','príkaz',
+          'repeat','opakuj','times','krat','krát','*repeat','*opakuj',
+          'while','kym','kým','do','rob','*while','*kym','*kým',
+          'if','ak','then','tak','potom','else','inak','*if','*ak','not','nie'}
+    CMDS={'forward','dopredu','back','dozadu','vzad','left','vlavo','dolava',
+          'vľavo','doľava','right','vpravo','doprava','drop','poloz','pick',
+          'zdvihni','zodvihni','drop_big','poloz_velku','mark','oznac','clear',
+          'odznac','ocisti','slowly','pomaly','quickly','rýchlo','pridaj'}
+    CONDS={'wall','stena','brick','tehla','free','volno','sign','znacka',
+           'true','pravda','false','nepravda'}
+    for m in re.finditer(r'\*?\b\w+\b',src,re.UNICODE):
+        wl=m.group(0).lower()
+        tag=('kw' if wl in CTRL else 'cmd' if wl in CMDS
+             else 'cond' if wl in CONDS else None)
+        if tag: tw.tag_add(tag,_hlidx(src,m.start()),_hlidx(src,m.end()))
+
+
+ALL_CMDS_SK = ['Dopredu','Dozadu','Vlavo','Vpravo',
+               'Poloz','Poloz_Velku','Zdvihni','Oznac','Odznac',
+               'Pomaly','Rychlo']
+ALL_CMDS_STR= ['Opakuj N Krat ... Koniec',
+               'Kym Podmienka Rob ... Koniec',
+               'Ak Podmienka Potom ... Koniec',
+               'Ak ... Potom ... Inak ... Koniec',
+               'Prikaz Meno\nZaciatok\n\nKoniec']
+ALL_CMDS_COND=['Stena','Tehla','Volno','Znacka','Pravda','Nepravda','Nie Stena','Nie Tehla']
+
+class ProgramPanel(tk.Frame):
+    def __init__(self,parent,**kw):
+        super().__init__(parent,bg='#080814',**kw)
+        self._user_procs=[]; self.on_procs_update=None; self._build()
+
+    def _build(self):
+        hdr=tk.Frame(self,bg='#0d1030')
+        hdr.pack(fill='x')
+        tk.Label(hdr,text="Môj program...",bg='#0d1030',fg='#44ff88',
+                 font=('Arial',11,'bold'),pady=4,padx=8).pack(side='left')
+
+        body=tk.Frame(self,bg='#080814'); body.pack(fill='both',expand=True)
+        body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=1)
+        body.columnconfigure(2,weight=1); body.rowconfigure(0,weight=1)
+
+        # ---- Ľavý: editor ----
+        ef=tk.Frame(body,bg='#080814')
+        ef.grid(row=0,column=0,sticky='nsew',padx=(3,1),pady=3)
+        self.editor=tk.Text(ef,bg='#04040e',fg='#d4d4d4',font=('Consolas',12),
+                             insertbackground='white',relief='flat',
+                             padx=6,pady=6,undo=True)
+        sb=ttk.Scrollbar(ef,command=self.editor.yview)
+        self.editor.config(yscrollcommand=sb.set)
+        sb.pack(side='right',fill='y'); self.editor.pack(fill='both',expand=True)
+        self.editor.tag_configure('kw',foreground='#569cd6',font=('Consolas',12,'bold'))
+        self.editor.tag_configure('cmd',foreground='#dcdcaa')
+        self.editor.tag_configure('cond',foreground='#4ec9b0')
+        self.editor.tag_configure('comment',foreground='#6a9955',font=('Consolas',12,'italic'))
+        self.editor.tag_configure('number',foreground='#b5cea8')
+        self.editor.bind('<KeyRelease>',lambda e:self.after_idle(self._on_edit))
+
+        # ---- Stred: zoznam príkazov ----
+        mf=tk.Frame(body,bg='#080814')
+        mf.grid(row=0,column=1,sticky='nsew',padx=1,pady=3)
+        tk.Label(mf,text="Príkazy",bg='#0d1030',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=2).pack(fill='x')
+        self._lb=tk.Listbox(mf,bg='#04040e',fg='#dcdcaa',font=('Consolas',11),
+                             relief='flat',selectbackground='#2244aa',
+                             activestyle='dotbox',exportselection=False)
+        sc=ttk.Scrollbar(mf,command=self._lb.yview)
+        self._lb.config(yscrollcommand=sc.set)
+        sc.pack(side='right',fill='y'); self._lb.pack(fill='both',expand=True)
+        self._lb.bind('<Double-Button-1>',self._insert)
+        self._fill_list(ALL_CMDS_SK)
+
+        # ---- Pravý: filter strom ----
+        rf=tk.Frame(body,bg='#080814')
+        rf.grid(row=0,column=2,sticky='nsew',padx=(1,3),pady=3)
+        tk.Label(rf,text="Filter",bg='#0d1030',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=2).pack(fill='x')
+        style=ttk.Style(); style.configure('P.Treeview',background='#04040e',
+                           foreground='#ccccdd',fieldbackground='#04040e',font=('Arial',9))
+        self._tv=ttk.Treeview(rf,show='tree',selectmode='browse',
+                               style='P.Treeview')
+        self._tv.pack(fill='both',expand=True)
+        root=self._tv.insert('','end',text='📋 Príkazy',open=True)
+        self._sys =self._tv.insert(root,'end',text='⚙ Systémové',open=True)
+        self._tmov=self._tv.insert(self._sys,'end',text='🚶 Pohyb')
+        self._tstr=self._tv.insert(self._sys,'end',text='🔀 Štruktúry')
+        self._tcnd=self._tv.insert(self._sys,'end',text='❓ Podmienky')
+        self._tusr=self._tv.insert(root,'end',text='⭐ Tvoje príkazy',open=True)
+        self._tv.bind('<<TreeviewSelect>>',self._on_filter)
+
+    def _fill_list(self,items):
+        self._lb.delete(0,'end')
+        for i in items: self._lb.insert('end',i)
+
+    def _on_filter(self,e=None):
+        sel=self._tv.selection()
+        if not sel: return
+        item=sel[0]
+        if item==self._tmov:   self._fill_list(ALL_CMDS_SK[:4])
+        elif item==self._tstr: self._fill_list(ALL_CMDS_STR)
+        elif item==self._tcnd: self._fill_list(ALL_CMDS_COND)
+        elif item==self._tusr: self._fill_list(self._user_procs)
+        else:                  self._fill_list(ALL_CMDS_SK+ALL_CMDS_COND)
+
+    def _insert(self,e=None):
+        sel=self._lb.curselection()
+        if not sel: return
+        txt=self._lb.get(sel[0]).split('\n')[0]
+        self.editor.insert('insert',txt+'\n')
+
+    def _on_edit(self):
+        """Volá sa pri každom stlačení klávesu — zvýrazni + zisti nové procedúry."""
+        highlight(self.editor)
+        src=self.editor.get('1.0','end')
+        try:
+            prog=parse(src)
+            # Procedúra je platná len ak má neprázdnu štruktúru (zaciatok...koniec)
+            valid=[n for n,b in prog.procedures.items()]
+            self.set_user_procs(valid)
+            if self.on_procs_update:
+                self.on_procs_update(prog.procedures)
+        except Exception:
+            pass   # pri neúplnom kóde nemeníme zoznam
+
+    def set_user_procs(self,names):
+        self._user_procs=list(names)
+        # Aktualizuj podstrom v strome
+        for ch in self._tv.get_children(self._tusr): self._tv.delete(ch)
+        for n in names: self._tv.insert(self._tusr,'end',text=f'  {n}')
+        # Ak je práve aktívny filter "Tvoje príkazy", obnov aj zoznam
+        sel=self._tv.selection()
+        if sel and sel[0]==self._tusr:
+            self._fill_list(self._user_procs)
+
+
+# =========================================================================
+# OVLÁDANIE  KARELA  /  DIRECT CONTROL
+# =========================================================================
+
+class ControlPanel(tk.Frame):
+    def __init__(self,parent,get_world,on_action=None,get_procs=None,**kw):
+        super().__init__(parent,bg='#0a0a1c',**kw)
+        self.get_world=get_world; self.on_action=on_action
+        self.get_procs=get_procs   # vracia dict procedúr z editora
+        self._build()
+
+    def _build(self):
+        tk.Label(self,text="Ovládanie Karela",bg='#111130',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=3).pack(fill='x')
+        nb=ttk.Notebook(self); nb.pack(fill='both',expand=True,padx=3,pady=2)
+        t1=tk.Frame(nb,bg='#0a0a1c'); nb.add(t1,text='Graficky')
+        t2=tk.Frame(nb,bg='#0a0a1c'); nb.add(t2,text='Príkazovo')
+        self._build_graphic(t1); self._build_cmdtab(t2)
+
+    def _build_graphic(self,p):
+        # ---- Pohybové šípky (ľavý stĺpec) + Akcie (pravý stĺpec) ----
+        main=tk.Frame(p,bg='#0a0a1c'); main.pack(fill='both',expand=True,padx=4,pady=4)
+        main.columnconfigure(0,weight=1); main.columnconfigure(1,weight=1)
+
+        # Šípky
+        af=tk.Frame(main,bg='#0a0a1c'); af.grid(row=0,column=0,sticky='n',padx=(0,4))
+        def ab(txt,r,c,cmd,bg='#1a2a44'):
+            tk.Button(af,text=txt,command=lambda:self._do(cmd),
+                      bg=bg,fg='white',font=('Arial',14,'bold'),
+                      width=3,height=1,relief='flat',cursor='hand2',
+                      activebackground='#3355aa',bd=0
+                      ).grid(row=r,column=c,padx=2,pady=2)
+        ab('▲',0,1,'dopredu','#1a3a1a')
+        ab('◀',1,0,'vlavo',  '#2a2a1a')
+        # stred — zobrazí smer Karela
+        self._dir_lbl=tk.Label(af,text='→',fg='#44cc88',bg='#0a0a1c',
+                                font=('Arial',16,'bold'),width=2)
+        self._dir_lbl.grid(row=1,column=1)
+        ab('▶',1,2,'vpravo', '#2a2a1a')
+        ab('▼',2,1,'dozadu', '#3a1a1a')
+
+        # Akcie (pravý stĺpec)
+        rf=tk.Frame(main,bg='#0a0a1c'); rf.grid(row=0,column=1,sticky='nsew')
+        def act(txt,cmd,bg,row,col):
+            tk.Button(rf,text=txt,command=lambda c=cmd:self._do(c),
+                      bg=bg,fg='white',font=('Arial',8,'bold'),
+                      relief='flat',cursor='hand2',pady=3,
+                      activebackground='#334466',bd=0,wraplength=80
+                      ).grid(row=row,column=col,sticky='ew',padx=2,pady=2)
+        rf.columnconfigure(0,weight=1); rf.columnconfigure(1,weight=1)
+
+        act('Polož\ntehlu',     'poloz',       '#1a2a3a', 0, 0)
+        act('Polož\nveľkú',     'poloz_velku', '#1a1a3a', 0, 1)
+        act('Zdvihni\ntehlu',   'zdvihni',     '#2a1a3a', 1, 0)
+        act('Označ\n★',         'oznac',       '#1a3a2a', 1, 1)
+        act('Odznač\n★',        'odznac',      '#2a3a1a', 2, 0)
+
+    def _build_cmdtab(self,p):
+        tk.Label(p,text="Príkaz (Enter = vykonaj):",bg='#0a0a1c',fg='#8888aa',
+                 font=('Arial',8)).pack(anchor='w',padx=6,pady=(6,0))
+        self._ent=tk.Entry(p,bg='#04040e',fg='#d4d4d4',font=('Consolas',11),
+                            insertbackground='white',relief='flat')
+        self._ent.pack(fill='x',padx=6,pady=3)
+        self._ent.bind('<Return>',self._exec_typed)
+        self._log=tk.Text(p,bg='#04040e',fg='#88aa88',font=('Consolas',10),
+                           height=5,state='disabled',relief='flat')
+        self._log.pack(fill='both',expand=True,padx=6,pady=(0,4))
+
+    # Priame volania metód Sveta — spoľahlivé, neprechádzajú parserom
+    _DIRECT = {
+        'dopredu': 'move_forward', 'forward': 'move_forward',
+        'dozadu':  'move_back',    'back':    'move_back',
+        'vzad':    'move_back',
+        'vlavo':   'turn_left',    'left':    'turn_left',
+        'dolava':  'turn_left',
+        'vpravo':  'turn_right',   'right':   'turn_right',
+        'doprava': 'turn_right',
+        'poloz':       'drop_brick',     'drop':     'drop_brick',
+        'poloz_velku': 'drop_big_brick', 'drop_big': 'drop_big_brick',
+        'drop_b':      'drop_big_brick', 'dropb':    'drop_big_brick',
+        'zdvihni': 'pick_brick',   'pick':    'pick_brick',
+        'zodvihni':'pick_brick',
+        'oznac':   'mark',         'mark':    'mark',
+        'odznac':  'clear',        'clear':   'clear',
+        'ocisti':  'clear',
+    }
+
+    def _do(self, cmd):
+        if not cmd: return
+        w = self.get_world()
+        try:
+            method = self._DIRECT.get(cmd.lower().strip())
+            if method:
+                getattr(w, method)()
+            else:
+                prog = parse(f'zaciatok\n  {cmd}\nkoniec')
+                if self.get_procs:
+                    prog.procedures.update(self.get_procs())
+                it = KarelInterpreter(w); it.delay = 0; it.run(prog)
+            self._update_dir_label()
+            if self.on_action: self.on_action(True, None)
+        except (KarelError, Exception) as e:
+            if self.on_action: self.on_action(False, str(e))
+
+    def _update_dir_label(self):
+        """Aktualizuj šípku smeru Karela v strede kríža."""
+        if not hasattr(self,'_dir_lbl'): return
+        w = self.get_world()
+        arrows = {Direction.NORTH:'↑', Direction.SOUTH:'↓',
+                  Direction.EAST:'→',  Direction.WEST:'←'}
+        self._dir_lbl.config(text=arrows.get(w.karel_dir,'→'))
+
+    def _exec_typed(self, e=None):
+        cmd = self._ent.get().strip()
+        if not cmd: return
+        self._ent.delete(0, 'end')
+        self._logw(f"> {cmd}")
+        self._do(cmd)
+
+    def _logw(self,msg):
+        self._log.config(state='normal')
+        self._log.insert('end',msg+'\n')
+        self._log.see('end')
+        self._log.config(state='disabled')
+
+
+# =========================================================================
+# HLAVNÁ  APLIKÁCIA
+# =========================================================================
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Karel 2010")
+        self.geometry("1240x820")
+        self.configure(bg='#060610')
+        self._base=World.from_json(BUILTIN_WORLD)
+        self._world=self._base.copy()
+        self._interp=KarelInterpreter(self._world)
+        self._running=False
+        self._last_procs={}   # procedúry z posledného úspešného parsovania
+        self._build_menu(); self._build_ui()
+        self._load_ex(list(EXAMPLES.keys())[0])
+
+    # ---- Menu ------------------------------------------------------------
+    def _build_menu(self):
+        mb=tk.Menu(self,bg='#1a1a33',fg='#ccccff',tearoff=0)
+        self.config(menu=mb)
+        def sub(lbl):
+            m=tk.Menu(mb,tearoff=0,bg='#1a1a33',fg='#ccccff'); mb.add_cascade(label=lbl,menu=m); return m
+        e=sub("Edituj")
+        e.add_command(label="Otvoriť program",command=self._open_prg)
+        e.add_command(label="Uložiť program", command=self._save_prg)
+        e.add_separator()
+        e.add_command(label="Otvoriť svet",  command=self._open_world)
+        e.add_command(label="Uložiť svet",   command=self._save_world)
+        e.add_separator()
+        e.add_command(label="Uložiť svet ako XML",  command=self._save_world_xml)
+        p=sub("Pohľad")
+        p.add_command(label="Reset pohľadu",
+                      command=lambda:[setattr(self._canvas.cam,'az',math.radians(225)),
+                                      setattr(self._canvas.cam,'el',math.radians(28)),
+                                      self._canvas.render(),
+                                      self._nav.render_axes()])
+        pr=sub("Program")
+        pr.add_command(label="Spustiť ▶", command=self._run)
+        pr.add_command(label="Stop    ⏹", command=self._stop)
+        pr.add_command(label="Reset   ↺", command=self._reset)
+        h=sub("Pomoc")
+        h.add_command(label="O programe",command=self._about)
+
+    # ---- UI Layout -------------------------------------------------------
+    def _build_ui(self):
+        tb=tk.Frame(self,bg='#111130',pady=4); tb.pack(fill='x',side='top')
+        self._build_toolbar(tb)
+
+        main=tk.Frame(self,bg='#060610'); main.pack(fill='both',expand=True)
+        main.columnconfigure(0,weight=3); main.columnconfigure(1,minsize=210,weight=0)
+        main.rowconfigure(0,weight=2); main.rowconfigure(1,weight=1,minsize=200)
+
+        # 3D svet (top-left)
+        wf=tk.Frame(main,bg='#000008',bd=1,relief='sunken')
+        wf.grid(row=0,column=0,sticky='nsew',padx=(4,2),pady=(4,2))
+        titlebar=tk.Frame(wf,bg='#000011')
+        titlebar.pack(fill='x')
+        tk.Label(titlebar,text="Izba1",bg='#000011',fg='#888888',
+                 font=('Arial',9)).pack(side='left',padx=8)
+        self._world_title_var=tk.StringVar(value="Karlov Svet")
+        tk.Label(titlebar,textvariable=self._world_title_var,
+                 bg='#000011',fg='#44ff88',
+                 font=('Arial',12,'bold')).pack(side='left',padx=20)
+        self._canvas=World3D(wf,self._world)
+        self._canvas.pack(fill='both',expand=True)
+
+        # Pravý panel: navigátor + ovládanie
+        rp=tk.Frame(main,bg='#0a0a1c')
+        rp.grid(row=0,column=1,sticky='nsew',padx=(2,4),pady=(4,2))
+        rp.rowconfigure(0,weight=1); rp.rowconfigure(1,weight=1); rp.columnconfigure(0,weight=1)
+        self._nav=NavigatorPanel(rp,self._canvas.cam,
+                                  on_change=lambda:[self._canvas.render(),self._nav.render_axes()])
+        self._nav.grid(row=0,column=0,sticky='nsew',pady=(0,2))
+        # Keď sa kamera zmení ťahaním myšou, aktualizuj aj navigator osi
+        self._canvas.on_cam_change=self._nav.render_axes
+
+        self._ctrl=ControlPanel(rp,lambda:self._world,
+                                 on_action=self._on_direct,
+                                 get_procs=lambda:self._last_procs)
+        self._ctrl.grid(row=1,column=0,sticky='nsew')
+
+        # Program panel (bottom)
+        pf=tk.Frame(main,bg='#050510',bd=1,relief='sunken')
+        pf.grid(row=1,column=0,columnspan=2,sticky='nsew',padx=4,pady=(2,4))
+        self._prog=ProgramPanel(pf); self._prog.pack(fill='both',expand=True)
+        # Keď sa zmení editor, _last_procs sa aktualizuje — Príkazovo má vždy aktuálne procedúry
+        self._prog.on_procs_update=lambda p: setattr(self,'_last_procs',p)
+
+        # Status
+        self._stv=tk.StringVar(value="Pripravený / Ready")
+        self._stl=tk.Label(self,textvariable=self._stv,bg='#030308',fg='#88cc88',
+                            anchor='w',padx=10,pady=2,font=('Consolas',10))
+        self._stl.pack(fill='x',side='bottom')
+
+    def _build_toolbar(self,bar):
+        def btn(txt,cmd,bg='#2a5a9a'):
+            tk.Button(bar,text=txt,command=cmd,bg=bg,fg='white',relief='flat',
+                      padx=10,pady=4,font=('Arial',10,'bold'),cursor='hand2',
+                      activebackground='#4477bb',activeforeground='white',bd=0
+                      ).pack(side='left',padx=2)
+        btn("▶ Spustiť",self._run,'#1a6a2a')
+        btn("⏹ Stop",   self._stop,'#6a1a1a')
+        btn("↺ Reset",  self._reset,'#4a4a1a')
+        tk.Frame(bar,width=14,bg='#111130').pack(side='left')
+        tk.Label(bar,text="Rýchlosť:",bg='#111130',fg='#ccc',
+                 font=('Arial',10)).pack(side='left')
+        self._spd=tk.DoubleVar(value=0.25)
+        ttk.Scale(bar,from_=0.02,to=2.0,orient='horizontal',
+                  variable=self._spd,length=100,
+                  command=lambda v:setattr(self._interp,'delay',round(2.02-float(v),3))
+                  ).pack(side='left',padx=4)
+        tk.Frame(bar,width=14,bg='#111130').pack(side='left')
+        tk.Label(bar,text="Príklady:",bg='#111130',fg='#ccc',
+                 font=('Arial',10)).pack(side='left')
+        self._exv=tk.StringVar()
+        cb=ttk.Combobox(bar,textvariable=self._exv,values=list(EXAMPLES.keys()),
+                         state='readonly',width=22)
+        cb.pack(side='left',padx=4)
+        cb.bind('<<ComboboxSelected>>',lambda e:self._load_ex(self._exv.get()))
+
+    # ---- Akcie -----------------------------------------------------------
+    def _status(self,msg,col='#88cc88'):
+        self._stv.set(msg); self._stl.configure(fg=col)
+
+    def _load_ex(self,name):
+        if name in EXAMPLES:
+            self._prog.editor.delete('1.0','end')
+            self._prog.editor.insert('1.0',EXAMPLES[name])
+            self._exv.set(name); highlight(self._prog.editor)
+
+    def _run(self):
+        if self._running: self._status("Už beží!","#ccaa44"); return
+        src=self._prog.editor.get('1.0','end')
+        try: prog=parse(src)
+        except Exception as e: messagebox.showerror("Syntaxová chyba",str(e)); return
+        # Ulož procedúry — dostupné aj v priamom ovládaní
+        self._last_procs=prog.procedures
+        self._prog.set_user_procs(list(prog.procedures.keys()))
+        # Upozornenie ak chýba hlavný blok
+        if not prog.main_stmts:
+            if prog.procedures:
+                messagebox.showinfo("Chýba hlavný blok",
+                    "Program obsahuje definície príkazov, ale chýba hlavný blok.\n\n"
+                    "Pridaj na koniec:\n\nzaciatok\n  <sem_nazov_prikazu>\nkoniec")
+            else:
+                messagebox.showwarning("Prázdny program","Program neobsahuje žiadne príkazy.")
+            return
+        self._reset_world()
+        self._running=True; self._status("Beží...","#44aacc")
+        it=KarelInterpreter(self._world)
+        it.delay=round(2.02-self._spd.get(),3)
+        it.on_step=self._on_step; it.on_error=self._on_err; it.on_finish=self._on_fin
+        self._interp=it
+        threading.Thread(target=it.run,args=(prog,),daemon=True).start()
+
+    def _stop(self):
+        if self._interp: self._interp.stop()
+        self._running=False; self._status("Zastavené.","#cc8844")
+
+    def _reset(self):
+        self._stop(); self._reset_world(); self._status("Reset.","#88cc88")
+
+    def _reset_world(self):
+        self._world=self._base.copy()
+        if self._interp: self._interp.world=self._world
+        self._canvas.set_world(self._world)
+
+    def _on_step(self):  self._canvas.after(0,self._canvas.render)
+    def _on_err(self,m):
+        self._running=False
+        self._canvas.after(0,self._canvas.render)
+        self._canvas.after(0,lambda:self._status(f"Chyba: {m}","#cc4444"))
+        self._canvas.after(0,lambda:messagebox.showerror("Chyba",m))
+    def _on_fin(self,m):
+        self._running=False
+        self._canvas.after(0,self._canvas.render)
+        self._canvas.after(0,lambda:self._status(
+            m if m else "Hotovo! ✓","#cc8844" if m else "#44cc44"))
+
+    def _on_direct(self,ok,err=None):
+        self._canvas.after(0,self._canvas.render)
+        if not ok and err:
+            self._canvas.after(0,lambda:self._status(f"Chyba: {err}","#cc4444"))
+
+    # ---- Súbory ----------------------------------------------------------
+    def _open_prg(self):
+        p=filedialog.askopenfilename(title="Otvoriť program",
+            filetypes=[("Karel program","*.prg"),("Text","*.txt"),("Všetky","*.*")])
+        if not p: return
+        try:
+            with open(p,encoding='utf-8',errors='replace') as f: src=f.read()
+            self._prog.editor.delete('1.0','end')
+            self._prog.editor.insert('1.0',src)
+            highlight(self._prog.editor); self._status(f"Načítané: {os.path.basename(p)}")
+        except Exception as e: messagebox.showerror("Chyba",str(e))
+
+    def _save_prg(self):
+        p=filedialog.asksaveasfilename(title="Uložiť program",
+            defaultextension='.prg',filetypes=[("Karel program","*.prg"),("Text","*.txt")])
+        if not p: return
+        try:
+            with open(p,'w',encoding='utf-8') as f: f.write(self._prog.editor.get('1.0','end'))
+            self._status(f"Uložené: {os.path.basename(p)}")
+        except Exception as e: messagebox.showerror("Chyba",str(e))
+
+    def _open_world(self):
+        p=filedialog.askopenfilename(title="Otvoriť svet",
+            filetypes=[("Karel svet","*.karxml *.karjson *.json"),("XML svet","*.karxml"),
+                       ("JSON svet","*.karjson *.json"),("Všetky","*.*")])
+        if not p: return
+        try:
+            if p.lower().endswith('.karxml') or p.lower().endswith('.xml'):
+                self._base=World.from_xml(p)
+            else:
+                with open(p,encoding='utf-8') as f: d=json.load(f)
+                self._base=World.from_json(d)
+            self._reset_world()
+            # Ak svet obsahuje program, načítaj ho do editora
+            if self._base.program_text:
+                self._prog.editor.delete('1.0','end')
+                self._prog.editor.insert('1.0', self._base.program_text)
+                highlight(self._prog.editor)
+            # Nastav titulok sveta
+            title = self._base.title or os.path.splitext(os.path.basename(p))[0]
+            self._world_title_var.set(title)
+            self._status(f"Svet: {os.path.basename(p)}")
+        except Exception as e: messagebox.showerror("Chyba",str(e))
+
+    def _save_world(self):
+        p=filedialog.asksaveasfilename(title="Uložiť svet",
+            defaultextension='.karjson',filetypes=[("Karel svet","*.karjson"),("JSON","*.json")])
+        if not p: return
+        try:
+            with open(p,'w',encoding='utf-8') as f: json.dump(self._world.to_json(),f,indent=2)
+            self._status(f"Svet uložený: {os.path.basename(p)}")
+        except Exception as e: messagebox.showerror("Chyba",str(e))
+
+    def _save_world_xml(self):
+        p=filedialog.asksaveasfilename(title="Uložiť svet ako XML",
+            defaultextension='.karxml',filetypes=[("Karel XML svet","*.karxml"),("Všetky","*.*")])
+        if not p: return
+        try:
+            # Ulož aj aktuálny program do sveta
+            self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
+            xml_str = self._world.to_xml()
+            with open(p,'w',encoding='utf-8') as f: f.write(xml_str)
+            self._status(f"Svet uložený (XML): {os.path.basename(p)}")
+        except Exception as e: messagebox.showerror("Chyba",str(e))
+
+    def _about(self):
+        messagebox.showinfo("Karel 2010",
+            "Karel 2010 – Python port\nOriginál: Zimo, 2010\n\n"
+            "Ovládanie 3D pohľadu:\n"
+            "  Ľavý drag  → rotácia\n"
+            "  Pravý drag → posun\n"
+            "  Koliesko   → zoom\n\n"
+            "Tehly: Karel kladie/zdvíha PRED sebou.\n"
+            "Značka: Karel označí pod sebou.\n"
+            "Vylez na 1 tehlu, nie na 2.")
+
+
+# =========================================================================
+if __name__=='__main__':
+    App().mainloop()

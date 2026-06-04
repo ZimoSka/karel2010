@@ -1,0 +1,46 @@
+[Main]
+Caption=Karel 2010
+Hint=This is Hint
+
+[Menu]
+Caption=Main Menu
+Hint=This is Main Menu.
+File=&File
+Edit=&Edit
+View=&View
+Help=&Help
+About=&About...
+DrawWindow=&Room
+RoomOptions=&Room Options...
+EditMode=&Edit Mode
+
+[Defaults]
+RoomName=Room1
+
+[RoomSettings]
+Caption=Room Settings
+RoomName=Room Name:
+Height=Height:
+Width=Width:
+H.Grid=H.Grid
+V.Grid=V.Grid
+WallSize=Wall Size:
+Grid=Show Grid
+WallAndFloor=Show Walls & Floor
+
+[Navigator]
+FreeMove=Free Move
+Center=Center
+
+[Command]
+Caption=Command Karel
+Graphics=Graphics
+Command=Command
+Drop=Drop
+DropBig=DropBig
+Pick=Pick
+
+[Bricks]
+Brick1=Small Brick
+Brick2=Large Brick
+Brick3=Sign

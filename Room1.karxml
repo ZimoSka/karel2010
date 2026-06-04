@@ -1,0 +1,91 @@
+<?xml version="1.0" ?>
+<world width="19" height="19">
+  <karel x="0" y="0" dir="N"/>
+  <walls>
+    <wall x="0" y="0" side="S"/>
+    <wall x="0" y="18" side="N"/>
+    <wall x="1" y="0" side="S"/>
+    <wall x="1" y="18" side="N"/>
+    <wall x="2" y="0" side="S"/>
+    <wall x="2" y="18" side="N"/>
+    <wall x="3" y="0" side="S"/>
+    <wall x="3" y="18" side="N"/>
+    <wall x="4" y="0" side="S"/>
+    <wall x="4" y="18" side="N"/>
+    <wall x="5" y="0" side="S"/>
+    <wall x="5" y="18" side="N"/>
+    <wall x="6" y="0" side="S"/>
+    <wall x="6" y="18" side="N"/>
+    <wall x="7" y="0" side="S"/>
+    <wall x="7" y="18" side="N"/>
+    <wall x="8" y="0" side="S"/>
+    <wall x="8" y="18" side="N"/>
+    <wall x="9" y="0" side="S"/>
+    <wall x="9" y="18" side="N"/>
+    <wall x="10" y="0" side="S"/>
+    <wall x="10" y="18" side="N"/>
+    <wall x="11" y="0" side="S"/>
+    <wall x="11" y="18" side="N"/>
+    <wall x="12" y="0" side="S"/>
+    <wall x="12" y="18" side="N"/>
+    <wall x="13" y="0" side="S"/>
+    <wall x="13" y="18" side="N"/>
+    <wall x="14" y="0" side="S"/>
+    <wall x="14" y="18" side="N"/>
+    <wall x="15" y="0" side="S"/>
+    <wall x="15" y="18" side="N"/>
+    <wall x="16" y="0" side="S"/>
+    <wall x="16" y="18" side="N"/>
+    <wall x="17" y="0" side="S"/>
+    <wall x="17" y="18" side="N"/>
+    <wall x="18" y="0" side="S"/>
+    <wall x="18" y="18" side="N"/>
+    <wall x="0" y="0" side="W"/>
+    <wall x="18" y="0" side="E"/>
+    <wall x="0" y="1" side="W"/>
+    <wall x="18" y="1" side="E"/>
+    <wall x="0" y="2" side="W"/>
+    <wall x="18" y="2" side="E"/>
+    <wall x="0" y="3" side="W"/>
+    <wall x="18" y="3" side="E"/>
+    <wall x="0" y="4" side="W"/>
+    <wall x="18" y="4" side="E"/>
+    <wall x="0" y="5" side="W"/>
+    <wall x="18" y="5" side="E"/>
+    <wall x="0" y="6" side="W"/>
+    <wall x="18" y="6" side="E"/>
+    <wall x="0" y="7" side="W"/>
+    <wall x="18" y="7" side="E"/>
+    <wall x="0" y="8" side="W"/>
+    <wall x="18" y="8" side="E"/>
+    <wall x="0" y="9" side="W"/>
+    <wall x="18" y="9" side="E"/>
+    <wall x="0" y="10" side="W"/>
+    <wall x="18" y="10" side="E"/>
+    <wall x="0" y="11" side="W"/>
+    <wall x="18" y="11" side="E"/>
+    <wall x="0" y="12" side="W"/>
+    <wall x="18" y="12" side="E"/>
+    <wall x="0" y="13" side="W"/>
+    <wall x="18" y="13" side="E"/>
+    <wall x="0" y="14" side="W"/>
+    <wall x="18" y="14" side="E"/>
+    <wall x="0" y="15" side="W"/>
+    <wall x="18" y="15" side="E"/>
+    <wall x="0" y="16" side="W"/>
+    <wall x="18" y="16" side="E"/>
+    <wall x="0" y="17" side="W"/>
+    <wall x="18" y="17" side="E"/>
+    <wall x="0" y="18" side="W"/>
+    <wall x="18" y="18" side="E"/>
+  </walls>
+  <bricks/>
+  <bigbricks/>
+  <marks/>
+  <title>Room1</title>
+  <program>zaciatok
+
+koniec</program>
+  <next_level>D:\Zimo\Personal\Delphi\Karel 2010\Room2.prg</next_level>
+  <prev_level>D:\Zimo\Personal\Delphi\Karel 2010\Room2.prg</prev_level>
+</world>

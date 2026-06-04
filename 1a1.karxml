@@ -1,0 +1,140 @@
+<?xml version="1.0" ?>
+<world width="19" height="29">
+  <karel x="18" y="2" dir="S"/>
+  <walls>
+    <wall x="0" y="0" side="S"/>
+    <wall x="0" y="28" side="N"/>
+    <wall x="1" y="0" side="S"/>
+    <wall x="1" y="28" side="N"/>
+    <wall x="2" y="0" side="S"/>
+    <wall x="2" y="28" side="N"/>
+    <wall x="3" y="0" side="S"/>
+    <wall x="3" y="28" side="N"/>
+    <wall x="4" y="0" side="S"/>
+    <wall x="4" y="28" side="N"/>
+    <wall x="5" y="0" side="S"/>
+    <wall x="5" y="28" side="N"/>
+    <wall x="6" y="0" side="S"/>
+    <wall x="6" y="28" side="N"/>
+    <wall x="7" y="0" side="S"/>
+    <wall x="7" y="28" side="N"/>
+    <wall x="8" y="0" side="S"/>
+    <wall x="8" y="28" side="N"/>
+    <wall x="9" y="0" side="S"/>
+    <wall x="9" y="28" side="N"/>
+    <wall x="10" y="0" side="S"/>
+    <wall x="10" y="28" side="N"/>
+    <wall x="11" y="0" side="S"/>
+    <wall x="11" y="28" side="N"/>
+    <wall x="12" y="0" side="S"/>
+    <wall x="12" y="28" side="N"/>
+    <wall x="13" y="0" side="S"/>
+    <wall x="13" y="28" side="N"/>
+    <wall x="14" y="0" side="S"/>
+    <wall x="14" y="28" side="N"/>
+    <wall x="15" y="0" side="S"/>
+    <wall x="15" y="28" side="N"/>
+    <wall x="16" y="0" side="S"/>
+    <wall x="16" y="28" side="N"/>
+    <wall x="17" y="0" side="S"/>
+    <wall x="17" y="28" side="N"/>
+    <wall x="18" y="0" side="S"/>
+    <wall x="18" y="28" side="N"/>
+    <wall x="0" y="0" side="W"/>
+    <wall x="18" y="0" side="E"/>
+    <wall x="0" y="1" side="W"/>
+    <wall x="18" y="1" side="E"/>
+    <wall x="0" y="2" side="W"/>
+    <wall x="18" y="2" side="E"/>
+    <wall x="0" y="3" side="W"/>
+    <wall x="18" y="3" side="E"/>
+    <wall x="0" y="4" side="W"/>
+    <wall x="18" y="4" side="E"/>
+    <wall x="0" y="5" side="W"/>
+    <wall x="18" y="5" side="E"/>
+    <wall x="0" y="6" side="W"/>
+    <wall x="18" y="6" side="E"/>
+    <wall x="0" y="7" side="W"/>
+    <wall x="18" y="7" side="E"/>
+    <wall x="0" y="8" side="W"/>
+    <wall x="18" y="8" side="E"/>
+    <wall x="0" y="9" side="W"/>
+    <wall x="18" y="9" side="E"/>
+    <wall x="0" y="10" side="W"/>
+    <wall x="18" y="10" side="E"/>
+    <wall x="0" y="11" side="W"/>
+    <wall x="18" y="11" side="E"/>
+    <wall x="0" y="12" side="W"/>
+    <wall x="18" y="12" side="E"/>
+    <wall x="0" y="13" side="W"/>
+    <wall x="18" y="13" side="E"/>
+    <wall x="0" y="14" side="W"/>
+    <wall x="18" y="14" side="E"/>
+    <wall x="0" y="15" side="W"/>
+    <wall x="18" y="15" side="E"/>
+    <wall x="0" y="16" side="W"/>
+    <wall x="18" y="16" side="E"/>
+    <wall x="0" y="17" side="W"/>
+    <wall x="18" y="17" side="E"/>
+    <wall x="0" y="18" side="W"/>
+    <wall x="18" y="18" side="E"/>
+    <wall x="0" y="19" side="W"/>
+    <wall x="18" y="19" side="E"/>
+    <wall x="0" y="20" side="W"/>
+    <wall x="18" y="20" side="E"/>
+    <wall x="0" y="21" side="W"/>
+    <wall x="18" y="21" side="E"/>
+    <wall x="0" y="22" side="W"/>
+    <wall x="18" y="22" side="E"/>
+    <wall x="0" y="23" side="W"/>
+    <wall x="18" y="23" side="E"/>
+    <wall x="0" y="24" side="W"/>
+    <wall x="18" y="24" side="E"/>
+    <wall x="0" y="25" side="W"/>
+    <wall x="18" y="25" side="E"/>
+    <wall x="0" y="26" side="W"/>
+    <wall x="18" y="26" side="E"/>
+    <wall x="0" y="27" side="W"/>
+    <wall x="18" y="27" side="E"/>
+    <wall x="0" y="28" side="W"/>
+    <wall x="18" y="28" side="E"/>
+  </walls>
+  <bricks/>
+  <bigbricks/>
+  <marks/>
+  <title>1a1</title>
+  <intro>&lt;body bgcolor=&quot;#000000&quot;&gt;
+
+&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Ahoj 
+Miško!&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;Po&amp;#269;ul som, že si sa dnes nau&amp;#269;il nie&amp;#269;o nové.&lt;br&gt;
+Vrabce &amp;#269;virikali, že si sa nau&amp;#269;il s&amp;#269;ítava&amp;#357; 1+1.&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;&amp;#268;o tak si to overi&amp;#357;... &lt;/font&gt;
+&lt;hr color=&quot;#99FF99&quot;&gt;
+&lt;img border=&quot;0&quot; src=&quot;Scitan1.gif&quot; align=&quot;right&quot;&gt;&lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, tovjou úlohou je vojs&amp;#357; s Karlom do&lt;br&gt;
+štvorca, ktorý je pri správnom výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;
+
+&lt;/body&gt;</intro>
+  <success>&lt;body bgcolor=&quot;#000000&quot;&gt;
+
+&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;
+&lt;img border=&quot;0&quot; dynsrc=&quot;Chick.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;
+
+&lt;/body&gt;</success>
+  <failure>&lt;body bgcolor=&quot;#000000&quot;&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://teacherweb.com/images/aniPenguinSitting.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Gebulka, 
+zdá sa, ze máš v scítavaní ešte drobné medzery...&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;hr color=&quot;#99FF99&quot;&gt;
+&lt;img border=&quot;0&quot; src=&quot;Scitan1.gif&quot; align=&quot;right&quot;&gt;&lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, tovjou úlohou je vojs&amp;#357; s Karlom do&lt;br&gt;
+štvorca, ktorý je &lt;b&gt;pri správnom &lt;/b&gt;výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;
+
+&lt;/body&gt;</failure>
+  <program>Začiatok
+ 
+Koniec</program>
+  <next_level>D:\Zimo\Personal\Delphi\Karel 2010\Bludisko.kar</next_level>
+</world>
