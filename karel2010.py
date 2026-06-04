@@ -46,6 +46,24 @@ class Direction(Enum):
 
 class KarelError(Exception): pass
 
+
+class WorldSettings:
+    """Nastavenia obmedzení a reštrikcií sveta — ukladajú sa do .karxml."""
+    def __init__(self):
+        self.brick_limit      = -1    # max malých tehál pre Karela (-1 = ∞)
+        self.big_brick_limit  = -1    # max veľkých tehál (-1 = ∞)
+        self.mark_limit       = -1    # max značiek (-1 = ∞)
+        # Zakázané príkazy: množina tokenov z CMD_T (napr. {'FORWARD','DROP'})
+        self.disabled_cmds    = set()
+        # Zakázať definovanie vlastných príkazov ('prikaz … koniec')
+        self.disable_procedure = False
+        # Zamknúť pohľad kamery
+        self.camera_locked    = False
+        self.camera_az        = math.radians(225)
+        self.camera_el        = math.radians(28)
+        self.camera_dist      = 16.0
+
+
 class World:
     """Karelova mriežková mapa.  x=0 vľavo, y=0 dole."""
     BIG_BRICK_UNITS = 5   # veľká tehla = 5 malých
@@ -57,6 +75,11 @@ class World:
         self.big_bricks = [[0     for _ in range(width)] for _ in range(height)]
         self.marks      = [[False  for _ in range(width)] for _ in range(height)]
         self.karel_x=0; self.karel_y=0; self.karel_dir=Direction.EAST
+        self.settings = WorldSettings()
+        # Runtime inventár — resetuje sa pri každom reštarte hry
+        self._bricks_left     = -1
+        self._big_bricks_left = -1
+        self._marks_left      = -1
         self._add_border_walls()
 
     def _add_border_walls(self):
@@ -64,6 +87,38 @@ class World:
             self.walls[0][x].add('S'); self.walls[self.height-1][x].add('N')
         for y in range(self.height):
             self.walls[y][0].add('W'); self.walls[y][self.width-1].add('E')
+
+    def reset_inventory(self):
+        """Resetuje inventár podľa nastavení — volať po každom reštarte sveta."""
+        self._bricks_left     = self.settings.brick_limit
+        self._big_bricks_left = self.settings.big_brick_limit
+        self._marks_left      = self.settings.mark_limit
+
+    def inventory_str(self):
+        """Vráti (malé, veľké, značky) ako zobraziteľné reťazce."""
+        def _s(v): return '∞' if v < 0 else str(v)
+        return _s(self._bricks_left), _s(self._big_bricks_left), _s(self._marks_left)
+
+    def resize(self, new_w, new_h):
+        """Zmení rozmery sveta; zachová tehly a značky v rámci nových rozmerov."""
+        new_walls      = [[set()  for _ in range(new_w)] for _ in range(new_h)]
+        new_bricks     = [[0      for _ in range(new_w)] for _ in range(new_h)]
+        new_big_bricks = [[0      for _ in range(new_w)] for _ in range(new_h)]
+        new_marks      = [[False  for _ in range(new_w)] for _ in range(new_h)]
+        for y in range(min(self.height, new_h)):
+            for x in range(min(self.width, new_w)):
+                # Interné steny (nie na okraji starého sveta)
+                if not (x==0 or x==self.width-1 or y==0 or y==self.height-1):
+                    new_walls[y][x] = set(self.walls[y][x])
+                new_bricks[y][x]     = self.bricks[y][x]
+                new_big_bricks[y][x] = self.big_bricks[y][x]
+                new_marks[y][x]      = self.marks[y][x]
+        self.width=new_w; self.height=new_h
+        self.walls=new_walls; self.bricks=new_bricks
+        self.big_bricks=new_big_bricks; self.marks=new_marks
+        self.karel_x = min(self.karel_x, new_w-1)
+        self.karel_y = min(self.karel_y, new_h-1)
+        self._add_border_walls()
 
     def _step(self,x,y,d):
         return (x+1,y) if d==Direction.EAST  else \
@@ -110,18 +165,30 @@ class World:
     # Tehly/bricks: kladú/dvíhajú sa PRED Karelom; znacka je POD nim
     def drop_brick(self):
         if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
+        if self._bricks_left == 0: raise KarelError("Nemáš žiadne malé tehly!")
         nx,ny=self._front(); self.bricks[ny][nx]+=1
+        if self._bricks_left > 0: self._bricks_left -= 1
     def drop_big_brick(self):
         """Veľká tehla = BIG_BRICK_UNITS malých — ukladá sa do big_bricks."""
         if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
+        if self._big_bricks_left == 0: raise KarelError("Nemáš žiadne veľké tehly!")
         nx,ny=self._front(); self.big_bricks[ny][nx]+=1
+        if self._big_bricks_left > 0: self._big_bricks_left -= 1
     def pick_brick(self):
         if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť tehlu cez stenu!")
         nx,ny=self._front()
         if self.bricks[ny][nx]<=0: raise KarelError("Žiadna (malá) tehla na zdvihnutie!")
         self.bricks[ny][nx]-=1
-    def mark(self):  self.marks[self.karel_y][self.karel_x]=True
-    def clear(self): self.marks[self.karel_y][self.karel_x]=False
+        if self._bricks_left >= 0: self._bricks_left += 1
+    def mark(self):
+        if not self.marks[self.karel_y][self.karel_x]:
+            if self._marks_left == 0: raise KarelError("Nemáš žiadne značky!")
+            if self._marks_left > 0: self._marks_left -= 1
+        self.marks[self.karel_y][self.karel_x]=True
+    def clear(self):
+        if self.marks[self.karel_y][self.karel_x]:
+            if self._marks_left >= 0: self._marks_left += 1
+        self.marks[self.karel_y][self.karel_x]=False
 
     def check_wall(self):  return self.is_wall_ahead()
     def check_brick(self):
@@ -205,6 +272,24 @@ class World:
         _txt('program',      self.program_text)
         _txt('next_level',   self.next_level)
         _txt('prev_level',   self.prev_level)
+        # nastavenia sveta
+        s = self.settings
+        has_settings = (s.brick_limit!=-1 or s.big_brick_limit!=-1 or s.mark_limit!=-1
+                        or s.disabled_cmds or s.disable_procedure or s.camera_locked)
+        if has_settings:
+            st = ET.SubElement(root, 'settings')
+            ET.SubElement(st,'brick_limit').text     = str(s.brick_limit)
+            ET.SubElement(st,'big_brick_limit').text = str(s.big_brick_limit)
+            ET.SubElement(st,'mark_limit').text      = str(s.mark_limit)
+            if s.disabled_cmds:
+                ET.SubElement(st,'disabled_cmds').text = ','.join(sorted(s.disabled_cmds))
+            if s.disable_procedure:
+                ET.SubElement(st,'disable_procedure').text = 'true'
+            if s.camera_locked:
+                ET.SubElement(st,'camera_locked').text = 'true'
+                ET.SubElement(st,'camera_az').text    = str(s.camera_az)
+                ET.SubElement(st,'camera_el').text    = str(s.camera_el)
+                ET.SubElement(st,'camera_dist').text  = str(s.camera_dist)
         # pekné formátovanie
         raw = ET.tostring(root, encoding='unicode')
         dom = minidom.parseString(raw)
@@ -248,6 +333,27 @@ class World:
         w.program_text = _gtxt('program')
         w.next_level   = _gtxt('next_level')
         w.prev_level   = _gtxt('prev_level')
+        # nastavenia
+        st = root.find('settings')
+        if st is not None:
+            def _gi(tag,d):
+                el=st.find(tag); return int(el.text) if el is not None and el.text else d
+            def _gb(tag):
+                el=st.find(tag); return el is not None and (el.text or '').strip().lower()=='true'
+            def _gf(tag,d):
+                el=st.find(tag); return float(el.text) if el is not None and el.text else d
+            w.settings.brick_limit     = _gi('brick_limit',-1)
+            w.settings.big_brick_limit = _gi('big_brick_limit',-1)
+            w.settings.mark_limit      = _gi('mark_limit',-1)
+            dc = st.find('disabled_cmds')
+            if dc is not None and dc.text:
+                w.settings.disabled_cmds = set(dc.text.strip().split(','))
+            w.settings.disable_procedure = _gb('disable_procedure')
+            w.settings.camera_locked     = _gb('camera_locked')
+            if w.settings.camera_locked:
+                w.settings.camera_az   = _gf('camera_az',  math.radians(225))
+                w.settings.camera_el   = _gf('camera_el',  math.radians(28))
+                w.settings.camera_dist = _gf('camera_dist', 16.0)
         return w
 
     def copy(self): return deepcopy(self)
@@ -285,6 +391,11 @@ def _bkw():
     ]:
         for v in vs: KW[v]=t
 _bkw()
+# Spätné mapovanie: token → [varianty slov]  (pre highlighting zakázaných príkazov)
+_KW_REVERSE: dict = {}
+for _kw, _kt in KW.items():
+    _KW_REVERSE.setdefault(_kt, []).append(_kw)
+
 CMD_T={'FORWARD','BACK','LEFT','RIGHT','DROP','PICK','DROP_BIG','MARK','CLEAR','SLOWLY','QUICKLY'}
 COND_T={'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
 CLOSE_T={'END','END_REPEAT','END_WHILE','END_IF'}
@@ -450,6 +561,8 @@ class KarelInterpreter:
         finally: self._d-=1
     def _cmd(self,node):
         w=self.world; c=node.cmd
+        if c in w.settings.disabled_cmds:
+            raise KarelError(f"Príkaz je zakázaný v tomto svete!")
         if   c=='FORWARD':  w.move_forward()
         elif c=='BACK':     w.move_back()
         elif c=='LEFT':     w.turn_left()
@@ -792,14 +905,19 @@ class World3D(tk.Canvas):
     def _ds1(self,e): self._ds=(e.x,e.y); self._db=e.num
     def _notify_cam(self):
         if self.on_cam_change: self.on_cam_change()
+    def _cam_locked(self):
+        return getattr(self.world,'settings',None) and self.world.settings.camera_locked
+
     def _dm1(self,e):
         if not self._ds: return
+        if self._cam_locked(): return
         dx=e.x-self._ds[0]; dy=e.y-self._ds[1]; self._ds=(e.x,e.y)
         self.cam.az-=dx*0.007
         self.cam.el=max(math.radians(4),min(math.radians(82),self.cam.el+dy*0.007))
         self.render(); self._notify_cam()
     def _dm3(self,e):
         if not self._ds: return
+        if self._cam_locked(): return
         dx=e.x-self._ds[0]; dy=e.y-self._ds[1]; self._ds=(e.x,e.y)
         _,_,right,up=self.cam._basis()
         s=self.cam.dist*0.0022
@@ -808,6 +926,7 @@ class World3D(tk.Canvas):
             self.cam.target[i]+=dy*up[i]*s
         self.render(); self._notify_cam()
     def _mw(self,e):
+        if self._cam_locked(): return
         f=0.9 if (e.num==4 or getattr(e,'delta',0)>0) else 1.1
         self.cam.dist=max(3,min(80,self.cam.dist*f))
         self.render(); self._notify_cam()
@@ -965,14 +1084,16 @@ class NavigatorPanel(tk.Frame):
 
         # Inventár
         ifr=tk.Frame(self,bg='#0a0a1c'); ifr.pack(fill='x',padx=4,pady=2)
-        for c,(h,fg) in enumerate([('Menú','#8888cc'),('Počet','#88ffcc')]):
+        for c,(h,fg) in enumerate([('Predmet','#8888cc'),('Zostatok','#88ffcc')]):
             tk.Label(ifr,text=h,bg='#141430',fg=fg,font=('Arial',8,'bold'),
                      padx=4,relief='flat').grid(row=0,column=c,sticky='ew')
         ifr.columnconfigure(1,weight=1)
-        for r,(n,v) in enumerate([('Malá Tehla','∞'),('Veľká Tehla','∞'),('Značka','∞')],1):
+        self._inv_vars=[tk.StringVar(value='∞') for _ in range(3)]
+        for r,(n,var) in enumerate(zip(['Malá Tehla','Veľká Tehla','Značka'],
+                                        self._inv_vars),1):
             tk.Label(ifr,text=n,bg='#0a0a1c',fg='#ccccdd',font=('Arial',8),
                      anchor='w',padx=4).grid(row=r,column=0,sticky='ew')
-            tk.Label(ifr,text=v,bg='#0a0a1c',fg='#44ffaa',
+            tk.Label(ifr,textvariable=var,bg='#0a0a1c',fg='#44ffaa',
                      font=('Arial',9,'bold')).grid(row=r,column=1)
 
         # Preset tlačidlá
@@ -995,6 +1116,12 @@ class NavigatorPanel(tk.Frame):
                        font=('Arial',8)).pack(anchor='w',padx=6,pady=2)
         self.render_axes()
 
+    def update_inventory(self, world):
+        b,bb,m = world.inventory_str()
+        self._inv_vars[0].set(b)
+        self._inv_vars[1].set(bb)
+        self._inv_vars[2].set(m)
+
     def render_axes(self):
         pass   # os-canvas odstránený
 
@@ -1006,9 +1133,10 @@ class NavigatorPanel(tk.Frame):
 def _hlidx(src,pos):
     ln=src[:pos].count('\n')+1; col=pos-src[:pos].rfind('\n')-1; return f'{ln}.{col}'
 
-def highlight(tw):
+def highlight(tw, disabled_cmds=None, disable_procedure=False):
     src=tw.get('1.0','end')
-    for tag in ('kw','cmd','cond','comment','number'): tw.tag_remove(tag,'1.0','end')
+    for tag in ('kw','cmd','cond','comment','number','disabled'):
+        tw.tag_remove(tag,'1.0','end')
     for m in re.finditer(r'#[^\n]*',src):
         tw.tag_add('comment',_hlidx(src,m.start()),_hlidx(src,m.end()))
     for m in re.finditer(r'\b\d+\b',src):
@@ -1023,8 +1151,18 @@ def highlight(tw):
           'odznac','ocisti','slowly','pomaly','quickly','rýchlo','pridaj'}
     CONDS={'wall','stena','brick','tehla','free','volno','sign','znacka',
            'true','pravda','false','nepravda'}
-    for m in re.finditer(r'\*?\b\w+\b',src,re.UNICODE):
+    # Zakázané slová (podľa nastavení sveta)
+    _dis_words: set = set()
+    if disabled_cmds:
+        for tok in disabled_cmds:
+            _dis_words.update(_KW_REVERSE.get(tok, []))
+    if disable_procedure:
+        _dis_words.update(_KW_REVERSE.get('PROCEDURE', []))
+    for m in re.finditer(r'\*?[\wÀ-ɏ]+',src,re.UNICODE):
         wl=m.group(0).lower()
+        if wl in _dis_words:
+            tw.tag_add('disabled',_hlidx(src,m.start()),_hlidx(src,m.end()))
+            continue
         tag=('kw' if wl in CTRL else 'cmd' if wl in CMDS
              else 'cond' if wl in CONDS else None)
         if tag: tw.tag_add(tag,_hlidx(src,m.start()),_hlidx(src,m.end()))
@@ -1043,7 +1181,10 @@ ALL_CMDS_COND=['Stena','Tehla','Volno','Znacka','Pravda','Nepravda','Nie Stena',
 class ProgramPanel(tk.Frame):
     def __init__(self,parent,**kw):
         super().__init__(parent,bg='#080814',**kw)
-        self._user_procs=[]; self.on_procs_update=None; self._build()
+        self._user_procs=[]; self.on_procs_update=None
+        self._disabled_cmds: set = set()
+        self._disable_procedure: bool = False
+        self._build()
 
     def _build(self):
         hdr=tk.Frame(self,bg='#0d1030')
@@ -1069,6 +1210,8 @@ class ProgramPanel(tk.Frame):
         self.editor.tag_configure('cond',foreground='#4ec9b0')
         self.editor.tag_configure('comment',foreground='#6a9955',font=('Consolas',12,'italic'))
         self.editor.tag_configure('number',foreground='#b5cea8')
+        self.editor.tag_configure('disabled',foreground='#ff4444',background='#2a0000',
+                                   font=('Consolas',12,'bold'))
         self.editor.bind('<KeyRelease>',lambda e:self.after_idle(self._on_edit))
 
         # ---- Stred: zoznam príkazov ----
@@ -1123,9 +1266,15 @@ class ProgramPanel(tk.Frame):
         txt=self._lb.get(sel[0]).split('\n')[0]
         self.editor.insert('insert',txt+'\n')
 
+    def set_disabled_cmds(self, cmds, disable_procedure=False):
+        """Nastaví zakázané príkazy a znovu zvýrazní editor."""
+        self._disabled_cmds = set(cmds) if cmds else set()
+        self._disable_procedure = disable_procedure
+        highlight(self.editor, self._disabled_cmds, self._disable_procedure)
+
     def _on_edit(self):
         """Volá sa pri každom stlačení klávesu — zvýrazni + zisti nové procedúry."""
-        highlight(self.editor)
+        highlight(self.editor, self._disabled_cmds, self._disable_procedure)
         src=self.editor.get('1.0','end')
         try:
             prog=parse(src)
@@ -1171,15 +1320,18 @@ class ControlPanel(tk.Frame):
         # ---- Pohybové šípky (ľavý stĺpec) + Akcie (pravý stĺpec) ----
         main=tk.Frame(p,bg='#0a0a1c'); main.pack(fill='both',expand=True,padx=4,pady=4)
         main.columnconfigure(0,weight=1); main.columnconfigure(1,weight=1)
+        self._btn_refs: dict = {}   # cmd -> Button widget
+        self._btn_bgs:  dict = {}   # cmd -> original bg
 
         # Šípky
         af=tk.Frame(main,bg='#0a0a1c'); af.grid(row=0,column=0,sticky='n',padx=(0,4))
         def ab(txt,r,c,cmd,bg='#1a2a44'):
-            tk.Button(af,text=txt,command=lambda:self._do(cmd),
+            b=tk.Button(af,text=txt,command=lambda:self._do(cmd),
                       bg=bg,fg='white',font=('Arial',14,'bold'),
                       width=3,height=1,relief='flat',cursor='hand2',
-                      activebackground='#3355aa',bd=0
-                      ).grid(row=r,column=c,padx=2,pady=2)
+                      activebackground='#3355aa',bd=0)
+            b.grid(row=r,column=c,padx=2,pady=2)
+            self._btn_refs[cmd]=b; self._btn_bgs[cmd]=bg
         ab('▲',0,1,'dopredu','#1a3a1a')
         ab('◀',1,0,'vlavo',  '#2a2a1a')
         # stred — zobrazí smer Karela
@@ -1192,11 +1344,12 @@ class ControlPanel(tk.Frame):
         # Akcie (pravý stĺpec)
         rf=tk.Frame(main,bg='#0a0a1c'); rf.grid(row=0,column=1,sticky='nsew')
         def act(txt,cmd,bg,row,col):
-            tk.Button(rf,text=txt,command=lambda c=cmd:self._do(c),
+            b=tk.Button(rf,text=txt,command=lambda c=cmd:self._do(c),
                       bg=bg,fg='white',font=('Arial',8,'bold'),
                       relief='flat',cursor='hand2',pady=3,
-                      activebackground='#334466',bd=0,wraplength=80
-                      ).grid(row=row,column=col,sticky='ew',padx=2,pady=2)
+                      activebackground='#334466',bd=0,wraplength=80)
+            b.grid(row=row,column=col,sticky='ew',padx=2,pady=2)
+            self._btn_refs[cmd]=b; self._btn_bgs[cmd]=bg
         rf.columnconfigure(0,weight=1); rf.columnconfigure(1,weight=1)
 
         act('Polož\ntehlu',     'poloz',       '#1a2a3a', 0, 0)
@@ -1260,6 +1413,25 @@ class ControlPanel(tk.Frame):
                   Direction.EAST:'→',  Direction.WEST:'←'}
         self._dir_lbl.config(text=arrows.get(w.karel_dir,'→'))
 
+    # Mapovanie: zobrazené meno príkazu → token CMD_T
+    _CMD_TO_TOKEN = {
+        'dopredu':'FORWARD','dozadu':'BACK','vlavo':'LEFT','vpravo':'RIGHT',
+        'poloz':'DROP','poloz_velku':'DROP_BIG','zdvihni':'PICK',
+        'oznac':'MARK','odznac':'CLEAR',
+    }
+
+    def apply_restrictions(self, settings):
+        """Zakáže/povolí tlačidlá podľa nastavení sveta."""
+        if not hasattr(self,'_btn_refs'): return
+        disabled = settings.disabled_cmds if settings else set()
+        for cmd, btn in self._btn_refs.items():
+            tok = self._CMD_TO_TOKEN.get(cmd,'')
+            if tok in disabled:
+                btn.configure(state='disabled', bg='#222222', fg='#555555', cursor='')
+            else:
+                btn.configure(state='normal', bg=self._btn_bgs.get(cmd,'#1a2a3a'),
+                              fg='white', cursor='hand2')
+
     def _exec_typed(self, e=None):
         cmd = self._ent.get().strip()
         if not cmd: return
@@ -1272,6 +1444,238 @@ class ControlPanel(tk.Frame):
         self._log.insert('end',msg+'\n')
         self._log.see('end')
         self._log.config(state='disabled')
+
+
+# =========================================================================
+# EDITOR  NASTAVENÍ  SVETA
+# =========================================================================
+
+class WorldSettingsDialog(tk.Toplevel):
+    """Modálny dialóg na nastavenie parametrov miestnosti."""
+    _BG='#0a0a1c'; _BG2='#111130'; _BG3='#060610'
+    _FG='#ccccee'; _FG2='#888899'
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._app  = app
+        self._work = app._base.copy()   # pracovná kópia — aplikuje sa až pri OK
+        self._cam  = app._canvas.cam
+        self.title("Nastavenia sveta")
+        self.configure(bg=self._BG)
+        self.resizable(False, False)
+        self.grab_set()
+        self.transient(app)
+        self._build()
+        self.update_idletasks()
+        pw,ph = app.winfo_width(), app.winfo_height()
+        px,py = app.winfo_rootx(), app.winfo_rooty()
+        ww,wh = self.winfo_width(), self.winfo_height()
+        self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    # -- helpers --------------------------------------------------------------
+    def _lbl(self, p, txt, fg=None, **kw):
+        return tk.Label(p, text=txt, bg=self._BG, fg=fg or self._FG,
+                        font=('Arial',9), **kw)
+    def _sep(self, p):
+        tk.Frame(p, bg='#334466', height=1).pack(fill='x', pady=5)
+    def _frame(self, p, title):
+        return tk.LabelFrame(p, text=f' {title} ', bg=self._BG,
+                             fg=self._FG2, font=('Arial',8), bd=1, relief='groove')
+
+    # -- build ----------------------------------------------------------------
+    def _build(self):
+        nb = ttk.Notebook(self)
+        nb.pack(fill='both', expand=True, padx=8, pady=(8,4))
+        tabs = {}
+        for name in ('Miestnosť','Zásoby','Príkazy','Pohľad'):
+            f = tk.Frame(nb, bg=self._BG, padx=10, pady=8)
+            nb.add(f, text=name); tabs[name]=f
+        self._build_room(tabs['Miestnosť'])
+        self._build_inventory(tabs['Zásoby'])
+        self._build_cmds(tabs['Príkazy'])
+        self._build_camera(tabs['Pohľad'])
+        # Tlačidlá
+        bf = tk.Frame(self, bg=self._BG2, pady=6); bf.pack(fill='x')
+        tk.Button(bf, text='Zrušiť', command=self.destroy,
+                  bg='#3a1a1a', fg='white', relief='flat', padx=16, pady=4,
+                  font=('Arial',10), cursor='hand2',
+                  activebackground='#5a2a2a').pack(side='right', padx=8)
+        tk.Button(bf, text='Použiť a zavrieť', command=self._apply,
+                  bg='#1a4a1a', fg='white', relief='flat', padx=16, pady=4,
+                  font=('Arial',10,'bold'), cursor='hand2',
+                  activebackground='#2a6a2a').pack(side='right', padx=4)
+
+    # -- Tab: Miestnosť -------------------------------------------------------
+    def _build_room(self, p):
+        w = self._work
+        # Rozmery
+        rf = self._frame(p, 'Rozmery'); rf.pack(fill='x', pady=(0,8))
+        self._w_var = tk.IntVar(value=w.width)
+        self._h_var = tk.IntVar(value=w.height)
+        for col,(lbl,var) in enumerate([('Šírka:',self._w_var),('Výška:',self._h_var)]):
+            self._lbl(rf,lbl).grid(row=0,column=col*2,sticky='e',padx=(8,2),pady=6)
+            ttk.Spinbox(rf,textvariable=var,from_=3,to=50,
+                        width=4,font=('Consolas',11)
+                        ).grid(row=0,column=col*2+1,padx=(0,16))
+        # Pozícia Karela
+        pf = self._frame(p, 'Pozícia Karela'); pf.pack(fill='x', pady=(0,8))
+        self._kx_var = tk.IntVar(value=w.karel_x)
+        self._ky_var = tk.IntVar(value=w.karel_y)
+        self._lbl(pf,'X:').grid(row=0,column=0,sticky='e',padx=(8,2),pady=6)
+        ttk.Spinbox(pf,textvariable=self._kx_var,from_=0,to=w.width-1,
+                    width=4,font=('Consolas',11)).grid(row=0,column=1,padx=(0,16))
+        self._lbl(pf,'Y:').grid(row=0,column=2,sticky='e',padx=(0,2))
+        ttk.Spinbox(pf,textvariable=self._ky_var,from_=0,to=w.height-1,
+                    width=4,font=('Consolas',11)).grid(row=0,column=3,padx=(0,8))
+        self._hnote = tk.Label(pf,text='',bg=self._BG,fg='#ffaa44',
+                               font=('Arial',8,'italic'),anchor='w')
+        self._hnote.grid(row=1,column=0,columnspan=4,sticky='ew',padx=8,pady=(0,4))
+        self._kx_var.trace_add('write', lambda *a: self._upd_hnote())
+        self._ky_var.trace_add('write', lambda *a: self._upd_hnote())
+        self._upd_hnote()
+        # Smer
+        sf = self._frame(p, 'Smer Karela'); sf.pack(fill='x')
+        self._dir_var = tk.StringVar(value=w.karel_dir.to_str())
+        for col,(txt,val) in enumerate([('↑ Sever','N'),('→ Východ','E'),
+                                         ('↓ Juh','S'),('← Západ','W')]):
+            tk.Radiobutton(sf,text=txt,variable=self._dir_var,value=val,
+                           bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
+                           activebackground=self._BG,font=('Arial',9)
+                           ).grid(row=0,column=col,padx=8,pady=6)
+
+    def _upd_hnote(self):
+        try:
+            x,y = int(self._kx_var.get()), int(self._ky_var.get())
+            w = self._work
+            if 0<=x<w.width and 0<=y<w.height:
+                h = w._height(x,y)
+                if h>0:
+                    self._hnote.config(
+                        text=f'⚠  Na ({x},{y}) je stoh výšky {h} — Karel bude navrchu.')
+                else:
+                    self._hnote.config(text='')
+        except (ValueError, tk.TclError): pass
+
+    # -- Tab: Zásoby ----------------------------------------------------------
+    def _build_inventory(self, p):
+        s = self._work.settings
+        tk.Label(p,text='Počet predmetov, ktoré má Karel k dispozícii:',
+                 bg=self._BG,fg=self._FG2,font=('Arial',9,'italic')
+                 ).pack(anchor='w',pady=(0,10))
+        self._inv: dict = {}
+        for key,label,limit in [
+            ('brick',    'Malé tehly:',  s.brick_limit),
+            ('big_brick','Veľké tehly:', s.big_brick_limit),
+            ('mark',     'Značky:',      s.mark_limit),
+        ]:
+            row = tk.Frame(p,bg=self._BG); row.pack(fill='x',pady=4)
+            unl = tk.BooleanVar(value=(limit==-1))
+            cnt = tk.IntVar(value=(limit if limit>=0 else 5))
+            tk.Label(row,text=label,bg=self._BG,fg=self._FG,
+                     font=('Arial',9),width=14,anchor='w').pack(side='left')
+            sp = ttk.Spinbox(row,textvariable=cnt,from_=0,to=9999,
+                             width=6,font=('Consolas',11))
+            sp.pack(side='left',padx=(0,10))
+            cb = tk.Checkbutton(row,text='Neobmedzene (∞)',variable=unl,
+                                bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
+                                activebackground=self._BG,font=('Arial',9))
+            cb.pack(side='left')
+            def _toggle(v=unl,s=sp):
+                s.configure(state='disabled' if v.get() else 'normal')
+            _toggle()
+            unl.trace_add('write', lambda *a,f=_toggle: f())
+            self._inv[key] = (unl,cnt)
+
+    # -- Tab: Príkazy ---------------------------------------------------------
+    def _build_cmds(self, p):
+        s = self._work.settings
+        tk.Label(p,text='Zaškrtnuté príkazy sú zakázané (červené v editore, nefunkčné tlačidlá):',
+                 bg=self._BG,fg=self._FG2,font=('Arial',8,'italic')
+                 ).pack(anchor='w',pady=(0,6))
+        self._cmd_vars: dict = {}
+        groups = [
+            ('Pohyb',     [('FORWARD','Dopredu'),('BACK','Dozadu'),
+                           ('LEFT','Vlavo'),('RIGHT','Vpravo')]),
+            ('Tehly',     [('DROP','Polož'),('DROP_BIG','Polož Veľkú'),('PICK','Zdvihni')]),
+            ('Značky',    [('MARK','Označ'),('CLEAR','Odznač')]),
+            ('Rýchlosť',  [('SLOWLY','Pomaly'),('QUICKLY','Rýchlo')]),
+        ]
+        for grp,cmds in groups:
+            gf = self._frame(p,grp); gf.pack(fill='x',pady=(0,4))
+            for col,(tok,label) in enumerate(cmds):
+                var = tk.BooleanVar(value=(tok in s.disabled_cmds))
+                fg = '#ff6666' if tok in s.disabled_cmds else self._FG
+                tk.Checkbutton(gf,text=label,variable=var,
+                               bg=self._BG,fg=fg,selectcolor='#3a1a1a',
+                               activebackground=self._BG,font=('Arial',9)
+                               ).grid(row=0,column=col,padx=8,pady=4,sticky='w')
+                self._cmd_vars[tok] = var
+        self._sep(p)
+        self._proc_var = tk.BooleanVar(value=s.disable_procedure)
+        tk.Checkbutton(p,text='Zakázať definovanie vlastných príkazov  (prikaz … koniec)',
+                       variable=self._proc_var,
+                       bg=self._BG,fg=self._FG,selectcolor='#3a1a1a',
+                       activebackground=self._BG,font=('Arial',9)
+                       ).pack(anchor='w',pady=2)
+
+    # -- Tab: Pohľad ----------------------------------------------------------
+    def _build_camera(self, p):
+        s = self._work.settings
+        self._cam_lock_var = tk.BooleanVar(value=s.camera_locked)
+        tk.Checkbutton(p,text='Zamknúť pohľad  (myš nebude otáčať scénou)',
+                       variable=self._cam_lock_var,
+                       bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
+                       activebackground=self._BG,font=('Arial',10)
+                       ).pack(anchor='w',pady=(0,10))
+        tk.Label(p,text='Zamkne sa aktuálny pohľad kamery '
+                        '(nastav pohľad v 3D okne pred otvorením tohto dialógu):',
+                 bg=self._BG,fg=self._FG2,font=('Arial',9,'italic'),
+                 wraplength=360,justify='left').pack(anchor='w',pady=(0,8))
+        cf = tk.Frame(p,bg=self._BG2,padx=10,pady=8); cf.pack(fill='x')
+        az_d = round(math.degrees(self._cam.az)%360,1)
+        el_d = round(math.degrees(self._cam.el),1)
+        for row,(lbl,val) in enumerate([
+            ('Azimut:',       f'{az_d}°'),
+            ('Elevácia:',     f'{el_d}°'),
+            ('Vzdialenosť:',  f'{round(self._cam.dist,1)}'),
+        ]):
+            tk.Label(cf,text=lbl,bg=self._BG2,fg=self._FG2,
+                     font=('Arial',9),anchor='w').grid(row=row,column=0,sticky='w',pady=2)
+            tk.Label(cf,text=val,bg=self._BG2,fg='#44aaff',
+                     font=('Consolas',10)).grid(row=row,column=1,sticky='w',padx=14)
+
+    # -- Apply ----------------------------------------------------------------
+    def _apply(self):
+        w = self._work
+        s = w.settings
+        # 1. Rozmery
+        try:   new_w,new_h = max(3,min(50,int(self._w_var.get()))), max(3,min(50,int(self._h_var.get())))
+        except (ValueError,tk.TclError): new_w,new_h = w.width,w.height
+        if new_w!=w.width or new_h!=w.height:
+            w.resize(new_w,new_h)
+        # 2. Pozícia a smer Karela
+        try:   kx,ky = max(0,min(new_w-1,int(self._kx_var.get()))), max(0,min(new_h-1,int(self._ky_var.get())))
+        except (ValueError,tk.TclError): kx,ky = w.karel_x,w.karel_y
+        w.karel_x,w.karel_y = kx,ky
+        w.karel_dir = Direction.from_str(self._dir_var.get())
+        # 3. Zásoby
+        for key,(unl,cnt) in self._inv.items():
+            try:   val = -1 if unl.get() else max(0,int(cnt.get()))
+            except (ValueError,tk.TclError): val=-1
+            if key=='brick':      s.brick_limit=val
+            elif key=='big_brick': s.big_brick_limit=val
+            elif key=='mark':     s.mark_limit=val
+        # 4. Zakázané príkazy
+        s.disabled_cmds      = {t for t,v in self._cmd_vars.items() if v.get()}
+        s.disable_procedure  = self._proc_var.get()
+        # 5. Pohľad
+        s.camera_locked = self._cam_lock_var.get()
+        if s.camera_locked:
+            s.camera_az,s.camera_el,s.camera_dist = self._cam.az,self._cam.el,self._cam.dist
+        # Aplikuj na app
+        self._app._base = w
+        self._app._reset_world()
+        self.destroy()
 
 
 # =========================================================================
@@ -1306,6 +1710,8 @@ class App(tk.Tk):
         e.add_command(label="Uložiť svet",   command=self._save_world)
         e.add_separator()
         e.add_command(label="Uložiť svet ako XML",  command=self._save_world_xml)
+        e.add_separator()
+        e.add_command(label="⚙  Nastavenia sveta...", command=self._settings_editor)
         p=sub("Pohľad")
         p.add_command(label="Reset pohľadu",
                       command=lambda:[setattr(self._canvas.cam,'az',math.radians(225)),
@@ -1411,6 +1817,12 @@ class App(tk.Tk):
         src=self._prog.editor.get('1.0','end')
         try: prog=parse(src)
         except Exception as e: messagebox.showerror("Syntaxová chyba",str(e)); return
+        # Kontrola nastavení sveta
+        s = self._base.settings
+        if s.disable_procedure and prog.procedures:
+            messagebox.showerror("Zakázané",
+                "Definovanie vlastných príkazov (prikaz … koniec) je v tomto svete zakázané!")
+            return
         # Ulož procedúry — dostupné aj v priamom ovládaní
         self._last_procs=prog.procedures
         self._prog.set_user_procs(list(prog.procedures.keys()))
@@ -1438,12 +1850,30 @@ class App(tk.Tk):
     def _reset(self):
         self._stop(); self._reset_world(); self._status("Reset.","#88cc88")
 
+    def _settings_editor(self):
+        WorldSettingsDialog(self)
+
     def _reset_world(self):
         self._world=self._base.copy()
+        self._world.reset_inventory()
         if self._interp: self._interp.world=self._world
         self._canvas.set_world(self._world)
+        # Zamknutý pohľad
+        s = self._base.settings
+        if s.camera_locked:
+            self._canvas.cam.az   = s.camera_az
+            self._canvas.cam.el   = s.camera_el
+            self._canvas.cam.dist = s.camera_dist
+            self._canvas.render()
+        # Inventár, reštrikcie, zvýrazňovanie
+        self._nav.update_inventory(self._world)
+        self._ctrl.apply_restrictions(s)
+        self._prog.set_disabled_cmds(s.disabled_cmds, s.disable_procedure)
 
-    def _on_step(self):  self._canvas.after(0,self._canvas.render)
+    def _on_step(self):
+        self._canvas.after(0,self._canvas.render)
+        self._canvas.after(0,lambda:self._nav.update_inventory(self._world))
+
     def _on_err(self,m):
         self._running=False
         self._canvas.after(0,self._canvas.render)
@@ -1457,6 +1887,7 @@ class App(tk.Tk):
 
     def _on_direct(self,ok,err=None):
         self._canvas.after(0,self._canvas.render)
+        self._nav.update_inventory(self._world)
         if not ok and err:
             self._canvas.after(0,lambda:self._status(f"Chyba: {err}","#cc4444"))
 
