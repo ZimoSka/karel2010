@@ -1098,6 +1098,7 @@ class NavigatorPanel(tk.Frame):
 
         # Preset tlačidlá
         bf=tk.Frame(self,bg='#0a0a1c'); bf.pack(fill='x',padx=4)
+        self._preset_btns=[]
         for txt,az,el in [("↙ Def",225,28),("↖ Pred",180,20),
                            ("⬆ Vrch",225,85),("↔ Bok",135,18)]:
             def mk(a,e):
@@ -1106,15 +1107,25 @@ class NavigatorPanel(tk.Frame):
                     self.render_axes()
                     if self.on_change: self.on_change()
                 return f
-            tk.Button(bf,text=txt,command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
+            b=tk.Button(bf,text=txt,command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
                       relief='flat',font=('Arial',8),padx=3,pady=2,
                       cursor='hand2',activebackground='#3333aa',
-                      activeforeground='white').pack(side='left',expand=True,fill='x',padx=1)
+                      activeforeground='white')
+            b.pack(side='left',expand=True,fill='x',padx=1)
+            self._preset_btns.append(b)
 
         tk.Checkbutton(self,text="Voľný pohyb",bg='#0a0a1c',fg='#888899',
                        selectcolor='#1a1a44',activebackground='#0a0a1c',
                        font=('Arial',8)).pack(anchor='w',padx=6,pady=2)
         self.render_axes()
+
+    def set_camera_locked(self, locked):
+        """Zakáže/povolí preset tlačidlá pohľadu."""
+        state  = 'disabled' if locked else 'normal'
+        fg     = '#444455'  if locked else '#aaaaff'
+        cursor = ''         if locked else 'hand2'
+        for b in self._preset_btns:
+            b.configure(state=state, fg=fg, cursor=cursor)
 
     def update_inventory(self, world):
         b,bb,m = world.inventory_str()
@@ -1392,8 +1403,13 @@ class ControlPanel(tk.Frame):
         if not cmd: return
         w = self.get_world()
         try:
-            method = self._DIRECT.get(cmd.lower().strip())
+            cmd_key = cmd.lower().strip()
+            method = self._DIRECT.get(cmd_key)
             if method:
+                # Kontrola zakázaných príkazov aj pri priamom volaní
+                tok = self._CMD_TO_TOKEN.get(cmd_key, '')
+                if tok and tok in w.settings.disabled_cmds:
+                    raise KarelError("Príkaz je zakázaný v tomto svete!")
                 getattr(w, method)()
             else:
                 prog = parse(f'zaciatok\n  {cmd}\nkoniec')
@@ -1459,6 +1475,8 @@ class WorldSettingsDialog(tk.Toplevel):
         super().__init__(app)
         self._app  = app
         self._work = app._base.copy()   # pracovná kópia — aplikuje sa až pri OK
+        # Aktuálna poloha Karela (kde sa teraz nachádza, nie štartovacia)
+        self._cur_world = app._world
         self._cam  = app._canvas.cam
         self.title("Nastavenia sveta")
         self.configure(bg=self._BG)
@@ -1507,7 +1525,8 @@ class WorldSettingsDialog(tk.Toplevel):
 
     # -- Tab: Miestnosť -------------------------------------------------------
     def _build_room(self, p):
-        w = self._work
+        w    = self._work
+        wcur = self._cur_world   # aktuálny stav — odkiaľ Karel teraz je
         # Rozmery
         rf = self._frame(p, 'Rozmery'); rf.pack(fill='x', pady=(0,8))
         self._w_var = tk.IntVar(value=w.width)
@@ -1517,10 +1536,10 @@ class WorldSettingsDialog(tk.Toplevel):
             ttk.Spinbox(rf,textvariable=var,from_=3,to=50,
                         width=4,font=('Consolas',11)
                         ).grid(row=0,column=col*2+1,padx=(0,16))
-        # Pozícia Karela
-        pf = self._frame(p, 'Pozícia Karela'); pf.pack(fill='x', pady=(0,8))
-        self._kx_var = tk.IntVar(value=w.karel_x)
-        self._ky_var = tk.IntVar(value=w.karel_y)
+        # Pozícia Karela — predvyplnená z AKTUÁLNEJ polohy (nie zo štartu)
+        pf = self._frame(p, 'Pozícia Karela (štartovacia)'); pf.pack(fill='x', pady=(0,4))
+        self._kx_var = tk.IntVar(value=wcur.karel_x)
+        self._ky_var = tk.IntVar(value=wcur.karel_y)
         self._lbl(pf,'X:').grid(row=0,column=0,sticky='e',padx=(8,2),pady=6)
         ttk.Spinbox(pf,textvariable=self._kx_var,from_=0,to=w.width-1,
                     width=4,font=('Consolas',11)).grid(row=0,column=1,padx=(0,16))
@@ -1530,12 +1549,15 @@ class WorldSettingsDialog(tk.Toplevel):
         self._hnote = tk.Label(pf,text='',bg=self._BG,fg='#ffaa44',
                                font=('Arial',8,'italic'),anchor='w')
         self._hnote.grid(row=1,column=0,columnspan=4,sticky='ew',padx=8,pady=(0,4))
+        if wcur.karel_x != w.karel_x or wcur.karel_y != w.karel_y:
+            self._hnote.config(
+                text=f'ℹ  Predvyplnené z aktuálnej polohy ({wcur.karel_x},{wcur.karel_y}). '
+                     f'Štartovacia bola ({w.karel_x},{w.karel_y}).')
         self._kx_var.trace_add('write', lambda *a: self._upd_hnote())
         self._ky_var.trace_add('write', lambda *a: self._upd_hnote())
-        self._upd_hnote()
         # Smer
-        sf = self._frame(p, 'Smer Karela'); sf.pack(fill='x')
-        self._dir_var = tk.StringVar(value=w.karel_dir.to_str())
+        sf = self._frame(p, 'Smer Karela (štartovací)'); sf.pack(fill='x')
+        self._dir_var = tk.StringVar(value=wcur.karel_dir.to_str())
         for col,(txt,val) in enumerate([('↑ Sever','N'),('→ Východ','E'),
                                          ('↓ Juh','S'),('← Západ','W')]):
             tk.Radiobutton(sf,text=txt,variable=self._dir_var,value=val,
@@ -1546,7 +1568,7 @@ class WorldSettingsDialog(tk.Toplevel):
     def _upd_hnote(self):
         try:
             x,y = int(self._kx_var.get()), int(self._ky_var.get())
-            w = self._work
+            w = self._cur_world   # výšku tehiel čítame z aktuálneho sveta
             if 0<=x<w.width and 0<=y<w.height:
                 h = w._height(x,y)
                 if h>0:
@@ -1778,11 +1800,11 @@ class App(tk.Tk):
 
     def _build_toolbar(self,bar):
         def btn(txt,cmd,bg='#2a5a9a'):
-            tk.Button(bar,text=txt,command=cmd,bg=bg,fg='white',relief='flat',
+            b=tk.Button(bar,text=txt,command=cmd,bg=bg,fg='white',relief='flat',
                       padx=10,pady=4,font=('Arial',10,'bold'),cursor='hand2',
-                      activebackground='#4477bb',activeforeground='white',bd=0
-                      ).pack(side='left',padx=2)
-        btn("▶ Spustiť",self._run,'#1a6a2a')
+                      activebackground='#4477bb',activeforeground='white',bd=0)
+            b.pack(side='left',padx=2); return b
+        self._run_btn=btn("▶ Spustiť",self._run,'#1a6a2a')
         btn("⏹ Stop",   self._stop,'#6a1a1a')
         btn("↺ Reset",  self._reset,'#4a4a1a')
         tk.Frame(bar,width=14,bg='#111130').pack(side='left')
@@ -1805,6 +1827,15 @@ class App(tk.Tk):
     # ---- Akcie -----------------------------------------------------------
     def _status(self,msg,col='#88cc88'):
         self._stv.set(msg); self._stl.configure(fg=col)
+
+    def _set_running_ui(self, running: bool):
+        """Zapne/vypne Run tlačidlo podľa stavu behu programu."""
+        if running:
+            self._run_btn.configure(state='disabled', bg='#0d3a0d',
+                                    fg='#448844', cursor='')
+        else:
+            self._run_btn.configure(state='normal', bg='#1a6a2a',
+                                    fg='white', cursor='hand2')
 
     def _load_ex(self,name):
         if name in EXAMPLES:
@@ -1835,17 +1866,25 @@ class App(tk.Tk):
             else:
                 messagebox.showwarning("Prázdny program","Program neobsahuje žiadne príkazy.")
             return
-        self._reset_world()
+        # Neresetujeme svet — program beží z aktuálnej polohy Karela.
+        # Reset robí iba tlačidlo ↺.
         self._running=True; self._status("Beží...","#44aacc")
+        self._set_running_ui(True)
         it=KarelInterpreter(self._world)
         it.delay=round(2.02-self._spd.get(),3)
-        it.on_step=self._on_step; it.on_error=self._on_err; it.on_finish=self._on_fin
+        # Callbacky sa volajú cez after() — bezpečné z vlákna interpretera
+        def _safe(fn):
+            return lambda *a: self._canvas.after(0, lambda: fn(*a))
+        it.on_step=self._on_step
+        it.on_error=_safe(self._on_err)
+        it.on_finish=_safe(self._on_fin)
         self._interp=it
         threading.Thread(target=it.run,args=(prog,),daemon=True).start()
 
     def _stop(self):
         if self._interp: self._interp.stop()
-        self._running=False; self._status("Zastavené.","#cc8844")
+        self._running=False; self._set_running_ui(False)
+        self._status("Zastavené.","#cc8844")
 
     def _reset(self):
         self._stop(); self._reset_world(); self._status("Reset.","#88cc88")
@@ -1854,6 +1893,7 @@ class App(tk.Tk):
         WorldSettingsDialog(self)
 
     def _reset_world(self):
+        self._running=False          # poistka — predchádza zaseknutiu po vlákne
         self._world=self._base.copy()
         self._world.reset_inventory()
         if self._interp: self._interp.world=self._world
@@ -1867,6 +1907,7 @@ class App(tk.Tk):
             self._canvas.render()
         # Inventár, reštrikcie, zvýrazňovanie
         self._nav.update_inventory(self._world)
+        self._nav.set_camera_locked(s.camera_locked)
         self._ctrl.apply_restrictions(s)
         self._prog.set_disabled_cmds(s.disabled_cmds, s.disable_procedure)
 
@@ -1876,14 +1917,15 @@ class App(tk.Tk):
 
     def _on_err(self,m):
         self._running=False
-        self._canvas.after(0,self._canvas.render)
-        self._canvas.after(0,lambda:self._status(f"Chyba: {m}","#cc4444"))
-        self._canvas.after(0,lambda:messagebox.showerror("Chyba",m))
+        self._set_running_ui(False)
+        self._canvas.render()
+        self._status(f"Chyba: {m}","#cc4444")
+        messagebox.showerror("Chyba",m)
     def _on_fin(self,m):
         self._running=False
-        self._canvas.after(0,self._canvas.render)
-        self._canvas.after(0,lambda:self._status(
-            m if m else "Hotovo! ✓","#cc8844" if m else "#44cc44"))
+        self._set_running_ui(False)
+        self._canvas.render()
+        self._status(m if m else "Hotovo! ✓","#cc8844" if m else "#44cc44")
 
     def _on_direct(self,ok,err=None):
         self._canvas.after(0,self._canvas.render)
