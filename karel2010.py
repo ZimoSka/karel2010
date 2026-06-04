@@ -2000,14 +2000,15 @@ class App(tk.Tk):
 
     def _about(self):
         messagebox.showinfo("Karel 2010",
-            "Karel 2010 – Python port\nOriginál: Zimo, 2010\n\n"
-            "Ovládanie 3D pohľadu:\n"
-            "  Ľavý drag  → rotácia\n"
-            "  Pravý drag → posun\n"
-            "  Koliesko   → zoom\n\n"
-            "Tehly: Karel kladie/zdvíha PRED sebou.\n"
-            "Značka: Karel označí pod sebou.\n"
-            "Vylez na 1 tehlu, nie na 2.")
+            "Karel 2010 – Python port\nOriginal: Zimo, 2005\n\n"
+            "3D view controls:\n"
+            "  Left drag   → rotate\n"
+            "  Right drag  → pan\n"
+            "  Scroll wheel → zoom\n\n"
+            "Bricks: Karel places/picks up in front of himself.\n"
+            "Mark: Karel marks the tile he stands on.\n"
+            "Karel can climb 1 brick, not 2.\n\n"
+            "github.com/ZimoSka/karel2010")
 
 
 # =========================================================================
