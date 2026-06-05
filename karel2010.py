@@ -188,6 +188,8 @@ class WorldSettings:
         self.disabled_cmds    = set()
         # Zakázať definovanie vlastných príkazov ('prikaz … koniec')
         self.disable_procedure = False
+        # Max. výška výstupu — o koľko tehiel môže Karel vyskočiť naraz (default 1)
+        self.max_climb        = 1
         # Zamknúť pohľad kamery
         self.camera_locked    = False
         self.camera_az        = math.radians(225)
@@ -293,14 +295,23 @@ class World:
         if self.is_wall_ahead(): raise KarelError("Karel narazil do steny!")
         nx,ny = self._front()
         dh = self._height(nx,ny) - self._height(self.karel_x,self.karel_y)
-        if dh > 1: raise KarelError("Karel nevie vylesť na tehlu (príliš vysoké)!")
+        mc = self.settings.max_climb
+        if dh > mc:
+            raise KarelError(
+                f"Karel nevie vylesť na tehlu (príliš vysoké — max. {mc})!")
         self.karel_x,self.karel_y = nx,ny
 
     def move_back(self):
         back=self.karel_dir.opposite()
         if back.to_str() in self.walls[self.karel_y][self.karel_x]:
             raise KarelError("Karel narazil do steny (dozadu)!")
-        self.karel_x,self.karel_y = self._step(self.karel_x,self.karel_y,back)
+        bx,by = self._step(self.karel_x,self.karel_y,back)
+        dh = self._height(bx,by) - self._height(self.karel_x,self.karel_y)
+        mc = self.settings.max_climb
+        if dh > mc:
+            raise KarelError(
+                f"Karel nevie vylesť dozadu (príliš vysoké — max. {mc})!")
+        self.karel_x,self.karel_y = bx,by
 
     def turn_left(self):  self.karel_dir=self.karel_dir.left()
     def turn_right(self): self.karel_dir=self.karel_dir.right()
@@ -409,9 +420,11 @@ class World:
         # nastavenia sveta
         s = self.settings
         has_settings = (s.brick_limit!=-1 or s.big_brick_limit!=-1 or s.mark_limit!=-1
-                        or s.disabled_cmds or s.disable_procedure or s.camera_locked)
+                        or s.disabled_cmds or s.disable_procedure or s.camera_locked
+                        or s.max_climb != 1)
         if has_settings:
             st = ET.SubElement(root, 'settings')
+            ET.SubElement(st,'max_climb').text        = str(s.max_climb)
             ET.SubElement(st,'brick_limit').text     = str(s.brick_limit)
             ET.SubElement(st,'big_brick_limit').text = str(s.big_brick_limit)
             ET.SubElement(st,'mark_limit').text      = str(s.mark_limit)
@@ -483,6 +496,7 @@ class World:
                 el=st.find(tag); return el is not None and (el.text or '').strip().lower()=='true'
             def _gf(tag,d):
                 el=st.find(tag); return float(el.text) if el is not None and el.text else d
+            w.settings.max_climb       = _gi('max_climb', 1)
             w.settings.brick_limit     = _gi('brick_limit',-1)
             w.settings.big_brick_limit = _gi('big_brick_limit',-1)
             w.settings.mark_limit      = _gi('mark_limit',-1)
@@ -895,12 +909,18 @@ def world_faces(w):
     for gy in range(H):
         for gx in range(W):
             x0,y0,x1,y1=gx,gy,gx+1,gy+1
-            c=FC['floor_mark'] if w.marks[gy][gx] else FC['floor_a']
+            has_mark = w.marks[gy][gx]
+            tile_h   = w._height(gx, gy)
+            # Farba podlahy — modrý odtieň len keď je značka BEZ tehál
+            c = FC['floor_mark'] if (has_mark and tile_h == 0) else FC['floor_a']
             F.append(_face([(x0,y0,0),(x1,y0,0),(x1,y1,0),(x0,y1,0)],c,True,FC['grid'],None,0))
-            if w.marks[gy][gx]:
-                m=0.2
-                F.append(_face([(x0+m,y0+m,0.02),(x1-m,y1-m,0.02),(x1-m+0.05,y1-m,0.02),(x0+m+0.05,y0+m,0.02)],FC['mark2'],False,'',None,0))
-                F.append(_face([(x1-m,y0+m,0.02),(x0+m,y1-m,0.02),(x0+m,y1-m+0.05,0.02),(x1-m,y0+m+0.05,0.02)],FC['mark2'],False,'',None,0))
+            if has_mark:
+                m  = 0.2
+                # Značka sa zobrazí na vrchu stohu tehál — prio=1 ak sú tehly (Z-buffer)
+                mz   = tile_h * BRICK_H + 0.015
+                mprio = 1 if tile_h > 0 else 0
+                F.append(_face([(x0+m,y0+m,mz),(x1-m,y1-m,mz),(x1-m+0.05,y1-m,mz),(x0+m+0.05,y0+m,mz)],FC['mark2'],False,'',None,mprio))
+                F.append(_face([(x1-m,y0+m,mz),(x0+m,y1-m,mz),(x0+m,y1-m+0.05,mz),(x1-m,y0+m+0.05,mz)],FC['mark2'],False,'',None,mprio))
 
     # Steny / walls
     for gy in range(H):
@@ -1975,7 +1995,7 @@ class WorldSettingsDialog(tk.Toplevel):
         self._kx_var.trace_add('write', lambda *a: self._upd_hnote())
         self._ky_var.trace_add('write', lambda *a: self._upd_hnote())
         # Smer
-        sf = self._frame(p, 'Smer Karela (štartovací)'); sf.pack(fill='x')
+        sf = self._frame(p, 'Smer Karela (štartovací)'); sf.pack(fill='x', pady=(0,8))
         self._dir_var = tk.StringVar(value=wcur.karel_dir.to_str())
         for col,(txt,val) in enumerate([('↑ Sever','N'),('→ Východ','E'),
                                          ('↓ Juh','S'),('← Západ','W')]):
@@ -1983,6 +2003,15 @@ class WorldSettingsDialog(tk.Toplevel):
                            bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
                            activebackground=self._BG,font=('Arial',9)
                            ).grid(row=0,column=col,padx=8,pady=6)
+        # Max. výška výstupu
+        cf = self._frame(p, 'Pohyb — obmedzenia'); cf.pack(fill='x')
+        self._max_climb_var = tk.IntVar(value=w.settings.max_climb)
+        self._lbl(cf, 'Max. výška výstupu:').grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
+        ttk.Spinbox(cf, textvariable=self._max_climb_var, from_=0, to=20,
+                    width=4, font=('Consolas',11)).grid(row=0,column=1,sticky='w')
+        tk.Label(cf, text='tehiel  (0 = Karel nemôže vyliezť, 1 = default)',
+                 bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')
+                 ).grid(row=0,column=2,sticky='w',padx=(6,8))
 
     def _upd_hnote(self):
         try:
@@ -2189,6 +2218,8 @@ class WorldSettingsDialog(tk.Toplevel):
         except (ValueError,tk.TclError): kx,ky = w.karel_x,w.karel_y
         w.karel_x,w.karel_y = kx,ky
         w.karel_dir = Direction.from_str(self._dir_var.get())
+        try:   s.max_climb = max(0, int(self._max_climb_var.get()))
+        except (ValueError, tk.TclError): s.max_climb = 1
         # 3. Zásoby
         for key,(unl,cnt) in self._inv.items():
             try:   val = -1 if unl.get() else max(0,int(cnt.get()))
