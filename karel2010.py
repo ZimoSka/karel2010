@@ -220,8 +220,9 @@ class World:
         self.next_level   = ''
         self.prev_level   = ''
         # Misia — podmienky a režim vyhodnocovania
-        self.goal_conditions: list = []
-        self.mission_eval: str     = 'on_finish'   # 'on_finish' | 'on_step'
+        self.goal_conditions: list    = []
+        self.mission_eval: str        = 'on_finish'   # 'on_finish' | 'on_step'
+        self.mission_reset_on_failure: bool = False   # resetovať svet pri neúspechu
         self._add_border_walls()
 
     def _add_border_walls(self):
@@ -424,8 +425,10 @@ class World:
                 ET.SubElement(st,'camera_el').text    = str(s.camera_el)
                 ET.SubElement(st,'camera_dist').text  = str(s.camera_dist)
         # misia — podmienky splnenia
-        if self.goal_conditions or self.mission_eval != 'on_finish':
+        if self.goal_conditions or self.mission_eval != 'on_finish' or self.mission_reset_on_failure:
             miss = ET.SubElement(root, 'mission', eval=self.mission_eval)
+            if self.mission_reset_on_failure:
+                miss.set('reset_on_failure', 'true')
             for cond in self.goal_conditions:
                 miss.append(cond.to_xml_el())
         # pekné formátovanie
@@ -496,6 +499,7 @@ class World:
         miss_el = root.find('mission')
         if miss_el is not None:
             w.mission_eval = miss_el.get('eval', 'on_finish')
+            w.mission_reset_on_failure = (miss_el.get('reset_on_failure','') == 'true')
             for cel in miss_el.findall('condition'):
                 ct = cel.get('type', '')
                 if ct == 'karel_pos':   w.goal_conditions.append(GoalKarelPos.from_xml_el(cel))
@@ -2094,10 +2098,21 @@ class WorldSettingsDialog(tk.Toplevel):
             cf = tk.Frame(ef, bg=self._BG); cf.grid(row=0, column=col, padx=8, pady=6, sticky='w')
             tk.Radiobutton(cf, text=lbl, variable=self._eval_var, value=val,
                            bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
-                           activebackground=self._BG, font=('Arial',9,'bold')
+                           activebackground=self._BG, font=('Arial',9,'bold'),
+                           command=self._upd_reset_cb
                            ).pack(anchor='w')
             tk.Label(cf, text=note, bg=self._BG, fg=self._FG2,
                      font=('Arial',7,'italic')).pack(anchor='w', padx=(20,0))
+
+        # Reset pri neúspechu — len pre on_finish
+        self._reset_on_failure_var = tk.BooleanVar(value=w.mission_reset_on_failure)
+        self._reset_cb = tk.Checkbutton(ef,
+            text='Pri neúspechu resetovať svet do počiatočného stavu  (program žiakovi zostane)',
+            variable=self._reset_on_failure_var,
+            bg=self._BG, fg='#ffcc66', selectcolor='#2a2000',
+            activebackground=self._BG, font=('Arial',9))
+        self._reset_cb.grid(row=1, column=0, columnspan=2, sticky='w', padx=8, pady=(0,4))
+        self._upd_reset_cb()   # nastav počiatočnú viditeľnosť
 
         # Zoznam podmienok
         cf2 = self._frame(p, 'Podmienky splnenia  (všetky musia byť splnené naraz)')
@@ -2153,6 +2168,13 @@ class WorldSettingsDialog(tk.Toplevel):
         self._cond_lb.delete(idx)
         del self._goal_conditions[idx]
 
+    def _upd_reset_cb(self):
+        """Checkbox 'reset pri neúspechu' je relevantný iba pre on_finish režim."""
+        if self._eval_var.get() == 'on_finish':
+            self._reset_cb.configure(state='normal', fg='#ffcc66')
+        else:
+            self._reset_cb.configure(state='disabled', fg='#555544')
+
     # -- Apply ----------------------------------------------------------------
     def _apply(self):
         w = self._work
@@ -2185,10 +2207,11 @@ class WorldSettingsDialog(tk.Toplevel):
         w.title      = self._title_var.get().strip()
         w.intro_html = self._intro_text.get('1.0', 'end').rstrip()
         # 7. Misia
-        w.goal_conditions = list(self._goal_conditions)
-        w.mission_eval    = self._eval_var.get()
-        w.success_html    = self._msg_success_var.get().strip()
-        w.failure_html    = self._msg_failure_var.get().strip()
+        w.goal_conditions         = list(self._goal_conditions)
+        w.mission_eval            = self._eval_var.get()
+        w.mission_reset_on_failure = self._reset_on_failure_var.get()
+        w.success_html            = self._msg_success_var.get().strip()
+        w.failure_html            = self._msg_failure_var.get().strip()
         # Aplikuj na app
         self._app._base = w
         self._app._reset_world()
@@ -2443,6 +2466,9 @@ class App(tk.Tk):
         w = self._world
         if not w.goal_conditions: return
         success = all(c.check(w) for c in w.goal_conditions)
+        if not success and w.mission_reset_on_failure:
+            # Reset sveta — program v editore zostane nedotknutý
+            self._reset_world()
         MissionResultDialog(self, success,
                             w.success_html if success else w.failure_html)
 
