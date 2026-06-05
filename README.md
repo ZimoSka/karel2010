@@ -188,6 +188,22 @@ python kar_to_xml.py
 | Reset world | ↺ button (returns Karel and world to starting state) |
 | Direct control | Bottom-right panel — buttons or type a command + Enter |
 
+## Documentation
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [docs/user-guide.md](docs/user-guide.md) | Students | Interface walkthrough, language quick reference, troubleshooting |
+| [docs/teacher-guide.md](docs/teacher-guide.md) | Teachers | Creating worlds, designing missions, pedagogical progression |
+| [docs/karel-language.md](docs/karel-language.md) | Everyone | Complete language reference with examples |
+| [docs/karxml-format.md](docs/karxml-format.md) | World authors | Full `.karxml` file format specification |
+| [docs/architecture.md](docs/architecture.md) | Developers | Code architecture, data model, renderer, threading |
+
+## Background
+
+Karel 2010 is a Python port of the original educational programming environment designed as a master's thesis project at the Faculty of Mathematics, Physics and Informatics, Comenius University Bratislava (Mgr. Michal Zeman, 2004).
+
+The Karel robot concept originated with Richard Pattis (*Karel the Robot: A Gentle Introduction to the Art of Programming*, 1981) and was adapted for Slovak elementary schools in the late 1980s by Marián Vittek, Andrej Blaho, and colleagues. Karel 2010 continues this tradition with a modern 3D interface and a configurable mission system.
+
 ## Author
 
 Original: Mgr. Zimo, 2005  

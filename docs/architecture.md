@@ -1,0 +1,406 @@
+# Karel 2010 — Architecture & Developer Guide
+
+This document describes the internal architecture of `karel2010.py`, the single-file Python port of Karel 2010.
+
+---
+
+## Overview
+
+Karel 2010 is a **single-file tkinter application** (`karel2010.py`, ~2500 lines). It requires Python 3.8+ and optionally numpy + Pillow for Z-buffer rendering.
+
+### Historical context
+
+The original Karel 2010 was written in Delphi with OpenGL (GLScene) for Windows 9x/XP (Mgr. Michal Zeman, Comenius University Bratislava, 2004). The Python port reproduces the core functionality:
+
+- 3D perspective rendering of the room
+- Full Karel language interpreter (lexer → parser → AST → interpreter)
+- World settings editor with restrictions
+- Mission / goal condition system
+- XML world file format (`.karxml`)
+
+---
+
+## Module structure
+
+All code lives in `karel2010.py`. The logical modules are:
+
+```
+karel2010.py
+│
+├── Goal condition classes          GoalKarelPos, GoalCellState, GoalSnapshot
+├── WorldSettings                   Camera, inventory limits, disabled commands
+├── World                           Grid model + Karel state + XML I/O
+│
+├── Lexer / Parser / Interpreter    tokenize(), Parser, KarelInterpreter
+│
+├── 3D renderer                     Camera, world_faces(), World3D (tk.Canvas)
+│
+├── UI panels
+│   ├── NavigatorPanel              Camera presets + inventory display
+│   ├── ProgramPanel                Syntax-highlighted editor + command list
+│   └── ControlPanel                Direct control buttons + command entry
+│
+├── Dialogs
+│   ├── WorldSettingsDialog         6-tab world editor
+│   ├── GoalConditionDialog         Sub-dialog for adding mission conditions
+│   └── MissionResultDialog         Success/failure popup
+│
+└── App (tk.Tk)                     Main window, menu, toolbar, threading
+```
+
+---
+
+## Data model
+
+### `World`
+
+```python
+class World:
+    width: int
+    height: int
+    walls:      list[list[set[str]]]   # walls[y][x] = {'N','E','S','W'}
+    bricks:     list[list[int]]         # small bricks at each tile
+    big_bricks: list[list[int]]         # big bricks at each tile
+    marks:      list[list[bool]]        # mark present at each tile
+
+    karel_x: int
+    karel_y: int
+    karel_dir: Direction                # NORTH/EAST/SOUTH/WEST
+
+    settings: WorldSettings
+
+    # Runtime inventory (reset on each new run)
+    _bricks_left:     int              # -1 = unlimited
+    _big_bricks_left: int
+    _marks_left:      int
+
+    # Metadata
+    title:        str
+    intro_html:   str
+    success_html: str
+    failure_html: str
+    program_text: str
+    next_level:   str
+    prev_level:   str
+
+    # Mission
+    goal_conditions: list              # GoalKarelPos | GoalCellState | GoalSnapshot
+    mission_eval:    str               # 'on_finish' | 'on_step'
+    mission_reset_on_failure: bool
+```
+
+Coordinate system: `x=0` at left, `y=0` at bottom.
+
+The height of a tile in "small brick units":
+```python
+def _height(self, x, y):
+    return self.bricks[y][x] + self.big_bricks[y][x] * World.BIG_BRICK_UNITS
+    # BIG_BRICK_UNITS = 5
+```
+
+### `WorldSettings`
+
+```python
+class WorldSettings:
+    brick_limit:       int   # -1 = unlimited
+    big_brick_limit:   int
+    mark_limit:        int
+    disabled_cmds:     set   # token strings, e.g. {'FORWARD', 'DROP'}
+    disable_procedure: bool
+    camera_locked:     bool
+    camera_az:         float  # radians
+    camera_el:         float
+    camera_dist:       float
+```
+
+---
+
+## Karel language pipeline
+
+```
+source text
+    │
+    ▼
+tokenize(src)           → list[Tok]
+    │                      each Tok has .t (token type), .v (value), .ln (line)
+    ▼
+Parser(tokens).parse()  → ProgN (AST root)
+    │
+    ▼
+KarelInterpreter.run(prog)   runs on a daemon thread
+    │   calls on_step after each command
+    │   calls on_finish / on_error when done
+    ▼
+World methods are called directly (move_forward, drop_brick, etc.)
+```
+
+### Token types
+
+```python
+CMD_T   = {'FORWARD','BACK','LEFT','RIGHT','DROP','PICK','DROP_BIG','MARK','CLEAR','SLOWLY','QUICKLY'}
+COND_T  = {'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
+CLOSE_T = {'END','END_REPEAT','END_WHILE','END_IF'}
+# Plus: BEGIN, PROCEDURE, REPEAT, TIMES, WHILE, NOT, DO, IF, THEN, ELSE, NUM, ID
+```
+
+The `KW` dict maps every keyword variant to its token type:
+```python
+KW = {'dopredu': 'FORWARD', 'forward': 'FORWARD', 'vlavo': 'LEFT', ...}
+```
+
+`_KW_REVERSE` maps token types back to keyword lists (used by the syntax highlighter).
+
+### AST nodes
+
+```python
+ProgN(procedures, main_stmts)
+CmdN(cmd, line)          # FORWARD, LEFT, etc.
+CallN(name, line)        # user procedure call
+RepN(count, body, line)  # repeat N times
+WhileN(cond, body, line)
+IfN(cond, then_body, else_body, line)
+CondN(cond_type, negated)
+```
+
+### Interpreter
+
+`KarelInterpreter._cmd(node)`:
+1. Checks `disabled_cmds` — raises `KarelError` if the command is forbidden.
+2. Calls the corresponding `World` method.
+3. Calls `on_step()` callback.
+4. Sleeps `self.delay` seconds.
+
+Recursion limit: `MAX_D = 500`.
+
+---
+
+## Threading model
+
+The interpreter runs on a **daemon thread** to avoid blocking the UI.
+
+```python
+threading.Thread(target=it.run, args=(prog,), daemon=True).start()
+```
+
+Callbacks (`on_finish`, `on_error`) are wrapped with `_safe()`:
+
+```python
+def _safe(fn):
+    return lambda *a: self._canvas.after(0, lambda: fn(*a))
+```
+
+This schedules the callback on the main thread via `tk.after(0, ...)`, which is required on Windows where calling tkinter from a non-main thread silently fails.
+
+`on_step` renders the canvas and updates the inventory display, also scheduled via `after(0, ...)`.
+
+The `_running` flag guards re-entry:
+```python
+if self._running: return   # don't start a second interpreter
+```
+
+---
+
+## 3D renderer
+
+### Z-buffer (numpy path, `_ZBUF = True`)
+
+```
+world_faces(w)          →  list of (verts_3d, color, outline, outline_color, normal, priority)
+Camera.project(pts3d)   →  screen coords + depth (rz)
+Z-buffer compositing    →  numpy array of shape (H, W, 3)
+PIL Image + ImageTk     →  displayed on tk.Canvas
+```
+
+Back-face culling: faces with `normal` pointing away from the camera are skipped. This correctly hides the exterior of border walls while showing the interior.
+
+Priority system:
+- `prio=0` — floor tiles (always rendered first, behind all 3D objects)
+- `prio=1` — walls, bricks, Karel (sorted by mean Z depth, painter's algorithm fallback)
+
+### Painter fallback (no numpy)
+
+When numpy is unavailable, faces are sorted by mean Z depth and drawn as `tk.Canvas` polygons. Less accurate but functional.
+
+### Camera
+
+```python
+class Camera:
+    az:    float   # azimuth (radians)
+    el:    float   # elevation (radians)
+    dist:  float   # distance from target
+    fov:   float   # field of view (degrees)
+    target: [x, y, z]  # look-at point
+```
+
+The camera uses a spherical coordinate system. Mouse drag events modify `az`, `el`, `dist` and trigger re-render.
+
+---
+
+## UI panels
+
+### `NavigatorPanel`
+
+- Camera preset buttons (8 directions + top)
+- Axis display (small 3D widget showing current orientation)
+- Inventory display: three `StringVar` labels updated by `update_inventory(world)`
+- `set_camera_locked(locked)` disables/enables preset buttons
+
+### `ProgramPanel`
+
+- `tk.Text` editor with the `highlight()` function applied on every keystroke
+- Sidebar tree of command categories (click inserts a template)
+- `_disabled_cmds` and `_disable_procedure` state affects `highlight()`
+- `on_procs_update` callback fires whenever parsed procedures change
+
+The `highlight()` function:
+```python
+def highlight(tw, disabled_cmds=None, disable_procedure=False):
+    # Clears all tags, tokenizes text, re-applies colour tags
+    # 'disabled' tag = red background for forbidden commands
+    # Uses _KW_REVERSE to find all word variants of each token
+```
+
+### `ControlPanel`
+
+- Movement / action buttons, each calls `_do(cmd_key)`
+- `_do()` checks `disabled_cmds` before calling the `World` method
+- `apply_restrictions(settings)` grey-outs forbidden command buttons
+- "Príkazovo" tab: `tk.Entry` + `Enter` binding, calls `KarelInterpreter` synchronously
+- `_CMD_TO_TOKEN` maps button keys to token names for restriction checking
+
+---
+
+## World file I/O
+
+### Save: `World.to_xml()`
+
+Builds an `xml.etree.ElementTree` tree, serialises to string, pretty-prints via `xml.dom.minidom`.
+
+### Load: `World.from_xml(path_or_string)`
+
+Accepts a file path or an XML string. Parses with `ET.parse()` or `ET.fromstring()`. Handles missing elements gracefully (defaults to empty/None).
+
+### JSON support (legacy)
+
+`World.to_json()` and `World.from_json()` provide basic JSON serialisation (no settings, no mission). Used by the old `.karjson` format.
+
+---
+
+## Mission system
+
+### Goal condition classes
+
+```python
+GoalKarelPos.check(world)    →  bool
+GoalCellState.check(world)   →  bool
+GoalSnapshot.check(world)    →  bool
+```
+
+Each class also implements:
+- `describe() → str` — human-readable label for the UI list
+- `to_xml_el() → ET.Element` — serialisation
+- `from_xml_el(el) → GoalCondition` — deserialisation (static)
+
+### Evaluation flow
+
+```
+on_finish / on_step callback
+    │
+    ▼
+App._check_mission()             (on_finish mode)
+App._check_mission_step()        (on_step mode)
+    │
+    ▼
+all(c.check(world) for c in world.goal_conditions)
+    │
+    ├─ True  →  MissionResultDialog(success=True, html=success_html)
+    │
+    └─ False →  if on_finish:
+                    MissionResultDialog(success=False, html=failure_html)
+                    if reset_on_failure: App._reset_world()
+                if on_step:
+                    (silent — world still evolving)
+```
+
+---
+
+## Key design decisions
+
+### Runs from current position
+
+`App._run()` does **not** call `_reset_world()`. The program executes from wherever Karel currently is. The ↺ Reset button calls `_reset_world()` explicitly.
+
+This allows workflows like:
+1. Move Karel manually to an interesting position.
+2. Run the program.
+3. The program continues from that position.
+
+### Inventory reset
+
+`World.reset_inventory()` copies `settings.*_limit` → `_*_left`. This is called by `App._reset_world()`. It is **not** called by `_run()` — the inventory state persists across runs within a session.
+
+### No implicit auto-reset on open
+
+When a world is opened, `_reset_world()` is called once. Subsequently pressing Run does not reset.
+
+---
+
+## Adding a new command to the language
+
+1. Add keyword variants to `_bkw()` in the `KW` dict:
+   ```python
+   ('JUMP', ['jump', 'skoc', 'skoč']),
+   ```
+
+2. Add the token to `CMD_T`:
+   ```python
+   CMD_T = {'FORWARD', ..., 'JUMP'}
+   ```
+
+3. Implement the `World` method:
+   ```python
+   def jump(self):
+       ...
+   ```
+
+4. Handle it in `KarelInterpreter._cmd()`:
+   ```python
+   elif c == 'JUMP': w.jump()
+   ```
+
+5. Add a button to `ControlPanel` and map it in `_CMD_TO_TOKEN`.
+
+6. The `highlight()` function picks up new tokens automatically via `_KW_REVERSE`.
+
+---
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| Python | 3.8+ | Runtime |
+| tkinter | stdlib | GUI |
+| xml.etree.ElementTree | stdlib | XML I/O |
+| threading | stdlib | Interpreter thread |
+| numpy | optional | Z-buffer rendering (fast path) |
+| Pillow (PIL) | optional | Image compositing for numpy renderer |
+
+Install optional dependencies:
+```
+pip install pillow numpy
+```
+
+Without numpy/Pillow, the app falls back to a painter-algorithm renderer using native `tk.Canvas` polygons.
+
+---
+
+## File listing
+
+| File | Description |
+|------|-------------|
+| `karel2010.py` | Entire application (~2500 lines) |
+| `kar_to_xml.py` | Converts binary `.kar` worlds to `.karxml` |
+| `*.karxml` | Predefined worlds (5 converted from original binary format) |
+| `*.prg` | Sample Karel programs |
+| `Spusti Karel.bat` | Windows launcher |
+| `docs/` | This documentation |
