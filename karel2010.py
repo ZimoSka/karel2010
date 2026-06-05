@@ -47,6 +47,137 @@ class Direction(Enum):
 class KarelError(Exception): pass
 
 
+# =========================================================================
+# PODMIENKY  MISIE  (goal conditions)
+# =========================================================================
+
+class GoalKarelPos:
+    """Podmienka: Karel sa nachádza na zadanej pozícii / výške."""
+    def __init__(self, x=None, y=None, height=None):
+        self.x = x; self.y = y; self.height = height
+
+    def check(self, world):
+        if self.x is not None and world.karel_x != self.x: return False
+        if self.y is not None and world.karel_y != self.y: return False
+        if self.height is not None and world._height(world.karel_x, world.karel_y) != self.height:
+            return False
+        return True
+
+    def describe(self):
+        p = []
+        if self.x is not None:      p.append(f"X={self.x}")
+        if self.y is not None:      p.append(f"Y={self.y}")
+        if self.height is not None: p.append(f"výška={self.height}")
+        return "Karel: " + (", ".join(p) if p else "kdekoľvek")
+
+    def to_xml_el(self):
+        el = ET.Element('condition', type='karel_pos')
+        if self.x is not None:      el.set('x',      str(self.x))
+        if self.y is not None:      el.set('y',      str(self.y))
+        if self.height is not None: el.set('height', str(self.height))
+        return el
+
+    @staticmethod
+    def from_xml_el(el):
+        def _gi(a): return int(el.get(a)) if el.get(a) is not None else None
+        return GoalKarelPos(x=_gi('x'), y=_gi('y'), height=_gi('height'))
+
+
+class GoalCellState:
+    """Podmienka: políčko (x,y) má zadaný stav (značka / tehly / veľké tehly)."""
+    def __init__(self, x, y, marks=None, bricks=None, big_bricks=None):
+        self.x=x; self.y=y
+        self.marks=marks; self.bricks=bricks; self.big_bricks=big_bricks
+
+    def check(self, world):
+        x, y = self.x, self.y
+        if not (0 <= x < world.width and 0 <= y < world.height): return False
+        if self.marks is not None and world.marks[y][x] != self.marks: return False
+        if self.bricks is not None and world.bricks[y][x] != self.bricks: return False
+        if self.big_bricks is not None and world.big_bricks[y][x] != self.big_bricks: return False
+        return True
+
+    def describe(self):
+        p = []
+        if self.marks is not None:      p.append("značka" if self.marks else "bez značky")
+        if self.bricks is not None:     p.append(f"{self.bricks}× tehla")
+        if self.big_bricks is not None: p.append(f"{self.big_bricks}× vel.tehla")
+        return f"Políčko ({self.x},{self.y}): " + (", ".join(p) if p else "?")
+
+    def to_xml_el(self):
+        el = ET.Element('condition', type='cell_state', x=str(self.x), y=str(self.y))
+        if self.marks is not None:      el.set('marks',      'true' if self.marks else 'false')
+        if self.bricks is not None:     el.set('bricks',     str(self.bricks))
+        if self.big_bricks is not None: el.set('big_bricks', str(self.big_bricks))
+        return el
+
+    @staticmethod
+    def from_xml_el(el):
+        def _gi(a): return int(el.get(a)) if el.get(a) is not None else None
+        def _gb(a): v = el.get(a); return (v.lower() == 'true') if v is not None else None
+        return GoalCellState(int(el.get('x')), int(el.get('y')),
+                             marks=_gb('marks'), bricks=_gi('bricks'),
+                             big_bricks=_gi('big_bricks'))
+
+
+class GoalSnapshot:
+    """Podmienka: celá miestnosť zodpovedá uloženému snímku stavu."""
+    def __init__(self, bricks, big_bricks, marks,
+                 karel_x=None, karel_y=None, karel_dir=None):
+        self.bricks=bricks; self.big_bricks=big_bricks; self.marks=marks
+        self.karel_x=karel_x; self.karel_y=karel_y; self.karel_dir=karel_dir
+
+    @staticmethod
+    def from_world(world, include_karel=False):
+        from copy import deepcopy
+        return GoalSnapshot(
+            bricks=deepcopy(world.bricks), big_bricks=deepcopy(world.big_bricks),
+            marks=deepcopy(world.marks),
+            karel_x=world.karel_x if include_karel else None,
+            karel_y=world.karel_y if include_karel else None,
+            karel_dir=world.karel_dir if include_karel else None)
+
+    def check(self, world):
+        if world.bricks != self.bricks: return False
+        if world.big_bricks != self.big_bricks: return False
+        if world.marks != self.marks: return False
+        if self.karel_x is not None and world.karel_x != self.karel_x: return False
+        if self.karel_y is not None and world.karel_y != self.karel_y: return False
+        if self.karel_dir is not None and world.karel_dir != self.karel_dir: return False
+        return True
+
+    def describe(self):
+        return "Snímok miestnosti" + (" + poloha Karela" if self.karel_x is not None else "")
+
+    def to_xml_el(self):
+        el = ET.Element('condition', type='snapshot')
+        if self.karel_x is not None:
+            el.set('karel_x', str(self.karel_x)); el.set('karel_y', str(self.karel_y))
+            el.set('karel_dir', self.karel_dir.to_str())
+        br = ET.SubElement(el, 'bricks')
+        for row in self.bricks:
+            ET.SubElement(br, 'row').text = ','.join(map(str, row))
+        bb = ET.SubElement(el, 'bigbricks')
+        for row in self.big_bricks:
+            ET.SubElement(bb, 'row').text = ','.join(map(str, row))
+        mk = ET.SubElement(el, 'marks')
+        for row in self.marks:
+            ET.SubElement(mk, 'row').text = ','.join('1' if v else '0' for v in row)
+        return el
+
+    @staticmethod
+    def from_xml_el(el):
+        def _kv(a): return int(el.get(a)) if el.get(a) is not None else None
+        kx = _kv('karel_x'); ky = _kv('karel_y')
+        kd = Direction.from_str(el.get('karel_dir')) if el.get('karel_dir') else None
+        def _rows(tag):
+            return [[int(v) for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
+        def _brows(tag):
+            return [[v == '1' for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
+        return GoalSnapshot(bricks=_rows('bricks'), big_bricks=_rows('bigbricks'),
+                            marks=_brows('marks'), karel_x=kx, karel_y=ky, karel_dir=kd)
+
+
 class WorldSettings:
     """Nastavenia obmedzení a reštrikcií sveta — ukladajú sa do .karxml."""
     def __init__(self):
@@ -80,6 +211,17 @@ class World:
         self._bricks_left     = -1
         self._big_bricks_left = -1
         self._marks_left      = -1
+        # Metadáta sveta
+        self.title        = ''
+        self.intro_html   = ''
+        self.success_html = ''
+        self.failure_html = ''
+        self.program_text = ''
+        self.next_level   = ''
+        self.prev_level   = ''
+        # Misia — podmienky a režim vyhodnocovania
+        self.goal_conditions: list = []
+        self.mission_eval: str     = 'on_finish'   # 'on_finish' | 'on_step'
         self._add_border_walls()
 
     def _add_border_walls(self):
@@ -201,15 +343,6 @@ class World:
                     (self.bricks[ny][nx]>0 or self.big_bricks[ny][nx]>0))
     def check_sign(self):  return self.marks[self.karel_y][self.karel_x]
 
-    # Voliteľné metadáta pre predefinované svety
-    title      = ''
-    intro_html = ''
-    success_html = ''
-    failure_html = ''
-    program_text = ''
-    next_level = ''
-    prev_level = ''
-
     def to_json(self):
         return dict(width=self.width,height=self.height,
                     karel_x=self.karel_x,karel_y=self.karel_y,
@@ -290,6 +423,11 @@ class World:
                 ET.SubElement(st,'camera_az').text    = str(s.camera_az)
                 ET.SubElement(st,'camera_el').text    = str(s.camera_el)
                 ET.SubElement(st,'camera_dist').text  = str(s.camera_dist)
+        # misia — podmienky splnenia
+        if self.goal_conditions or self.mission_eval != 'on_finish':
+            miss = ET.SubElement(root, 'mission', eval=self.mission_eval)
+            for cond in self.goal_conditions:
+                miss.append(cond.to_xml_el())
         # pekné formátovanie
         raw = ET.tostring(root, encoding='unicode')
         dom = minidom.parseString(raw)
@@ -354,6 +492,15 @@ class World:
                 w.settings.camera_az   = _gf('camera_az',  math.radians(225))
                 w.settings.camera_el   = _gf('camera_el',  math.radians(28))
                 w.settings.camera_dist = _gf('camera_dist', 16.0)
+        # misia
+        miss_el = root.find('mission')
+        if miss_el is not None:
+            w.mission_eval = miss_el.get('eval', 'on_finish')
+            for cel in miss_el.findall('condition'):
+                ct = cel.get('type', '')
+                if ct == 'karel_pos':   w.goal_conditions.append(GoalKarelPos.from_xml_el(cel))
+                elif ct == 'cell_state': w.goal_conditions.append(GoalCellState.from_xml_el(cel))
+                elif ct == 'snapshot':  w.goal_conditions.append(GoalSnapshot.from_xml_el(cel))
         return w
 
     def copy(self): return deepcopy(self)
@@ -1466,6 +1613,217 @@ class ControlPanel(tk.Frame):
 # EDITOR  NASTAVENÍ  SVETA
 # =========================================================================
 
+class GoalConditionDialog(tk.Toplevel):
+    """Sub-dialóg: pridanie jednej podmienky misie."""
+    _BG='#0a0a1c'; _FG='#ccccee'; _FG2='#888899'
+
+    def __init__(self, parent, world):
+        super().__init__(parent)
+        self._world  = world
+        self.result  = None
+        self.title("Pridať podmienku")
+        self.configure(bg=self._BG)
+        self.resizable(False, False)
+        self.grab_set(); self.transient(parent)
+        self._build()
+        self.update_idletasks()
+        pw,ph = parent.winfo_width(), parent.winfo_height()
+        px,py = parent.winfo_rootx(), parent.winfo_rooty()
+        ww,wh = self.winfo_width(), self.winfo_height()
+        self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    def _build(self):
+        # Typ podmienky
+        tf = tk.Frame(self, bg=self._BG, padx=12, pady=8); tf.pack(fill='x')
+        tk.Label(tf, text='Typ podmienky:', bg=self._BG, fg=self._FG,
+                 font=('Arial',9,'bold')).pack(side='left', padx=(0,12))
+        self._type_var = tk.StringVar(value='karel_pos')
+        for val,lbl in [('karel_pos','Poloha Karela'),
+                        ('cell_state','Stav políčka'),
+                        ('snapshot','Snímok miestnosti')]:
+            tk.Radiobutton(tf, text=lbl, variable=self._type_var, value=val,
+                           bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
+                           activebackground=self._BG, font=('Arial',9),
+                           command=self._switch_type).pack(side='left', padx=6)
+        tk.Frame(self, bg='#334466', height=1).pack(fill='x')
+        self._content = tk.Frame(self, bg=self._BG, padx=12, pady=8)
+        self._content.pack(fill='both', expand=True)
+        tk.Frame(self, bg='#334466', height=1).pack(fill='x')
+        bf = tk.Frame(self, bg='#111130', pady=6); bf.pack(fill='x')
+        tk.Button(bf, text='Zrušiť', command=self.destroy,
+                  bg='#3a1a1a', fg='white', relief='flat', padx=12, pady=4,
+                  font=('Arial',9), cursor='hand2').pack(side='right', padx=8)
+        tk.Button(bf, text='Pridať podmienku', command=self._ok,
+                  bg='#1a4a1a', fg='white', relief='flat', padx=12, pady=4,
+                  font=('Arial',9,'bold'), cursor='hand2').pack(side='right', padx=4)
+        self._switch_type()
+
+    def _switch_type(self):
+        for w in self._content.winfo_children(): w.destroy()
+        t = self._type_var.get()
+        if   t == 'karel_pos':  self._build_karel_pos()
+        elif t == 'cell_state': self._build_cell_state()
+        else:                   self._build_snapshot()
+
+    def _lbl(self, p, txt, w=14):
+        return tk.Label(p, text=txt, bg=self._BG, fg=self._FG,
+                        font=('Arial',9), width=w, anchor='w')
+
+    def _build_karel_pos(self):
+        p = self._content; wd = self._world
+        tk.Label(p, text='Zaškrtni podmienky, ktoré má Karel splniť (nezaškrtnuté = ľubovoľná hodnota):',
+                 bg=self._BG, fg=self._FG2, font=('Arial',8,'italic'),
+                 wraplength=380).pack(anchor='w', pady=(0,8))
+        self._kp_x_en = tk.BooleanVar(value=True)
+        self._kp_y_en = tk.BooleanVar(value=True)
+        self._kp_h_en = tk.BooleanVar(value=False)
+        self._kp_x    = tk.IntVar(value=wd.karel_x)
+        self._kp_y    = tk.IntVar(value=wd.karel_y)
+        self._kp_h    = tk.IntVar(value=wd._height(wd.karel_x, wd.karel_y))
+        for en_var, val_var, lbl, lo, hi in [
+            (self._kp_x_en, self._kp_x, 'X:', 0, wd.width-1),
+            (self._kp_y_en, self._kp_y, 'Y:', 0, wd.height-1),
+            (self._kp_h_en, self._kp_h, 'Výška tehiel:', 0, 99),
+        ]:
+            row = tk.Frame(p, bg=self._BG); row.pack(fill='x', pady=2)
+            tk.Checkbutton(row, variable=en_var, bg=self._BG, fg=self._FG,
+                           selectcolor='#1a1a44', activebackground=self._BG).pack(side='left')
+            self._lbl(row, lbl).pack(side='left')
+            ttk.Spinbox(row, textvariable=val_var, from_=lo, to=hi,
+                        width=5, font=('Consolas',10)).pack(side='left')
+
+    def _build_cell_state(self):
+        p = self._content; wd = self._world
+        tk.Label(p, text='Zadaj súradnice políčka a jeho požadovaný stav:',
+                 bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')).pack(anchor='w', pady=(0,8))
+        cr = tk.Frame(p, bg=self._BG); cr.pack(fill='x', pady=2)
+        self._cs_x = tk.IntVar(value=wd.karel_x)
+        self._cs_y = tk.IntVar(value=wd.karel_y)
+        for lbl, var, lo, hi in [('X:', self._cs_x, 0, wd.width-1),
+                                   ('Y:', self._cs_y, 0, wd.height-1)]:
+            tk.Label(cr, text=lbl, bg=self._BG, fg=self._FG,
+                     font=('Arial',9)).pack(side='left', padx=(8,2))
+            ttk.Spinbox(cr, textvariable=var, from_=lo, to=hi,
+                        width=4, font=('Consolas',10)).pack(side='left', padx=(0,10))
+        self._cs_marks_en  = tk.BooleanVar(value=False)
+        self._cs_bricks_en = tk.BooleanVar(value=False)
+        self._cs_bb_en     = tk.BooleanVar(value=False)
+        self._cs_marks  = tk.BooleanVar(value=False)
+        self._cs_bricks = tk.IntVar(value=0)
+        self._cs_bb     = tk.IntVar(value=0)
+        # značka
+        mr = tk.Frame(p, bg=self._BG); mr.pack(fill='x', pady=2)
+        tk.Checkbutton(mr, variable=self._cs_marks_en, bg=self._BG, fg=self._FG,
+                       selectcolor='#1a1a44', activebackground=self._BG).pack(side='left')
+        self._lbl(mr, 'Značka:').pack(side='left')
+        tk.Checkbutton(mr, text='prítomná (áno)', variable=self._cs_marks,
+                       bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
+                       activebackground=self._BG, font=('Arial',9)).pack(side='left')
+        # tehly
+        for en_var, val_var, lbl in [
+            (self._cs_bricks_en, self._cs_bricks, 'Malé tehly (počet):'),
+            (self._cs_bb_en,     self._cs_bb,     'Veľké tehly (počet):'),
+        ]:
+            row = tk.Frame(p, bg=self._BG); row.pack(fill='x', pady=2)
+            tk.Checkbutton(row, variable=en_var, bg=self._BG, fg=self._FG,
+                           selectcolor='#1a1a44', activebackground=self._BG).pack(side='left')
+            self._lbl(row, lbl, w=18).pack(side='left')
+            ttk.Spinbox(row, textvariable=val_var, from_=0, to=99,
+                        width=5, font=('Consolas',10)).pack(side='left')
+
+    def _build_snapshot(self):
+        p = self._content; wd = self._world
+        br_c = sum(wd.bricks[y][x] for y in range(wd.height) for x in range(wd.width))
+        bb_c = sum(wd.big_bricks[y][x] for y in range(wd.height) for x in range(wd.width))
+        mk_c = sum(1 for y in range(wd.height) for x in range(wd.width) if wd.marks[y][x])
+        tk.Label(p, text=(
+            'Zachytí aktuálny stav celej miestnosti ako cieľový.\n'
+            'Podmienka je splnená keď rozmiestnenie tehál a značiek\n'
+            'zodpovedá tomuto snímku.'),
+            bg=self._BG, fg=self._FG2, font=('Arial',9,'italic'),
+            wraplength=360, justify='left').pack(anchor='w', pady=(0,10))
+        tk.Label(p, text=f"Aktuálny stav:  {br_c}× malá tehla   {bb_c}× veľká tehla   {mk_c}× značka",
+                 bg='#1a1a33', fg='#88ccff', font=('Consolas',9),
+                 padx=10, pady=5).pack(fill='x', pady=(0,8))
+        self._snap_karel = tk.BooleanVar(value=True)
+        tk.Checkbutton(p, text='Zahrnúť aj polohu a smer Karela',
+                       variable=self._snap_karel,
+                       bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
+                       activebackground=self._BG, font=('Arial',9)).pack(anchor='w')
+        tk.Label(p, text='ℹ  Snímok sa zachytí z aktuálneho stavu sveta pri kliknutí Pridať.',
+                 bg=self._BG, fg='#aaaacc', font=('Arial',8,'italic')).pack(anchor='w', pady=(8,0))
+
+    def _ok(self):
+        t = self._type_var.get()
+        try:
+            if t == 'karel_pos':
+                x = int(self._kp_x.get()) if self._kp_x_en.get() else None
+                y = int(self._kp_y.get()) if self._kp_y_en.get() else None
+                h = int(self._kp_h.get()) if self._kp_h_en.get() else None
+                if x is None and y is None and h is None:
+                    messagebox.showwarning("Upozornenie",
+                        "Zaškrtni aspoň jednu podmienku.", parent=self); return
+                self.result = GoalKarelPos(x=x, y=y, height=h)
+            elif t == 'cell_state':
+                x = int(self._cs_x.get()); y = int(self._cs_y.get())
+                marks      = self._cs_marks.get()  if self._cs_marks_en.get()  else None
+                bricks     = int(self._cs_bricks.get()) if self._cs_bricks_en.get() else None
+                big_bricks = int(self._cs_bb.get())     if self._cs_bb_en.get()     else None
+                if marks is None and bricks is None and big_bricks is None:
+                    messagebox.showwarning("Upozornenie",
+                        "Zaškrtni aspoň jednu podmienku.", parent=self); return
+                self.result = GoalCellState(x, y, marks=marks, bricks=bricks, big_bricks=big_bricks)
+            else:  # snapshot
+                self.result = GoalSnapshot.from_world(
+                    self._world, include_karel=self._snap_karel.get())
+        except Exception as e:
+            messagebox.showerror("Chyba", str(e), parent=self); return
+        self.destroy()
+
+
+class MissionResultDialog(tk.Toplevel):
+    """Zobrazí výsledok misie — úspech alebo neúspech."""
+    _BG='#0a0a1c'; _FG='#ccccee'
+
+    def __init__(self, app, success: bool, html_msg: str):
+        super().__init__(app)
+        self.title("Výsledok misie")
+        self.configure(bg=self._BG)
+        self.resizable(False, False)
+        self.grab_set(); self.transient(app)
+        self._build(success, html_msg)
+        self.update_idletasks()
+        pw,ph = app.winfo_width(), app.winfo_height()
+        px,py = app.winfo_rootx(), app.winfo_rooty()
+        ww,wh = self.winfo_width(), self.winfo_height()
+        self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    @staticmethod
+    def _strip_html(html: str) -> str:
+        txt = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+        txt = re.sub(r'<[^>]+>', '', txt)
+        for ent, ch in [('&lt;','<'),('&gt;','>'),('&amp;','&'),('&nbsp;',' ')]:
+            txt = txt.replace(ent, ch)
+        return txt.strip()
+
+    def _build(self, success: bool, html_msg: str):
+        col = '#1a5a1a' if success else '#5a1a1a'
+        fg  = '#44ff88' if success else '#ff6666'
+        icon = '✓   MISIA SPLNENÁ!' if success else '✗   MISIA NESPLNENÁ'
+        hf = tk.Frame(self, bg=col, pady=16, padx=24); hf.pack(fill='x')
+        tk.Label(hf, text=icon, bg=col, fg=fg, font=('Arial',16,'bold')).pack()
+        txt = (self._strip_html(html_msg) if html_msg else
+               ("Všetky podmienky boli splnené." if success
+                else "Niektoré podmienky neboli splnené."))
+        tf = tk.Frame(self, bg=self._BG, padx=24, pady=14); tf.pack(fill='both', expand=True)
+        tk.Label(tf, text=txt, bg=self._BG, fg=self._FG,
+                 font=('Arial',10), wraplength=360, justify='left').pack(anchor='w')
+        bf = tk.Frame(self, bg='#111130', pady=8); bf.pack(fill='x')
+        tk.Button(bf, text='OK', command=self.destroy,
+                  bg='#2a5a9a', fg='white', relief='flat', padx=28, pady=5,
+                  font=('Arial',10,'bold'), cursor='hand2').pack(side='right', padx=12)
+
+
 class WorldSettingsDialog(tk.Toplevel):
     """Modálny dialóg na nastavenie parametrov miestnosti."""
     _BG='#0a0a1c'; _BG2='#111130'; _BG3='#060610'
@@ -1500,18 +1858,75 @@ class WorldSettingsDialog(tk.Toplevel):
         return tk.LabelFrame(p, text=f' {title} ', bg=self._BG,
                              fg=self._FG2, font=('Arial',8), bd=1, relief='groove')
 
+    # -- Tab: Popis -----------------------------------------------------------
+    def _build_popis(self, p):
+        w = self._work
+        # Názov sveta
+        nf = self._frame(p, 'Názov sveta'); nf.pack(fill='x', pady=(0,8))
+        self._title_var = tk.StringVar(value=w.title)
+        tk.Entry(nf, textvariable=self._title_var, bg='#1a1a44', fg='white',
+                 font=('Arial',11), insertbackground='white', relief='flat',
+                 ).pack(fill='x', padx=8, pady=7)
+        # Popis / zadanie úlohy
+        df = self._frame(p, 'Popis / zadanie úlohy  (HTML)')
+        df.pack(fill='both', expand=True)
+        # Toolbar
+        tb = tk.Frame(df, bg=self._BG2, padx=4, pady=3); tb.pack(fill='x')
+        def _wrap(ot, ct):
+            try:
+                sel = self._intro_text.get('sel.first','sel.last')
+                self._intro_text.delete('sel.first','sel.last')
+                self._intro_text.insert('insert', ot+sel+ct)
+            except tk.TclError:
+                self._intro_text.insert('insert', ot+ct)
+            self._intro_text.focus_set()
+        for (lbl,ot,ct,fw) in [
+            ('B', '<b>','</b>','bold'),
+            ('I', '<i>','</i>','italic'),
+            ('U', '<u>','</u>','normal'),
+        ]:
+            tk.Button(tb, text=lbl, width=3,
+                      command=lambda o=ot,c=ct:_wrap(o,c),
+                      bg='#2a2a55', fg='white', relief='flat',
+                      font=('Arial',9,fw), cursor='hand2'
+                      ).pack(side='left', padx=(0,2))
+        tk.Frame(tb, width=8, bg=self._BG2).pack(side='left')
+        for (lbl,ot,ct) in [
+            ('H1','<h1>','</h1>'), ('H2','<h2>','</h2>'),
+            ('H3','<h3>','</h3>'), ('P','<p>','</p>'),
+            ('BR','<br>',''),
+        ]:
+            tk.Button(tb, text=lbl, width=3,
+                      command=lambda o=ot,c=ct:_wrap(o,c),
+                      bg='#1a2a44', fg='#88aacc', relief='flat',
+                      font=('Arial',8), cursor='hand2'
+                      ).pack(side='left', padx=(0,2))
+        # Text widget + scrollbar
+        tf2 = tk.Frame(df, bg=self._BG); tf2.pack(fill='both', expand=True, padx=4, pady=4)
+        self._intro_text = tk.Text(tf2, bg='#0d0d22', fg='#ccccee',
+                                   font=('Consolas',10), wrap='word', height=8,
+                                   insertbackground='white', relief='flat',
+                                   selectbackground='#2a2a55')
+        sb = ttk.Scrollbar(tf2, command=self._intro_text.yview)
+        self._intro_text.configure(yscrollcommand=sb.set)
+        self._intro_text.pack(side='left', fill='both', expand=True)
+        sb.pack(side='right', fill='y')
+        self._intro_text.insert('1.0', w.intro_html)
+
     # -- build ----------------------------------------------------------------
     def _build(self):
         nb = ttk.Notebook(self)
         nb.pack(fill='both', expand=True, padx=8, pady=(8,4))
         tabs = {}
-        for name in ('Miestnosť','Zásoby','Príkazy','Pohľad'):
+        for name in ('Popis','Miestnosť','Zásoby','Príkazy','Pohľad','Misia'):
             f = tk.Frame(nb, bg=self._BG, padx=10, pady=8)
             nb.add(f, text=name); tabs[name]=f
+        self._build_popis(tabs['Popis'])
         self._build_room(tabs['Miestnosť'])
         self._build_inventory(tabs['Zásoby'])
         self._build_cmds(tabs['Príkazy'])
         self._build_camera(tabs['Pohľad'])
+        self._build_mission(tabs['Misia'])
         # Tlačidlá
         bf = tk.Frame(self, bg=self._BG2, pady=6); bf.pack(fill='x')
         tk.Button(bf, text='Zrušiť', command=self.destroy,
@@ -1666,6 +2081,78 @@ class WorldSettingsDialog(tk.Toplevel):
             tk.Label(cf,text=val,bg=self._BG2,fg='#44aaff',
                      font=('Consolas',10)).grid(row=row,column=1,sticky='w',padx=14)
 
+    # -- Tab: Misia -----------------------------------------------------------
+    def _build_mission(self, p):
+        w = self._work
+        # Režim vyhodnocovania
+        ef = self._frame(p, 'Vyhodnocovanie misie'); ef.pack(fill='x', pady=(0,8))
+        self._eval_var = tk.StringVar(value=w.mission_eval)
+        for col,(val,lbl,note) in enumerate([
+            ('on_finish', 'Po skončení programu', '(spustí sa po zbehnutí celého programu)'),
+            ('on_step',   'Po každom kroku',      '(kontroluje sa po každom príkaze aj pri priamom ovládaní)'),
+        ]):
+            cf = tk.Frame(ef, bg=self._BG); cf.grid(row=0, column=col, padx=8, pady=6, sticky='w')
+            tk.Radiobutton(cf, text=lbl, variable=self._eval_var, value=val,
+                           bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
+                           activebackground=self._BG, font=('Arial',9,'bold')
+                           ).pack(anchor='w')
+            tk.Label(cf, text=note, bg=self._BG, fg=self._FG2,
+                     font=('Arial',7,'italic')).pack(anchor='w', padx=(20,0))
+
+        # Zoznam podmienok
+        cf2 = self._frame(p, 'Podmienky splnenia  (všetky musia byť splnené naraz)')
+        cf2.pack(fill='both', expand=True, pady=(0,4))
+        lf = tk.Frame(cf2, bg=self._BG); lf.pack(fill='both', expand=True, padx=8, pady=(6,4))
+        self._cond_lb = tk.Listbox(lf, bg='#0d0d22', fg='#ccccee',
+                                   selectbackground='#2a2a55', font=('Consolas',9),
+                                   height=5, relief='flat', activestyle='dotbox')
+        sb2 = ttk.Scrollbar(lf, command=self._cond_lb.yview)
+        self._cond_lb.configure(yscrollcommand=sb2.set)
+        self._cond_lb.pack(side='left', fill='both', expand=True)
+        sb2.pack(side='right', fill='y')
+
+        # Inicializácia zo sveta
+        self._goal_conditions: list = list(w.goal_conditions)
+        for c in self._goal_conditions:
+            self._cond_lb.insert('end', '  ' + c.describe())
+
+        bf2 = tk.Frame(cf2, bg=self._BG); bf2.pack(fill='x', padx=8, pady=(0,6))
+        tk.Button(bf2, text='＋ Pridať podmienku', command=self._add_condition,
+                  bg='#1a4a1a', fg='white', relief='flat', padx=8, pady=3,
+                  font=('Arial',9), cursor='hand2').pack(side='left', padx=(0,6))
+        tk.Button(bf2, text='− Odstrániť vybraté', command=self._remove_condition,
+                  bg='#4a1a1a', fg='white', relief='flat', padx=8, pady=3,
+                  font=('Arial',9), cursor='hand2').pack(side='left')
+
+        # HTML správy
+        mf = self._frame(p, 'Správy pre žiaka'); mf.pack(fill='x', pady=(4,0))
+        self._msg_success_var = tk.StringVar(value=w.success_html)
+        self._msg_failure_var = tk.StringVar(value=w.failure_html)
+        for row2,(lbl,var) in enumerate([
+            ('Správa pri úspechu:', self._msg_success_var),
+            ('Správa pri neúspechu:', self._msg_failure_var),
+        ]):
+            tk.Label(mf, text=lbl, bg=self._BG, fg=self._FG2,
+                     font=('Arial',8)).grid(row=row2, column=0, sticky='w', padx=8, pady=3)
+            tk.Entry(mf, textvariable=var, bg='#1a1a44', fg='white',
+                     font=('Arial',9), insertbackground='white', relief='flat'
+                     ).grid(row=row2, column=1, sticky='ew', padx=(0,8), pady=3)
+        mf.columnconfigure(1, weight=1)
+
+    def _add_condition(self):
+        dlg = GoalConditionDialog(self, self._cur_world)
+        self.wait_window(dlg)
+        if dlg.result:
+            self._goal_conditions.append(dlg.result)
+            self._cond_lb.insert('end', '  ' + dlg.result.describe())
+
+    def _remove_condition(self):
+        sel = self._cond_lb.curselection()
+        if not sel: return
+        idx = sel[0]
+        self._cond_lb.delete(idx)
+        del self._goal_conditions[idx]
+
     # -- Apply ----------------------------------------------------------------
     def _apply(self):
         w = self._work
@@ -1694,9 +2181,19 @@ class WorldSettingsDialog(tk.Toplevel):
         s.camera_locked = self._cam_lock_var.get()
         if s.camera_locked:
             s.camera_az,s.camera_el,s.camera_dist = self._cam.az,self._cam.el,self._cam.dist
+        # 6. Popis
+        w.title      = self._title_var.get().strip()
+        w.intro_html = self._intro_text.get('1.0', 'end').rstrip()
+        # 7. Misia
+        w.goal_conditions = list(self._goal_conditions)
+        w.mission_eval    = self._eval_var.get()
+        w.success_html    = self._msg_success_var.get().strip()
+        w.failure_html    = self._msg_failure_var.get().strip()
         # Aplikuj na app
         self._app._base = w
         self._app._reset_world()
+        # Ak sa zmenil názov sveta, aktualizuj titulok okna
+        self._app._world_title_var.set(w.title or "Karlov Svet")
         self.destroy()
 
 
@@ -1914,6 +2411,8 @@ class App(tk.Tk):
     def _on_step(self):
         self._canvas.after(0,self._canvas.render)
         self._canvas.after(0,lambda:self._nav.update_inventory(self._world))
+        if self._world.goal_conditions and self._world.mission_eval == 'on_step':
+            self._canvas.after(0, self._check_mission_step)
 
     def _on_err(self,m):
         self._running=False
@@ -1921,17 +2420,42 @@ class App(tk.Tk):
         self._canvas.render()
         self._status(f"Chyba: {m}","#cc4444")
         messagebox.showerror("Chyba",m)
+
     def _on_fin(self,m):
         self._running=False
         self._set_running_ui(False)
         self._canvas.render()
         self._status(m if m else "Hotovo! ✓","#cc8844" if m else "#44cc44")
+        # Vyhodnotenie misie — len pri prirodzenom skončení (nie Stop)
+        if not m and self._world.goal_conditions:
+            self._check_mission()
 
     def _on_direct(self,ok,err=None):
         self._canvas.after(0,self._canvas.render)
         self._nav.update_inventory(self._world)
         if not ok and err:
             self._canvas.after(0,lambda:self._status(f"Chyba: {err}","#cc4444"))
+        elif ok and self._world.goal_conditions and self._world.mission_eval == 'on_step':
+            self._check_mission_step()
+
+    def _check_mission(self):
+        """Vyhodnotí všetky podmienky misie — zobrazí úspech alebo neúspech."""
+        w = self._world
+        if not w.goal_conditions: return
+        success = all(c.check(w) for c in w.goal_conditions)
+        MissionResultDialog(self, success,
+                            w.success_html if success else w.failure_html)
+
+    def _check_mission_step(self):
+        """Vyhodnotí misiu po kroku — zobrazí úspech a zastaví program (neúspech ticho)."""
+        w = self._world
+        if not w.goal_conditions: return
+        if all(c.check(w) for c in w.goal_conditions):
+            if self._interp: self._interp.stop()
+            self._running = False
+            self._set_running_ui(False)
+            self._status("Misia splnená! ✓", "#44cc44")
+            MissionResultDialog(self, True, w.success_html)
 
     # ---- Súbory ----------------------------------------------------------
     def _open_prg(self):
