@@ -190,6 +190,8 @@ python kar_to_xml.py
 
 ## Documentation
 
+### English
+
 | Document | Audience | Description |
 |----------|----------|-------------|
 | [docs/user-guide.md](docs/user-guide.md) | Students | Interface walkthrough, language quick reference, troubleshooting |
@@ -197,6 +199,14 @@ python kar_to_xml.py
 | [docs/karel-language.md](docs/karel-language.md) | Everyone | Complete language reference with examples |
 | [docs/karxml-format.md](docs/karxml-format.md) | World authors | Full `.karxml` file format specification |
 | [docs/architecture.md](docs/architecture.md) | Developers | Code architecture, data model, renderer, threading |
+
+### Slovenčina
+
+| Dokument | Komu | Popis |
+|----------|------|-------|
+| [docs/sk/navod-pre-ziakov.md](docs/sk/navod-pre-ziakov.md) | Žiaci | Popis rozhrania, rýchla referencia jazyka, riešenie problémov |
+| [docs/sk/navod-pre-ucitelov.md](docs/sk/navod-pre-ucitelov.md) | Učitelia | Tvorba svetov, navrhovanie misií, pedagogická postupnosť |
+| [docs/sk/jazyk-karla.md](docs/sk/jazyk-karla.md) | Všetci | Kompletná referencia jazyka Karel s príkladmi |
 
 ## Background
 

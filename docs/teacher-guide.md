@@ -20,14 +20,14 @@ Karel is intended as a bridge — it is **not** a replacement for Logo or Pascal
 | Stage | Concepts | Tools |
 |-------|---------|-------|
 | 1 | Spatial orientation, relative movement | Direct control buttons |
-| 2 | Sequences | Short programs (`zaciatok … koniec`) |
-| 3 | Procedures / decomposition | `prikaz … koniec` |
-| 4 | Counted repetition | `opakuj N krat` |
-| 5 | Condition-based repetition | `kym podmienka rob` |
-| 6 | Branching | `ak podmienka potom … inak` |
+| 2 | Sequences | Short programs (`begin … end`) |
+| 3 | Procedures / decomposition | `procedure … end` |
+| 4 | Counted repetition | `repeat N times` |
+| 5 | Condition-based repetition | `while condition do` |
+| 6 | Branching | `if condition then … else` |
 | 7 | Recursion | Tail recursion, counting with bricks |
 
-A key pedagogical insight from classroom experiments: **`kym` (while) is conceptually harder than `opakuj` (repeat)** for younger students. Plan extra time for it.
+A key pedagogical insight from classroom experiments: **`while` is conceptually harder than `repeat`** for younger students. Plan extra time for it.
 
 ---
 
@@ -89,9 +89,9 @@ Check any command to **disable** it for this world. Disabled commands:
 - Raise an error if the student tries to run them.
 - Are greyed out in the direct control panel.
 
-Use this to force students to solve problems without certain shortcuts. For example, disable `dozadu` (back) to require planning ahead.
+Use this to force students to solve problems without certain shortcuts. For example, disable `back` to require planning ahead.
 
-The **"Forbid custom procedures"** checkbox disables `prikaz … koniec` — useful for early stages where you only want `zaciatok … koniec` programs.
+The **"Forbid custom procedures"** checkbox disables `procedure … end` — useful for early stages where you only want `begin … end` programs.
 
 ---
 
@@ -151,10 +151,7 @@ The entire room state (all brick positions and marks) must match a snapshot capt
 
 #### Multiple conditions
 
-You can add as many conditions as needed. **All conditions must be satisfied simultaneously** for the mission to succeed. This lets you combine, for example:
-- Karel must be at (5,3) AND
-- Tile (2,2) must have 3 bricks AND
-- The entire room must match a snapshot.
+You can add as many conditions as needed. **All conditions must be satisfied simultaneously** for the mission to succeed.
 
 #### Success / failure messages
 
@@ -177,21 +174,19 @@ Both fields support plain text or HTML.
 - Task description HTML
 - The current program in the editor
 
-> The student opens the world with `Edit → Open world`. Their program is pre-loaded from the saved file. If you do not want to provide a starting program, clear the editor before saving.
-
 ---
 
 ## Designing good tasks
 
 Lessons learned from the original 2004 classroom experiment:
 
-1. **Test every task yourself before giving it to students.** Edge cases (e.g., brick stacks at intersections) can create impossible or unexpectedly hard situations.
+1. **Test every task yourself before giving it to students.** Edge cases (e.g. brick stacks at intersections) can create impossible or unexpectedly hard situations.
 
-2. **Sequence commands before conditions.** Students find `opakuj` easier than `kym`. Introduce them in that order.
+2. **Sequence commands before conditions.** Students find `repeat` easier than `while`. Introduce them in that order.
 
-3. **`kym` needs extra time.** The concept of "repeat while condition is true" is counter-intuitive for many students. Use simple examples: "walk forward until you hit a wall."
+3. **`while` needs extra time.** The concept of "repeat while condition is true" is counter-intuitive for many students. Use simple examples: "walk forward until you hit a wall."
 
-4. **Make the task description visual.** Describe the expected room state. Saying "build a wall 5 bricks tall" is clearer than "use the `poloz` command 5 times."
+4. **Make the task description visual.** Describe the expected room state. Saying "build a wall 5 bricks tall" is clearer than "use the `drop` command 5 times."
 
 5. **Use missions for automatic feedback.** Students benefit enormously from immediate confirmation that their solution is correct. The mission system provides this without teacher intervention.
 
@@ -203,8 +198,6 @@ Lessons learned from the original 2004 classroom experiment:
 
 ## Suggested task set
 
-The following tasks are taken from the original diploma thesis and classroom experiment. They are sorted roughly by difficulty.
-
 ### Direct control tasks
 
 1. Navigate Karel through a maze using only the buttons.
@@ -213,9 +206,9 @@ The following tasks are taken from the original diploma thesis and classroom exp
 
 ### Procedure tasks
 
-4. Teach Karel a `Strana` (side) command that walks 3 steps and turns. Use it to walk a square.
-5. Teach Karel `Obehni-domcek` — walk around a 6×6 brick house.
-6. Teach Karel a `Polstar` (half-turn / 180°) using only `vlavo`.
+4. Teach Karel a `Side` command that walks 3 steps and turns. Use it to walk a square.
+5. Teach Karel `WalkAround` — walk around a 6×6 brick house.
+6. Teach Karel `HalfTurn` (180°) using only `left`.
 
 ### Repeat loop tasks
 
@@ -236,9 +229,7 @@ The following tasks are taken from the original diploma thesis and classroom exp
 
 ---
 
-## Sample world configuration
-
-Here is a minimal world file for a "walk to the wall" task:
+## Sample world file
 
 ```xml
 <world width="12" height="10">
@@ -255,11 +246,8 @@ Here is a minimal world file for a "walk to the wall" task:
   <mission eval="on_finish" reset_on_failure="true">
     <condition type="karel_pos" x="10" y="1"/>
   </mission>
+  <program>begin
+  // Write your solution here
+end</program>
 </world>
 ```
-
-This world:
-- Places Karel at (1,1) facing East.
-- Disables all commands except movement.
-- Requires Karel to reach column 10 (the east wall).
-- Resets on failure so the student must try again.

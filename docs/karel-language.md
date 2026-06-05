@@ -9,25 +9,25 @@ Karel programs can be written in **Slovak** or **English** — both keyword sets
 Every Karel program that runs autonomously must have a main block:
 
 ```
-zaciatok          # begin
-  dopredu         # forward
-  dopredu
-  vlavo           # left
-koniec            # end
+begin
+  forward
+  forward
+  left
+end
 ```
 
 Custom commands (procedures) are defined before or after the main block:
 
 ```
-prikaz Strana     # procedure Strana
-zaciatok
-  opakuj 3 krat dopredu koniec
-  vlavo
-koniec
+procedure Side
+begin
+  repeat 3 times forward end
+  left
+end
 
-zaciatok
-  opakuj 4 krat Strana koniec
-koniec
+begin
+  repeat 4 times Side end
+end
 ```
 
 ---
@@ -40,11 +40,11 @@ koniec
 | `dozadu` / `vzad` | `back` | Move one step backward |
 | `vlavo` / `vľavo` | `left` | Turn 90° to the left |
 | `vpravo` | `right` | Turn 90° to the right |
-| `poloz` / `položiť` | `drop` | Place a small brick in front of Karel |
+| `poloz` | `drop` | Place a small brick in front of Karel |
 | `zdvihni` / `zodvihni` | `pick` | Pick up a small brick in front of Karel |
 | `poloz_velku` / `poloz_v` | `drop_big` / `drop_b` | Place a big brick in front of Karel |
-| `oznac` / `označ` | `mark` | Place a mark on the tile Karel stands on |
-| `odznac` / `odznač` | `clear` / `unmark` | Remove the mark from Karel's tile |
+| `oznac` | `mark` | Place a mark on the tile Karel stands on |
+| `odznac` | `clear` / `unmark` | Remove the mark from Karel's tile |
 | `pomaly` | `slowly` / `slow` | Slow Karel's speed down |
 | `rychlo` / `rýchlo` | `quickly` / `quick` | Speed Karel up |
 
@@ -61,10 +61,10 @@ koniec
 ### Procedure definition
 
 ```
-prikaz MenoPrikazu
-zaciatok
+procedure CommandName
+begin
   ...
-koniec
+end
 ```
 
 - Procedures can call each other and themselves (recursion).
@@ -74,52 +74,52 @@ koniec
 ### Repeat loop
 
 ```
-opakuj N krat
+repeat N times
   ...
-koniec
+end
 ```
 
 `N` must be a literal integer. Example:
 
 ```
-opakuj 4 krat
-  dopredu
-  vlavo
-koniec
+repeat 4 times
+  forward
+  left
+end
 ```
 
 ### While loop
 
 ```
-kym podmienka rob
+while condition do
   ...
-koniec
+end
 ```
 
 Example — move forward until a wall is reached:
 
 ```
-kym nie stena rob
-  dopredu
-koniec
+while not wall do
+  forward
+end
 ```
 
 ### If statement
 
 ```
-ak podmienka potom
+if condition then
   ...
-inak
+else
   ...
-koniec
+end
 ```
 
-The `inak` / `else` branch is optional:
+The `else` branch is optional:
 
 ```
-ak tehla potom
-  zdvihni
-koniec
+if brick then
+  pick
+end
 ```
 
 ---
@@ -135,11 +135,11 @@ koniec
 | `pravda` | `true` | Always true |
 | `nepravda` | `false` | Always false |
 
-Conditions can be negated with `nie` / `not`:
+Conditions can be negated with `not`:
 
 ```
-kym nie stena rob dopredu koniec
-ak nie znacka potom oznac koniec
+while not wall do forward end
+if not sign then mark end
 ```
 
 ---
@@ -159,69 +159,69 @@ ak nie znacka potom oznac koniec
 ### Walk in a square
 
 ```
-prikaz Strana
-zaciatok
-  opakuj 3 krat dopredu koniec
-  vlavo
-koniec
+procedure Side
+begin
+  repeat 3 times forward end
+  left
+end
 
-zaciatok
-  opakuj 4 krat Strana koniec
-koniec
+begin
+  repeat 4 times Side end
+end
 ```
 
 ### Collect all bricks in a row
 
 ```
-prikaz ZdvihniVsetko
-zaciatok
-  kym tehla rob zdvihni koniec
-koniec
+procedure PickAll
+begin
+  while brick do pick end
+end
 
-zaciatok
-  kym nie stena rob
-    ZdvihniVsetko
-    dopredu
-  koniec
-koniec
+begin
+  while not wall do
+    PickAll
+    forward
+  end
+end
 ```
 
 ### Solve a maze (right-hand rule)
 
 ```
-prikaz Krok
-zaciatok
-  ak stena potom vlavo inak dopredu koniec
-koniec
+procedure Step
+begin
+  if wall then left else forward end
+end
 
-zaciatok
-  opakuj 80 krat Krok koniec
-koniec
+begin
+  repeat 80 times Step end
+end
 ```
 
 ### Mark every tile to the wall
 
 ```
-zaciatok
-  kym nie stena rob
-    oznac
-    dopredu
-  koniec
-  oznac
-koniec
+begin
+  while not wall do
+    mark
+    forward
+  end
+  mark
+end
 ```
 
 ### Infinite loop using recursion
 
 ```
-prikaz Navzdy
-zaciatok
-  dopredu
-  vlavo
-  Navzdy
-koniec
+procedure Forever
+begin
+  forward
+  left
+  Forever
+end
 
-zaciatok Navzdy koniec
+begin Forever end
 ```
 
 > **Note:** Tail recursion like this runs until Karel hits a wall or the recursion limit (500) is reached.
@@ -229,19 +229,19 @@ zaciatok Navzdy koniec
 ### Move a stack of bricks forward
 
 ```
-prikaz PreniesStlpik
-zaciatok
-  kym tehla rob
-    zdvihni
-    dopredu
-    poloz
-    dozadu
-  koniec
-koniec
+procedure MoveStack
+begin
+  while brick do
+    pick
+    forward
+    drop
+    back
+  end
+end
 
-zaciatok
-  PreniesStlpik
-koniec
+begin
+  MoveStack
+end
 ```
 
 ---
@@ -250,18 +250,18 @@ koniec
 
 ```
 program      = { procedure } main_block
-procedure    = 'prikaz' NAME main_block
-main_block   = 'zaciatok' { statement } 'koniec'
+procedure    = 'procedure' NAME main_block
+main_block   = 'begin' { statement } 'end'
 statement    = command
-             | 'opakuj' NUMBER 'krat' { statement } 'koniec'
-             | 'kym' condition 'rob' { statement } 'koniec'
-             | 'ak' condition 'potom' { statement } [ 'inak' { statement } ] 'koniec'
+             | 'repeat' NUMBER 'times' { statement } 'end'
+             | 'while' condition 'do' { statement } 'end'
+             | 'if' condition 'then' { statement } [ 'else' { statement } ] 'end'
              | NAME
-command      = 'dopredu' | 'dozadu' | 'vlavo' | 'vpravo'
-             | 'poloz' | 'zdvihni' | 'poloz_velku'
-             | 'oznac' | 'odznac'
-             | 'pomaly' | 'rychlo'
-condition    = [ 'nie' ] ( 'stena' | 'tehla' | 'volno' | 'znacka' | 'pravda' | 'nepravda' )
+command      = 'forward' | 'back' | 'left' | 'right'
+             | 'drop' | 'pick' | 'drop_big'
+             | 'mark' | 'clear'
+             | 'slowly' | 'quickly'
+condition    = [ 'not' ] ( 'wall' | 'brick' | 'free' | 'sign' | 'true' | 'false' )
 ```
 
 ---
@@ -271,11 +271,11 @@ condition    = [ 'nie' ] ( 'stena' | 'tehla' | 'volno' | 'znacka' | 'pravda' | '
 The Karel language was designed for a specific learning progression:
 
 1. **Direct control** — move Karel with buttons, understand relative orientation (what is "left" when Karel faces different directions?)
-2. **Basic sequences** — write short programs using `zaciatok … koniec`
-3. **Procedures** — teach Karel new commands (`prikaz … koniec`), decompose problems
-4. **Repeat loop** — `opakuj N krat` for when repetition count is known in advance
-5. **While loop** — `kym podmienka rob` for unknown repetition counts
-6. **If statement** — `ak podmienka potom … inak` for branching
+2. **Basic sequences** — write short programs using `begin … end`
+3. **Procedures** — teach Karel new commands (`procedure … end`), decompose problems
+4. **Repeat loop** — `repeat N times` for when repetition count is known in advance
+5. **While loop** — `while condition do` for unknown repetition counts
+6. **If statement** — `if condition then … else` for branching
 7. **Recursion** — tail recursion as infinite loop; counting bricks as memory
 
 The recommended age group is grades 3–7 of primary school. Karel is intended as a bridge to Logo and later to Pascal/Java.

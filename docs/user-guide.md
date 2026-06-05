@@ -61,7 +61,7 @@ The **Direct control panel** (bottom right) has buttons for every basic action: 
 
 ### Typing commands
 
-Switch to the **"Príkazovo"** tab in the Direct control panel. Type any Karel command (e.g. `dopredu`) and press **Enter**. You can also call your own procedures this way — they appear as buttons automatically after you write them in the editor.
+Switch to the **"Príkazovo"** tab in the Direct control panel. Type any Karel command (e.g. `forward`) and press **Enter**. You can also call your own procedures this way — they appear as buttons automatically after you write them in the editor.
 
 ---
 
@@ -86,7 +86,7 @@ Type your Karel program in the editor at the bottom. Commands are **highlighted 
 
 ### Speed control
 
-The **Speed slider** in the toolbar controls how fast Karel moves. Slide right for faster, left for slower. You can also use the `pomaly` (slowly) and `rychlo` (quickly) commands inside a program.
+The **Speed slider** in the toolbar controls how fast Karel moves. Slide right for faster, left for slower. You can also use the `slowly` and `quickly` commands inside a program.
 
 ### Example programs
 
@@ -102,14 +102,14 @@ Karel moves on a grid of tiles. The room is bounded by walls on all four sides. 
 
 ### Bricks
 
-- **Small bricks** are placed in front of Karel (`poloz` / `drop`).
-- **Big bricks** are placed in front of Karel (`poloz_velku` / `drop_big`). They are taller and Karel cannot climb over them — they act as internal walls.
+- **Small bricks** are placed in front of Karel (`drop`).
+- **Big bricks** are placed in front of Karel (`drop_big`). They are taller and Karel cannot climb over them — they act as internal walls.
 - Karel can climb **at most 1 small brick** height difference between his tile and the tile in front.
-- Karel picks up small bricks with `zdvihni` / `pick`.
+- Karel picks up small bricks with `pick`.
 
 ### Marks
 
-Marks are flat symbols placed **on Karel's current tile** (`oznac` / `mark`). Karel can remove a mark with `odznac` / `clear`. Marks are useful for leaving a trail or keeping track of visited tiles.
+Marks are flat symbols placed **on Karel's current tile** (`mark`). Karel can remove a mark with `clear`. Marks are useful for leaving a trail or keeping track of visited tiles.
 
 ### Inventory
 
@@ -122,82 +122,82 @@ If the teacher has set a limit, Karel starts with a fixed number of bricks or ma
 ### Program skeleton
 
 ```
-zaciatok
-  dopredu
-  vlavo
-  dopredu
-koniec
+begin
+  forward
+  left
+  forward
+end
 ```
 
 ### Custom commands (procedures)
 
 ```
-prikaz MojPrikaz
-zaciatok
-  dopredu
-  dopredu
-koniec
+procedure MyCommand
+begin
+  forward
+  forward
+end
 
-zaciatok
-  MojPrikaz
-  vlavo
-  MojPrikaz
-koniec
+begin
+  MyCommand
+  left
+  MyCommand
+end
 ```
 
 ### Repeat loop
 
 ```
-opakuj 4 krat
-  dopredu
-  vlavo
-koniec
+repeat 4 times
+  forward
+  left
+end
 ```
 
 ### While loop
 
 ```
-kym nie stena rob
-  dopredu
-koniec
+while not wall do
+  forward
+end
 ```
 
 ### If statement
 
 ```
-ak tehla potom
-  zdvihni
-inak
-  dopredu
-koniec
+if brick then
+  pick
+else
+  forward
+end
 ```
 
 ### All commands
 
 | Command | Effect |
 |---------|--------|
-| `dopredu` | Move forward |
-| `dozadu` | Move backward |
-| `vlavo` | Turn left |
-| `vpravo` | Turn right |
-| `poloz` | Place small brick in front |
-| `zdvihni` | Pick up small brick in front |
-| `poloz_velku` | Place big brick in front |
-| `oznac` | Place mark on current tile |
-| `odznac` | Remove mark from current tile |
-| `pomaly` | Slow down |
-| `rychlo` | Speed up |
+| `forward` | Move forward |
+| `back` | Move backward |
+| `left` | Turn left |
+| `right` | Turn right |
+| `drop` | Place small brick in front |
+| `pick` | Pick up small brick in front |
+| `drop_big` | Place big brick in front |
+| `mark` | Place mark on current tile |
+| `clear` | Remove mark from current tile |
+| `slowly` | Slow down |
+| `quickly` | Speed up |
 
 ### Conditions
 
 | Condition | True when |
 |-----------|-----------|
-| `stena` | Wall or border in front |
-| `tehla` | Any brick in front |
-| `volno` | No brick in front |
-| `znacka` | Mark on Karel's tile |
+| `wall` | Wall or border in front |
+| `brick` | Any brick in front |
+| `free` | No brick in front |
+| `sign` | Mark on Karel's tile |
 
-All conditions can be negated: `nie stena`, `nie tehla`, etc.
+All conditions can be negated: `not wall`, `not brick`, etc.
 
 ---
 
