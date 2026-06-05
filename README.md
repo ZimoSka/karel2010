@@ -1,5 +1,7 @@
 # Karel 2010
 
+> 🇸🇰 [Slovenská verzia / Slovak version](README.sk.md)
+
 An educational programming simulator based on Karel the Robot — a Python port of the original project from 2005 (Turbo Pascal/Delphi, by Mgr. Zimo).
 
 ## Overview
