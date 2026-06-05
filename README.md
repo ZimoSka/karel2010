@@ -13,6 +13,7 @@ Features:
 - **Full interpreter** for the Karel language (procedures, loops, conditionals)
 - **XML world format** for saving and loading worlds (`.karxml`)
 - **World settings editor** — restrict commands, lock camera, limit brick inventory
+- **Mission system** — define goal conditions, evaluate success/failure after the program runs
 
 ## Running
 
@@ -57,14 +58,14 @@ koniec               # end
 
 **Control structures:**
 ```
-opakuj 5 krat ... koniec          # repeat 5 times
-kym stena rob ... koniec          # while wall do
+opakuj 5 krat ... koniec            # repeat 5 times
+kym stena rob ... koniec            # while wall do
 ak tehla potom ... inak ... koniec  # if brick then ... else
 ```
 
 ## World File Format (.karxml)
 
-Worlds are stored as XML files:
+Worlds are stored as XML files. A complete example:
 
 ```xml
 <world width="10" height="8">
@@ -75,15 +76,31 @@ Worlds are stored as XML files:
   <bricks>
     <brick x="3" y="1" count="2"/>
   </bricks>
+  <bigbricks>
+    <bigbrick x="5" y="2" count="1"/>
+  </bigbricks>
   <marks>
     <mark x="5" y="0"/>
   </marks>
+
+  <title>My World</title>
+  <intro><![CDATA[<p>Task description shown to the student.</p>]]></intro>
+
   <settings>
     <brick_limit>5</brick_limit>
     <disabled_cmds>BACK</disabled_cmds>
     <camera_locked>true</camera_locked>
   </settings>
-  <title>My World</title>
+
+  <mission eval="on_finish" reset_on_failure="true">
+    <condition type="karel_pos" x="5" y="3"/>
+    <condition type="cell_state" x="2" y="2" bricks="3"/>
+    <condition type="snapshot">
+      <bricks><row>0,0,0,...</row></bricks>
+      <marks><row>0,1,0,...</row></marks>
+    </condition>
+  </mission>
+
   <program>zaciatok
   dopredu
 koniec</program>
@@ -94,24 +111,70 @@ koniec</program>
 
 ## World Settings
 
-Open via `Edit → World Settings...` to configure:
+Open via `Edit → World Settings...` to configure all world parameters across six tabs:
 
 | Tab | Options |
 |-----|---------|
+| **Description** | World title; task description / intro text (HTML editor with B/I/U/H1–H3 toolbar) |
 | **Room** | Width, height, Karel starting position and direction |
 | **Inventory** | Max small bricks / big bricks / marks (or unlimited) |
 | **Commands** | Disable specific commands (shown red in editor, buttons greyed out) |
 | **View** | Lock camera to a fixed angle |
+| **Mission** | Goal conditions, evaluation mode, success/failure messages |
+
+## Mission System
+
+The mission system lets a teacher define what the student must achieve. It is configured in the **Mission** tab of the World Settings dialog.
+
+### Evaluation modes
+
+| Mode | Behaviour |
+|------|-----------|
+| **After program ends** | Conditions are checked once when the program finishes naturally. |
+| **After every step** | Conditions are checked after each Karel action (including direct control). The program stops automatically when all conditions are satisfied. |
+
+**Reset on failure** (available in *After program ends* mode): if the conditions are not met, the world automatically resets to its initial state while the student's program remains in the editor.
+
+### Condition types
+
+| Type | Description |
+|------|-------------|
+| **Karel position** | Karel must be at a specific X, Y coordinate and/or standing on a stack of a given height. Any combination of X / Y / height can be checked independently. |
+| **Cell state** | A specific cell must contain an exact number of small bricks, big bricks, and/or a mark. Multiple cells can be checked with separate conditions. |
+| **Room snapshot** | The entire room (bricks, big bricks, marks) must match a snapshot captured at design time. Optionally includes Karel's position and direction. |
+
+All conditions in the list must be satisfied simultaneously for the mission to succeed.
+
+### XML format
+
+```xml
+<mission eval="on_finish" reset_on_failure="true">
+  <condition type="karel_pos" x="5" y="3"/>
+  <condition type="karel_pos" y="2" height="4"/>
+  <condition type="cell_state" x="1" y="1" marks="true" bricks="2"/>
+  <condition type="snapshot" karel_x="5" karel_y="3" karel_dir="N">
+    <bricks>
+      <row>0,0,0,2,0</row>
+      ...
+    </bricks>
+    <bigbricks>...</bigbricks>
+    <marks>
+      <row>0,1,0,0,0</row>
+      ...
+    </marks>
+  </condition>
+</mission>
+```
 
 ## Converting Original Worlds
 
-The script `kar_to_xml.py` converts the original binary `.kar` files to XML:
+The script `kar_to_xml.py` converts the original binary `.kar` files to `.karxml`:
 
 ```
 python kar_to_xml.py
 ```
 
-> **Note:** Internal walls cannot be fully decoded from the binary format without the original Pascal source. Border walls and all text content (intro/success/failure messages, embedded programs) are preserved.
+> **Note:** The original Karel format does not use internal walls — big bricks serve as walls instead. Border walls and all text content (intro/success/failure messages, embedded programs) are preserved.
 
 ## Controls
 
@@ -122,10 +185,11 @@ python kar_to_xml.py
 | Zoom | Mouse wheel |
 | Run program | ▶ button or `Program → Run` |
 | Stop | ⏹ button |
-| Reset Karel | ↺ button (returns to starting position) |
+| Reset world | ↺ button (returns Karel and world to starting state) |
 | Direct control | Bottom-right panel — buttons or type a command + Enter |
 
 ## Author
 
 Original: Mgr. Zimo, 2005  
-Python port: 2024
+Python port: 2024  
+https://github.com/ZimoSka/karel2010
