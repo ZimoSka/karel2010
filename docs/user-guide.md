@@ -236,9 +236,9 @@ After your program finishes (or during direct control if the teacher chose "afte
 
 | Problem | Likely cause | Solution |
 |---------|-------------|----------|
-| "Karel narazil do steny" | Tried to walk into a wall | Check the path — add a condition check or turn before moving |
-| "Karel nevie vylesť" | Tried to climb 2+ bricks at once | Build stairs (1 brick at a time) or remove excess bricks |
-| "Príkaz je zakázaný" | Teacher disabled this command | Read the task — you must solve it without that command |
-| "Nemáš žiadne tehly" | Brick inventory is empty | You have used all available bricks |
+| "Karel hit a wall" | Tried to walk into a wall | Check the path — add a condition check or turn before moving |
+| "Karel cannot climb" | Tried to climb 2+ bricks at once | Build stairs (1 brick at a time) or remove excess bricks |
+| "Command is forbidden" | Teacher disabled this command | Read the task — you must solve it without that command |
+| "No bricks left" | Brick inventory is empty | You have used all available bricks |
 | Program seems stuck | Infinite recursion or very slow | Click ⏹ Stop, check for infinite loops/recursion |
 | Run button disabled | Program is still running | Wait for it to finish or click ⏹ Stop |
