@@ -1885,7 +1885,16 @@ class IntroDialog(tk.Toplevel):
         tk.Label(hf, text=title or "Zadanie úlohy", bg='#111135', fg='#44aaff',
                  font=('Arial', 14, 'bold')).pack(anchor='w')
 
-        # Telo — Text widget so scrollbarom
+        # Tlačidlo OK — zabalené PRED expand=True framom, inak by sa stratilo pod ním
+        bf = tk.Frame(self, bg='#111130', pady=8)
+        bf.pack(fill='x', side='bottom')
+        tk.Button(bf, text='OK', command=self.destroy,
+                  bg='#2a5a9a', fg='white', relief='flat', padx=28, pady=5,
+                  font=('Arial', 10, 'bold'), cursor='hand2').pack(side='right', padx=12)
+        self.bind('<Return>', lambda _: self.destroy())
+        self.bind('<Escape>', lambda _: self.destroy())
+
+        # Telo — Text widget so scrollbarom (expand=True musí byť až po OK frame)
         tf = tk.Frame(self, bg=self._BG, padx=16, pady=10)
         tf.pack(fill='both', expand=True)
         sb = tk.Scrollbar(tf, bg='#222244')
@@ -1902,15 +1911,6 @@ class IntroDialog(tk.Toplevel):
         content = self._strip_html(html_msg) if html_msg else "(Žiadne zadanie)"
         txt_w.insert('1.0', content)
         txt_w.configure(state='disabled')   # len na čítanie
-
-        # Tlačidlo OK
-        bf = tk.Frame(self, bg='#111130', pady=8)
-        bf.pack(fill='x')
-        tk.Button(bf, text='OK', command=self.destroy,
-                  bg='#2a5a9a', fg='white', relief='flat', padx=28, pady=5,
-                  font=('Arial', 10, 'bold'), cursor='hand2').pack(side='right', padx=12)
-        self.bind('<Return>', lambda _: self.destroy())
-        self.bind('<Escape>', lambda _: self.destroy())
 
 
 class WorldSettingsDialog(tk.Toplevel):
