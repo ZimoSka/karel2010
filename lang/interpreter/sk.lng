@@ -1,0 +1,36 @@
+# Karel 2010 – Slovak interpreter keywords
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+
+BEGIN      = zaciatok  začiatok
+END        = koniec
+PROCEDURE  = prikaz  príkaz
+REPEAT     = opakuj
+TIMES      = krat  krát
+END_REPEAT = *opakuj
+WHILE      = kym  kým
+NOT        = nie
+DO         = rob
+END_WHILE  = *kym  *kým
+IF         = ak
+THEN       = potom  tak
+ELSE       = inak
+END_IF     = *ak
+FORWARD    = dopredu
+BACK       = dozadu  vzad
+LEFT       = vlavo  vľavo  dolava  doľava
+RIGHT      = vpravo  doprava
+DROP       = poloz  polož
+PICK       = zdvihni  zodvihni
+DROP_BIG   = poloz_velku  poloz_v  polozv
+MARK       = oznac  označ
+CLEAR      = odznac  odznač  ocisti  očisti  cisti  čisti
+WALL       = stena  je_stena
+BRICK      = tehla  je_tehla
+FREE       = volno  voľno
+SIGN       = znacka  značka  je_znacka  je_značka
+FALSE      = nepravda
+TRUE       = pravda
+SLOWLY     = pomaly  spomal
+QUICKLY    = rychlo  rýchlo  pridaj

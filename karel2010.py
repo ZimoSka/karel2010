@@ -190,6 +190,8 @@ class WorldSettings:
         self.disable_procedure = False
         # Max. výška výstupu — o koľko tehiel môže Karel vyskočiť naraz (default 1)
         self.max_climb        = 1
+        # Jazyk programovania pre tento svet ('sk' alebo 'en')
+        self.prog_lang        = 'sk'
         # Zamknúť pohľad kamery
         self.camera_locked    = False
         self.camera_az        = math.radians(225)
@@ -421,10 +423,12 @@ class World:
         s = self.settings
         has_settings = (s.brick_limit!=-1 or s.big_brick_limit!=-1 or s.mark_limit!=-1
                         or s.disabled_cmds or s.disable_procedure or s.camera_locked
-                        or s.max_climb != 1)
+                        or s.max_climb != 1 or s.prog_lang != 'sk')
         if has_settings:
             st = ET.SubElement(root, 'settings')
             ET.SubElement(st,'max_climb').text        = str(s.max_climb)
+            if s.prog_lang != 'sk':
+                ET.SubElement(st,'prog_lang').text    = s.prog_lang
             ET.SubElement(st,'brick_limit').text     = str(s.brick_limit)
             ET.SubElement(st,'big_brick_limit').text = str(s.big_brick_limit)
             ET.SubElement(st,'mark_limit').text      = str(s.mark_limit)
@@ -497,6 +501,11 @@ class World:
             def _gf(tag,d):
                 el=st.find(tag); return float(el.text) if el is not None and el.text else d
             w.settings.max_climb       = _gi('max_climb', 1)
+            pl_el = st.find('prog_lang')
+            w.settings.prog_lang = (pl_el.text.strip().lower()
+                                    if pl_el is not None and pl_el.text else 'sk')
+            if w.settings.prog_lang not in _PROG_LANGS:
+                w.settings.prog_lang = 'sk'
             w.settings.brick_limit     = _gi('brick_limit',-1)
             w.settings.big_brick_limit = _gi('big_brick_limit',-1)
             w.settings.mark_limit      = _gi('mark_limit',-1)
@@ -528,8 +537,47 @@ class World:
 # LEXER  +  PARSER  +  INTERPRETER
 # =========================================================================
 
-KW={}
-def _bkw():
+KW: dict = {}            # word.lower() → TOKEN  (všetky jazyky naraz)
+_LANG_PRIMARY: dict = {} # lang_code → {TOKEN: primary_word}
+_INTERP_LANG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                'lang', 'interpreter')
+
+def _load_all_interpreter_langs() -> None:
+    """Načíta všetky lang/interpreter/*.lng súbory.
+    KW sa naplní všetkými kľúčovými slovami zo všetkých jazykov —
+    interpreter tak akceptuje ľubovoľný jazyk súčasne.
+    _LANG_PRIMARY uloží primárne slovo (prvé) pre každý jazyk a token."""
+    global KW, _LANG_PRIMARY
+    KW.clear(); _LANG_PRIMARY.clear()
+    if not os.path.isdir(_INTERP_LANG_DIR):
+        _fallback_bkw(); return
+    for fname in sorted(os.listdir(_INTERP_LANG_DIR)):
+        if not fname.endswith('.lng'): continue
+        lang = fname[:-4].lower()   # 'sk', 'en', 'de', …
+        _LANG_PRIMARY[lang] = {}
+        path = os.path.join(_INTERP_LANG_DIR, fname)
+        try:
+            with open(path, encoding='utf-8') as f:
+                lines = f.readlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'): continue
+            if '=' not in line: continue
+            token, _, rest = line.partition('=')
+            token = token.strip().upper()
+            words = rest.split()
+            if not words: continue
+            _LANG_PRIMARY[lang][token] = words[0].lower()
+            for w in words:
+                KW[w.lower()] = token
+    # Ak žiadne súbory nenašiel, použi hardcoded zálohu
+    if not KW:
+        _fallback_bkw()
+
+def _fallback_bkw() -> None:
+    """Núdzový fallback — hardcoded SK+EN kľúčové slová ak chýbajú .lng súbory."""
     for t,vs in [
         ('BEGIN',['begin','zaciatok','začiatok']),('END',['end','koniec']),
         ('PROCEDURE',['procedure','prikaz','príkaz']),
@@ -554,8 +602,37 @@ def _bkw():
         ('SLOWLY',['slowly','slow','pomaly','spomal']),
         ('QUICKLY',['quickly','quick','rychlo','rýchlo','pridaj']),
     ]:
-        for v in vs: KW[v]=t
-_bkw()
+        for v in vs: KW[v] = t
+    _LANG_PRIMARY['sk'] = {
+        'BEGIN':'zaciatok','END':'koniec','PROCEDURE':'prikaz','REPEAT':'opakuj',
+        'TIMES':'krat','END_REPEAT':'*opakuj','WHILE':'kym','NOT':'nie','DO':'rob',
+        'END_WHILE':'*kym','IF':'ak','THEN':'potom','ELSE':'inak','END_IF':'*ak',
+        'FORWARD':'dopredu','BACK':'dozadu','LEFT':'vlavo','RIGHT':'vpravo',
+        'DROP':'poloz','PICK':'zdvihni','DROP_BIG':'poloz_velku',
+        'MARK':'oznac','CLEAR':'odznac','WALL':'stena','BRICK':'tehla',
+        'FREE':'volno','SIGN':'znacka','FALSE':'nepravda','TRUE':'pravda',
+        'SLOWLY':'pomaly','QUICKLY':'rychlo',
+    }
+    _LANG_PRIMARY['en'] = {
+        'BEGIN':'begin','END':'end','PROCEDURE':'procedure','REPEAT':'repeat',
+        'TIMES':'times','END_REPEAT':'*repeat','WHILE':'while','NOT':'not','DO':'do',
+        'END_WHILE':'*while','IF':'if','THEN':'then','ELSE':'else','END_IF':'*if',
+        'FORWARD':'forward','BACK':'back','LEFT':'left','RIGHT':'right',
+        'DROP':'drop','PICK':'pick','DROP_BIG':'drop_big',
+        'MARK':'mark','CLEAR':'clear','WALL':'wall','BRICK':'brick',
+        'FREE':'free','SIGN':'sign','FALSE':'false','TRUE':'true',
+        'SLOWLY':'slowly','QUICKLY':'quickly',
+    }
+
+_load_all_interpreter_langs()
+
+def _primary_kw(token: str, lang: str) -> str:
+    """Vráti primárne kľúčové slovo pre daný token v danom jazyku.
+    Fallback: EN, potom lowercase token."""
+    return (_LANG_PRIMARY.get(lang, {}).get(token)
+            or _LANG_PRIMARY.get('en', {}).get(token)
+            or token.lower())
+
 # Spätné mapovanie: token → [varianty slov]  (pre highlighting zakázaných príkazov)
 _KW_REVERSE: dict = {}
 for _kw, _kt in KW.items():
@@ -1250,45 +1327,64 @@ class NavigatorPanel(tk.Frame):
         self.cam=cam; self.on_change=on_change; self._build()
 
     def _build(self):
-        tk.Label(self,text="Navigátor",bg='#111130',fg='#aaaacc',
-                 font=('Arial',9,'bold'),pady=3).pack(fill='x')
+        self._nav_title=tk.Label(self,text=_T('nav.title'),bg='#111130',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=3)
+        self._nav_title.pack(fill='x')
 
-        # Inventár
+        # Inventár — hlavičky
         ifr=tk.Frame(self,bg='#0a0a1c'); ifr.pack(fill='x',padx=4,pady=2)
-        for c,(h,fg) in enumerate([('Predmet','#8888cc'),('Zostatok','#88ffcc')]):
-            tk.Label(ifr,text=h,bg='#141430',fg=fg,font=('Arial',8,'bold'),
-                     padx=4,relief='flat').grid(row=0,column=c,sticky='ew')
+        self._inv_hdr = []
+        for c,(key,fg) in enumerate([('nav.col_item','#8888cc'),('nav.col_left','#88ffcc')]):
+            lbl=tk.Label(ifr,text=_T(key),bg='#141430',fg=fg,font=('Arial',8,'bold'),
+                     padx=4,relief='flat')
+            lbl.grid(row=0,column=c,sticky='ew')
+            self._inv_hdr.append((lbl,key))
         ifr.columnconfigure(1,weight=1)
         self._inv_vars=[tk.StringVar(value='∞') for _ in range(3)]
-        for r,(n,var) in enumerate(zip(['Malá Tehla','Veľká Tehla','Značka'],
-                                        self._inv_vars),1):
-            tk.Label(ifr,text=n,bg='#0a0a1c',fg='#ccccdd',font=('Arial',8),
-                     anchor='w',padx=4).grid(row=r,column=0,sticky='ew')
+        self._inv_row_lbls=[]
+        for r,(key,var) in enumerate(zip(['nav.small_brick','nav.big_brick','nav.mark'],
+                                          self._inv_vars),1):
+            lbl=tk.Label(ifr,text=_T(key),bg='#0a0a1c',fg='#ccccdd',font=('Arial',8),
+                         anchor='w',padx=4)
+            lbl.grid(row=r,column=0,sticky='ew')
             tk.Label(ifr,textvariable=var,bg='#0a0a1c',fg='#44ffaa',
                      font=('Arial',9,'bold')).grid(row=r,column=1)
+            self._inv_row_lbls.append((lbl,key))
 
-        # Preset tlačidlá
+        # Preset tlačidlá pohľadu
         bf=tk.Frame(self,bg='#0a0a1c'); bf.pack(fill='x',padx=4)
         self._preset_btns=[]
-        for txt,az,el in [("↙ Def",225,28),("↖ Pred",180,20),
-                           ("⬆ Vrch",225,85),("↔ Bok",135,18)]:
+        self._preset_btn_keys=[]
+        for key,az,el in [('nav.view_def',225,28),('nav.view_front',180,20),
+                           ('nav.view_top',225,85), ('nav.view_side',135,18)]:
             def mk(a,e):
                 def f():
                     self.cam.az=math.radians(a); self.cam.el=math.radians(e)
                     self.render_axes()
                     if self.on_change: self.on_change()
                 return f
-            b=tk.Button(bf,text=txt,command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
+            b=tk.Button(bf,text=_T(key),command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
                       relief='flat',font=('Arial',8),padx=3,pady=2,
                       cursor='hand2',activebackground='#3333aa',
                       activeforeground='white')
             b.pack(side='left',expand=True,fill='x',padx=1)
             self._preset_btns.append(b)
+            self._preset_btn_keys.append(key)
 
         tk.Checkbutton(self,text="Voľný pohyb",bg='#0a0a1c',fg='#888899',
                        selectcolor='#1a1a44',activebackground='#0a0a1c',
                        font=('Arial',8)).pack(anchor='w',padx=6,pady=2)
         self.render_axes()
+
+    def retranslate(self):
+        """Aktualizuje všetky labely Navigátora po zmene jazyka GUI."""
+        self._nav_title.configure(text=_T('nav.title'))
+        for lbl,key in self._inv_hdr:
+            lbl.configure(text=_T(key))
+        for lbl,key in self._inv_row_lbls:
+            lbl.configure(text=_T(key))
+        for btn,key in zip(self._preset_btns, self._preset_btn_keys):
+            btn.configure(text=_T(key))
 
     def set_camera_locked(self, locked):
         """Zakáže/povolí preset tlačidlá pohľadu."""
@@ -1491,12 +1587,15 @@ class ControlPanel(tk.Frame):
         self._build()
 
     def _build(self):
-        tk.Label(self,text="Ovládanie Karela",bg='#111130',fg='#aaaacc',
-                 font=('Arial',9,'bold'),pady=3).pack(fill='x')
-        nb=ttk.Notebook(self); nb.pack(fill='both',expand=True,padx=3,pady=2)
-        t1=tk.Frame(nb,bg='#0a0a1c'); nb.add(t1,text='Graficky')
-        t2=tk.Frame(nb,bg='#0a0a1c'); nb.add(t2,text='Príkazovo')
-        self._build_graphic(t1); self._build_cmdtab(t2)
+        self._title_lbl=tk.Label(self,text=_T('control.title'),bg='#111130',fg='#aaaacc',
+                 font=('Arial',9,'bold'),pady=3)
+        self._title_lbl.pack(fill='x')
+        self._nb=ttk.Notebook(self); self._nb.pack(fill='both',expand=True,padx=3,pady=2)
+        self._t1=tk.Frame(self._nb,bg='#0a0a1c')
+        self._t2=tk.Frame(self._nb,bg='#0a0a1c')
+        self._nb.add(self._t1,text=_T('control.tab_graphic'))
+        self._nb.add(self._t2,text=_T('control.tab_command'))
+        self._build_graphic(self._t1); self._build_cmdtab(self._t2)
 
     def _build_graphic(self,p):
         # ---- Pohybové šípky (ľavý stĺpec) + Akcie (pravý stĺpec) ----
@@ -1505,7 +1604,7 @@ class ControlPanel(tk.Frame):
         self._btn_refs: dict = {}   # cmd -> Button widget
         self._btn_bgs:  dict = {}   # cmd -> original bg
 
-        # Šípky
+        # Pohybové šípky — ikony sú jasné, príkazy sú pevné (interpreter ich aj tak akceptuje obe)
         af=tk.Frame(main,bg='#0a0a1c'); af.grid(row=0,column=0,sticky='n',padx=(0,4))
         def ab(txt,r,c,cmd,bg='#1a2a44'):
             b=tk.Button(af,text=txt,command=lambda:self._do(cmd),
@@ -1516,33 +1615,60 @@ class ControlPanel(tk.Frame):
             self._btn_refs[cmd]=b; self._btn_bgs[cmd]=bg
         ab('▲',0,1,'dopredu','#1a3a1a')
         ab('◀',1,0,'vlavo',  '#2a2a1a')
-        # stred — zobrazí smer Karela
         self._dir_lbl=tk.Label(af,text='→',fg='#44cc88',bg='#0a0a1c',
                                 font=('Arial',16,'bold'),width=2)
         self._dir_lbl.grid(row=1,column=1)
         ab('▶',1,2,'vpravo', '#2a2a1a')
         ab('▼',2,1,'dozadu', '#3a1a1a')
 
-        # Akcie (pravý stĺpec)
-        rf=tk.Frame(main,bg='#0a0a1c'); rf.grid(row=0,column=1,sticky='nsew')
-        def act(txt,cmd,bg,row,col):
-            b=tk.Button(rf,text=txt,command=lambda c=cmd:self._do(c),
-                      bg=bg,fg='white',font=('Arial',8,'bold'),
-                      relief='flat',cursor='hand2',pady=3,
-                      activebackground='#334466',bd=0,wraplength=80)
-            b.grid(row=row,column=col,sticky='ew',padx=2,pady=2)
-            self._btn_refs[cmd]=b; self._btn_bgs[cmd]=bg
-        rf.columnconfigure(0,weight=1); rf.columnconfigure(1,weight=1)
+        # Akcie (pravý stĺpec) — label aj príkaz závisia od prog_lang
+        self._act_frame = tk.Frame(main,bg='#0a0a1c')
+        self._act_frame.grid(row=0,column=1,sticky='nsew')
+        self._act_frame.columnconfigure(0,weight=1); self._act_frame.columnconfigure(1,weight=1)
+        self._act_btn_specs = [
+            # (action_key, bg, row, col)
+            ('drop',     '#1a2a3a', 0, 0),
+            ('drop_big', '#1a1a3a', 0, 1),
+            ('pick',     '#2a1a3a', 1, 0),
+            ('mark',     '#1a3a2a', 1, 1),
+            ('clear',    '#2a3a1a', 2, 0),
+        ]
+        self._act_btns: dict = {}   # action_key → Button
+        self._rebuild_act_buttons()
 
-        act('Polož\ntehlu',     'poloz',       '#1a2a3a', 0, 0)
-        act('Polož\nveľkú',     'poloz_velku', '#1a1a3a', 0, 1)
-        act('Zdvihni\ntehlu',   'zdvihni',     '#2a1a3a', 1, 0)
-        act('Označ\n★',         'oznac',       '#1a3a2a', 1, 1)
-        act('Odznač\n★',        'odznac',      '#2a3a1a', 2, 0)
+    def _rebuild_act_buttons(self):
+        """Prekreslí akčné tlačidlá podľa aktuálneho _prog_btns slovníka."""
+        for w in self._act_frame.winfo_children():
+            w.destroy()
+        self._act_btns.clear()
+        for action, bg, row, col in self._act_btn_specs:
+            label, cmd = _prog_btn(action)
+            b=tk.Button(self._act_frame, text=label, command=lambda c=cmd: self._do(c),
+                      bg=bg, fg='white', font=('Arial',8,'bold'),
+                      relief='flat', cursor='hand2', pady=3,
+                      activebackground='#334466', bd=0, wraplength=80)
+            b.grid(row=row, column=col, sticky='ew', padx=2, pady=2)
+            self._btn_refs[cmd] = b; self._btn_bgs[cmd] = bg
+            self._act_btns[action] = b
+
+    def set_prog_lang(self, lang: str):
+        """Prepne jazyk akčných tlačidiel podľa prog_lang sveta."""
+        _switch_prog_lang(lang)
+        self._rebuild_act_buttons()
+        self.apply_restrictions(self.get_world().settings if hasattr(self,'get_world') else None)
+
+    def retranslate(self):
+        """Aktualizuje všetky UI labely po zmene jazyka GUI."""
+        self._title_lbl.configure(text=_T('control.title'))
+        self._nb.tab(self._t1, text=_T('control.tab_graphic'))
+        self._nb.tab(self._t2, text=_T('control.tab_command'))
+        if hasattr(self,'_cmd_prompt_lbl'):
+            self._cmd_prompt_lbl.configure(text=_T('control.cmd_prompt'))
 
     def _build_cmdtab(self,p):
-        tk.Label(p,text="Príkaz (Enter = vykonaj):",bg='#0a0a1c',fg='#8888aa',
-                 font=('Arial',8)).pack(anchor='w',padx=6,pady=(6,0))
+        self._cmd_prompt_lbl=tk.Label(p,text=_T('control.cmd_prompt'),bg='#0a0a1c',fg='#8888aa',
+                 font=('Arial',8))
+        self._cmd_prompt_lbl.pack(anchor='w',padx=6,pady=(6,0))
         self._ent=tk.Entry(p,bg='#04040e',fg='#d4d4d4',font=('Consolas',11),
                             insertbackground='white',relief='flat')
         self._ent.pack(fill='x',padx=6,pady=3)
@@ -2077,6 +2203,19 @@ class WorldSettingsDialog(tk.Toplevel):
         tk.Label(cf, text='tehiel  (0 = Karel nemôže vyliezť, 1 = default)',
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')
                  ).grid(row=0,column=2,sticky='w',padx=(6,8))
+        # Jazyk programovania
+        lf = self._frame(p, 'Jazyk programovania'); lf.pack(fill='x')
+        self._prog_lang_var = tk.StringVar(value=w.settings.prog_lang)
+        tk.Label(lf, text='Žiaci programujú v:',
+                 bg=self._BG, fg=self._FG, font=('Arial',9)
+                 ).grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
+        lbf = tk.Frame(lf,bg=self._BG); lbf.grid(row=0,column=1,sticky='w')
+        for lang,lbl in [('sk','Slovenčina (dopredu, vlavo…)'),
+                          ('en','English (forward, left…)')]:
+            tk.Radiobutton(lbf, text=lbl, variable=self._prog_lang_var, value=lang,
+                           bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
+                           activebackground=self._BG, font=('Arial',9)
+                           ).pack(anchor='w', padx=4, pady=2)
 
     def _upd_hnote(self):
         try:
@@ -2285,6 +2424,7 @@ class WorldSettingsDialog(tk.Toplevel):
         w.karel_dir = Direction.from_str(self._dir_var.get())
         try:   s.max_climb = max(0, int(self._max_climb_var.get()))
         except (ValueError, tk.TclError): s.max_climb = 1
+        s.prog_lang = self._prog_lang_var.get()
         # 3. Zásoby
         for key,(unl,cnt) in self._inv.items():
             try:   val = -1 if unl.get() else max(0,int(cnt.get()))
@@ -2348,43 +2488,44 @@ class App(tk.Tk):
             return m
 
         # Edituj — ukladanie sveta a nastavenia vyžadujú rolu teacher+
-        e=sub("Edituj")
-        e.add_command(label="Otvoriť program",command=self._open_prg)
-        e.add_command(label="Uložiť program", command=self._save_prg)
+        e=sub(_T('menu.edit'))
+        e.add_command(label=_T('menu.open_program'), command=self._open_prg)
+        e.add_command(label=_T('menu.save_program'), command=self._save_prg)
         e.add_separator()
-        e.add_command(label="Otvoriť svet",  command=self._open_world)
-        e.add_command(label="Uložiť svet",   command=self._save_world)
+        e.add_command(label=_T('menu.open_world'),   command=self._open_world)
+        e.add_command(label=_T('menu.save_world'),   command=self._save_world)
         e.add_separator()
-        e.add_command(label="Uložiť svet ako XML",  command=self._save_world_xml)
+        e.add_command(label=_T('menu.save_world_xml'), command=self._save_world_xml)
         e.add_separator()
-        e.add_command(label="⚙  Nastavenia sveta...", command=self._settings_editor)
-        self._menu_edit = e   # referencie pre apply_role_to_ui
+        e.add_command(label=_T('menu.world_settings'), command=self._settings_editor)
+        self._menu_edit = e
 
-        p=sub("Pohľad")
-        p.add_command(label="Reset pohľadu",
+        p=sub(_T('menu.view'))
+        p.add_command(label=_T('menu.reset_view'),
                       command=lambda:[setattr(self._canvas.cam,'az',math.radians(225)),
                                       setattr(self._canvas.cam,'el',math.radians(28)),
                                       self._canvas.render(),
                                       self._nav.render_axes()])
 
-        pr=sub("Program")
-        pr.add_command(label="Spustiť ▶", command=self._run)
-        pr.add_command(label="Stop    ⏹", command=self._stop)
-        pr.add_command(label="Reset   ↺", command=self._reset)
+        pr=sub(_T('menu.program'))
+        pr.add_command(label=_T('menu.run_menu'),   command=self._run)
+        pr.add_command(label=_T('menu.stop_menu'),  command=self._stop)
+        pr.add_command(label=_T('menu.reset_menu'), command=self._reset)
 
-        # Nastavenia — viditeľné vždy, ale zmena roly len ak je .ini zapisateľné
-        n=sub("Nastavenia")
-        n.add_command(label="Zmeniť úroveň...", command=self._change_role)
+        # Nastavenia
+        n=sub(_T('menu.settings'))
+        n.add_command(label=_T('menu.change_role'),     command=self._change_role)
+        n.add_command(label=_T('menu.global_settings'), command=self._global_settings)
         self._menu_nast = n
 
-        h=sub("Pomoc")
-        h.add_command(label="O programe",command=self._about)
+        h=sub(_T('menu.help'))
+        h.add_command(label=_T('menu.about'), command=self._about)
 
     def _apply_role_to_ui(self):
         """Skryje / zobrazí položky menu podľa aktuálnej roly."""
         role = self._role
-        is_teacher = _ROLES.index(role) >= _ROLES.index('teacher')  # teacher alebo admin
-        # is_admin = role == 'admin'  # rezervované pre budúce globálne nastavenia
+        is_teacher = _ROLES.index(role) >= _ROLES.index('teacher')
+        is_admin   = role == 'admin'
 
         e = self._menu_edit
         # Indexy položiek v menu Edituj:
@@ -2392,13 +2533,36 @@ class App(tk.Tk):
         # 2 separator, 3 Otvoriť svet, 4 Uložiť svet,
         # 5 separator, 6 Uložiť svet ako XML,
         # 7 separator, 8 ⚙ Nastavenia sveta
-        teacher_items = [4, 6, 8]   # indexy vyhradené pre teachera+
+        teacher_items = [4, 6, 8]
         for idx in teacher_items:
             e.entryconfigure(idx, state='normal' if is_teacher else 'disabled')
+
+        # Globálne nastavenia — len admin (index 1 v menu Nastavenia)
+        self._menu_nast.entryconfigure(1, state='normal' if is_admin else 'disabled')
 
         # Titulok okna — zobrazuje rolu
         lbl = _ROLE_LABEL.get(role, role)
         self.title(f"Karel 2010  [{lbl}]")
+
+    def _retranslate_ui(self):
+        """Prekreslí všetky preložiteľné prvky UI po zmene jazyka GUI."""
+        # Menu — najjednoduchšie prebudiť celé menu znovu
+        self._build_menu()
+        self._apply_role_to_ui()
+        # Toolbar labely
+        self._intro_btn.configure(text=_T('toolbar.task'))
+        self._run_btn.configure(text=_T('toolbar.run'))
+        self._stop_btn.configure(text=_T('toolbar.stop'))
+        self._reset_btn.configure(text=_T('toolbar.reset'))
+        self._speed_lbl.configure(text=_T('toolbar.speed'))
+        self._examples_lbl.configure(text=_T('toolbar.examples'))
+        # Panely
+        self._nav.retranslate()
+        self._ctrl.retranslate()
+
+    def _global_settings(self):
+        """Otvorí dialóg globálnych nastavení (len pre admina)."""
+        GlobalSettingsDialog(self)
 
     def _change_role(self):
         """Zmení rolu v karel.ini ak má používateľ právo zápisu."""
@@ -2476,22 +2640,24 @@ class App(tk.Tk):
                       activebackground='#4477bb',activeforeground='white',bd=0)
             b.pack(side='left',padx=2); return b
         # Tlačidlo Zadanie — zobrazí intro_html aktuálneho sveta
-        self._intro_btn=btn("📋 Zadanie", self._show_intro, '#2a4a7a')
+        self._intro_btn=btn(_T('toolbar.task'), self._show_intro, '#2a4a7a')
         tk.Frame(bar,width=8,bg='#111130').pack(side='left')
-        self._run_btn=btn("▶ Spustiť",self._run,'#1a6a2a')
-        btn("⏹ Stop",   self._stop,'#6a1a1a')
-        btn("↺ Reset",  self._reset,'#4a4a1a')
+        self._run_btn=btn(_T('toolbar.run'),  self._run,  '#1a6a2a')
+        self._stop_btn=btn(_T('toolbar.stop'), self._stop, '#6a1a1a')
+        self._reset_btn=btn(_T('toolbar.reset'),self._reset,'#4a4a1a')
         tk.Frame(bar,width=14,bg='#111130').pack(side='left')
-        tk.Label(bar,text="Rýchlosť:",bg='#111130',fg='#ccc',
-                 font=('Arial',10)).pack(side='left')
+        self._speed_lbl=tk.Label(bar,text=_T('toolbar.speed'),bg='#111130',fg='#ccc',
+                 font=('Arial',10))
+        self._speed_lbl.pack(side='left')
         self._spd=tk.DoubleVar(value=0.25)
         ttk.Scale(bar,from_=0.02,to=2.0,orient='horizontal',
                   variable=self._spd,length=100,
                   command=lambda v:setattr(self._interp,'delay',round(2.02-float(v),3))
                   ).pack(side='left',padx=4)
         tk.Frame(bar,width=14,bg='#111130').pack(side='left')
-        tk.Label(bar,text="Príklady:",bg='#111130',fg='#ccc',
-                 font=('Arial',10)).pack(side='left')
+        self._examples_lbl=tk.Label(bar,text=_T('toolbar.examples'),bg='#111130',fg='#ccc',
+                 font=('Arial',10))
+        self._examples_lbl.pack(side='left')
         self._exv=tk.StringVar()
         cb=ttk.Combobox(bar,textvariable=self._exv,values=list(EXAMPLES.keys()),
                          state='readonly',width=22)
@@ -2591,6 +2757,7 @@ class App(tk.Tk):
         self._nav.update_inventory(self._world)
         self._nav.set_camera_locked(s.camera_locked)
         self._ctrl.apply_restrictions(s)
+        self._ctrl.set_prog_lang(s.prog_lang)   # aktualizuje akčné tlačidlá podľa jazyka sveta
         self._prog.set_disabled_cmds(s.disabled_cmds, s.disable_procedure)
 
     def _on_step(self):
@@ -2737,6 +2904,112 @@ _INI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'karel.ini'
 _ROLES      = ['student', 'teacher', 'admin']
 _ROLE_LABEL = {'student': 'Žiak',  'teacher': 'Učiteľ', 'admin': 'Admin'}
 
+# -------------------------------------------------------------------------
+# JAZYKOVÁ INFRAŠTRUKTÚRA  /  LANGUAGE INFRASTRUCTURE
+# -------------------------------------------------------------------------
+
+_LANG_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lang')
+_UI_LANGS   = ['sk', 'en']
+_PROG_LANGS = ['sk', 'en']
+
+# Aktuálny prekladový slovník — naplní sa pri štarte cez _load_ui_lang()
+_ui_strings:        dict = {}
+_prog_action_labels: dict = {}  # TOKEN → display label  (z prog_lang súboru)
+_current_prog_lang:  str  = 'sk'
+
+def _load_ui_lang(lang: str = 'sk') -> None:
+    """Načíta lang/{lang}.ini do _ui_strings (všetky sekcie okrem action_labels)."""
+    global _ui_strings
+    path = os.path.join(_LANG_DIR, f'{lang}.ini')
+    if not os.path.exists(path):
+        path = os.path.join(_LANG_DIR, 'sk.ini')
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(path, encoding='utf-8')
+    flat: dict = {}
+    for sec in cfg.sections():
+        for key, val in cfg.items(sec):
+            flat[f'{sec}.{key}'] = val.strip()
+    _ui_strings = flat
+
+def _T(key: str, **fmt) -> str:
+    """Vráti preložený reťazec pre daný kľúč (sekcia.kľúč).
+    Ak kľúč neexistuje, vráti samotný kľúč ako fallback."""
+    val = _ui_strings.get(key, key)
+    if fmt:
+        try:
+            val = val.format(**fmt)
+        except (KeyError, ValueError):
+            pass
+    return val
+
+# Mapovanie: kľúč akcie (v ControlPanel) → token interpretera
+_ACTION_TOKEN = {
+    'drop':     'DROP',
+    'drop_big': 'DROP_BIG',
+    'pick':     'PICK',
+    'mark':     'MARK',
+    'clear':    'CLEAR',
+}
+
+def _switch_prog_lang(lang: str) -> None:
+    """Prepne aktuálny programovací jazyk — načíta [action_labels] z lang/{lang}.ini."""
+    global _prog_action_labels, _current_prog_lang
+    _current_prog_lang = lang
+    path = os.path.join(_LANG_DIR, f'{lang}.ini')
+    if not os.path.exists(path):
+        path = os.path.join(_LANG_DIR, 'sk.ini')
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(path, encoding='utf-8')
+    labels = {}
+    for key, val in (cfg.items('action_labels') if cfg.has_section('action_labels') else []):
+        labels[key.upper()] = val.replace('\\n', '\n')
+    _prog_action_labels = labels
+
+def _prog_btn(action: str) -> tuple:
+    """Vráti (display_label, karel_command) pre danú akciu.
+    Label pochádza z [action_labels] aktuálneho prog_lang súboru.
+    Príkaz je primárne kľúčové slovo z interpreter/*.lng pre aktuálny prog_lang."""
+    token = _ACTION_TOKEN.get(action, action.upper())
+    label = _prog_action_labels.get(token) or _primary_kw(token, _current_prog_lang)
+    cmd   = _primary_kw(token, _current_prog_lang)
+    return label, cmd
+
+def _ini_read_ui_lang() -> str:
+    """Načíta jazyk UI z karel.ini; fallback 'sk'."""
+    cfg = configparser.ConfigParser()
+    if os.path.exists(_INI_PATH):
+        try:
+            cfg.read(_INI_PATH, encoding='utf-8')
+            lang = cfg.get('ui', 'lang', fallback='sk').strip().lower()
+            if lang in _UI_LANGS:
+                return lang
+        except Exception:
+            pass
+    return 'sk'
+
+def _ini_write_ui_lang(lang: str) -> bool:
+    """Uloží jazyk UI do karel.ini."""
+    cfg = configparser.ConfigParser()
+    if os.path.exists(_INI_PATH):
+        try:
+            cfg.read(_INI_PATH, encoding='utf-8')
+        except Exception:
+            pass
+    if not cfg.has_section('ui'):
+        cfg.add_section('ui')
+    cfg.set('ui', 'lang', lang)
+    try:
+        with open(_INI_PATH, 'w', encoding='utf-8') as f:
+            cfg.write(f)
+        return True
+    except (PermissionError, OSError):
+        return False
+
+# Načítaj predvolené jazyky okamžite (pred vytvorením App)
+_load_ui_lang(_ini_read_ui_lang())
+_switch_prog_lang('sk')   # default prog_lang; _reset_world() ho prepíše podľa sveta
+
+
 def _ini_read_role() -> str:
     """Načíta rolu z karel.ini; ak súbor neexistuje vráti 'admin'."""
     cfg = configparser.ConfigParser()
@@ -2778,6 +3051,80 @@ def _ini_is_writable() -> bool:
         return True
     except (PermissionError, OSError):
         return False
+
+
+class GlobalSettingsDialog(tk.Toplevel):
+    """Globálne nastavenia aplikácie — dostupné len adminovi."""
+    _BG = '#0a0a1c'; _FG = '#ccccee'
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._app = app
+        self.title("Globálne nastavenia")
+        self.configure(bg=self._BG)
+        self.resizable(False, False)
+        self.grab_set(); self.transient(app)
+        self._build()
+        self.update_idletasks()
+        pw, ph = app.winfo_width(), app.winfo_height()
+        px, py = app.winfo_rootx(), app.winfo_rooty()
+        ww, wh = self.winfo_width(), self.winfo_height()
+        self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    def _row(self, parent, label, row):
+        tk.Label(parent, text=label, bg=self._BG, fg=self._FG,
+                 font=('Arial', 10), anchor='w').grid(
+                 row=row, column=0, sticky='w', padx=(16,8), pady=6)
+
+    def _build(self):
+        tk.Label(self, text="Globálne nastavenia", bg='#111135', fg='#44aaff',
+                 font=('Arial', 13, 'bold'), pady=10).pack(fill='x', padx=0)
+
+        gf = tk.Frame(self, bg=self._BG); gf.pack(fill='both', padx=8, pady=8)
+
+        # --- Jazyk GUI ---
+        self._row(gf, "Jazyk rozhrania (GUI):", 0)
+        self._ui_lang_var = tk.StringVar(value=_ini_read_ui_lang())
+        uf = tk.Frame(gf, bg=self._BG); uf.grid(row=0, column=1, sticky='w', pady=6)
+        for lang, lbl in [('sk', 'Slovenčina'), ('en', 'English')]:
+            tk.Radiobutton(uf, text=lbl, variable=self._ui_lang_var, value=lang,
+                           bg=self._BG, fg=self._FG, selectcolor='#333366',
+                           activebackground=self._BG, font=('Arial', 10)
+                           ).pack(side='left', padx=6)
+
+        # --- Oddeľovač ---
+        tk.Frame(gf, bg='#333355', height=1).grid(
+            row=1, column=0, columnspan=2, sticky='ew', padx=8, pady=4)
+
+        # --- Info ---
+        tk.Label(gf, text="Zmena jazyka GUI sa prejaví okamžite.\n"
+                           "Jazyk programovania sa nastavuje per-svet\nv záložke Miestnosť editora sveta.",
+                 bg=self._BG, fg='#6666aa', font=('Arial', 9),
+                 justify='left').grid(row=2, column=0, columnspan=2, sticky='w', padx=16, pady=(0,8))
+
+        # --- Tlačidlá ---
+        bf = tk.Frame(self, bg='#111130', pady=8); bf.pack(fill='x', side='bottom')
+        tk.Button(bf, text='OK', width=10, command=self._apply,
+                  bg='#2a5a9a', fg='white', relief='flat',
+                  activebackground='#4477bb').pack(side='right', padx=8)
+        tk.Button(bf, text='Zrušiť', width=10, command=self.destroy,
+                  bg='#3a3a55', fg='white', relief='flat',
+                  activebackground='#555577').pack(side='right', padx=4)
+        self.bind('<Return>', lambda _: self._apply())
+        self.bind('<Escape>', lambda _: self.destroy())
+
+    def _apply(self):
+        new_lang = self._ui_lang_var.get()
+        old_lang = _ini_read_ui_lang()
+        if new_lang != old_lang:
+            if not _ini_is_writable():
+                messagebox.showwarning("Chyba",
+                    "Nemáte právo meniť konfiguráciu (karel.ini nie je zapisateľný).")
+                return
+            _ini_write_ui_lang(new_lang)
+            _load_ui_lang(new_lang)
+            self._app._retranslate_ui()
+        self.destroy()
 
 
 class RoleDialog(tk.Toplevel):

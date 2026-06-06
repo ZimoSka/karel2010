@@ -1,0 +1,36 @@
+# Karel 2010 – English interpreter keywords
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+
+BEGIN      = begin
+END        = end
+PROCEDURE  = procedure
+REPEAT     = repeat
+TIMES      = times
+END_REPEAT = *repeat
+WHILE      = while
+NOT        = not
+DO         = do
+END_WHILE  = *while
+IF         = if
+THEN       = then
+ELSE       = else
+END_IF     = *if
+FORWARD    = forward
+BACK       = back
+LEFT       = left
+RIGHT      = right
+DROP       = drop
+PICK       = pick
+DROP_BIG   = drop_big  drop_b  dropb
+MARK       = mark
+CLEAR      = clear  unmark
+WALL       = wall  is_wall  there_is_wall
+BRICK      = brick  is_brick  there_is_brick
+FREE       = free  is_free
+SIGN       = sign  is_sign  there_is_sign
+FALSE      = false
+TRUE       = true
+SLOWLY     = slowly  slow
+QUICKLY    = quickly  quick
