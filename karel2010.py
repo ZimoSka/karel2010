@@ -1677,13 +1677,23 @@ class ControlPanel(tk.Frame):
             ('clear',    '#2a3a1a', 2, 0),
         ]
         self._act_btns: dict = {}   # action_key → Button
+        self._act_btn_cmds: set = set()  # cmd kľúče aktuálnych akčných tlačidiel
         self._rebuild_act_buttons()
 
     def _rebuild_act_buttons(self):
-        """Prekreslí akčné tlačidlá podľa aktuálneho _prog_btns slovníka."""
+        """Prekreslí akčné tlačidlá podľa aktuálneho prog_lang.
+        Staré cmd kľúče sa MUSIA odstrániť z _btn_refs — inak apply_restrictions
+        zavolá .configure() na destroyed widgety (crash pri zmene prog_lang)."""
+        # 1. Vymaž staré záznamy akčných tlačidiel z btn_refs/btn_bgs
+        for old_cmd in self._act_btn_cmds:
+            self._btn_refs.pop(old_cmd, None)
+            self._btn_bgs.pop(old_cmd, None)
+        self._act_btn_cmds.clear()
+        # 2. Zničí staré widgety a zresetuj act_btns
         for w in self._act_frame.winfo_children():
             w.destroy()
         self._act_btns.clear()
+        # 3. Vytvor nové tlačidlá
         for action, bg, row, col in self._act_btn_specs:
             label, cmd = _prog_btn(action)
             b=tk.Button(self._act_frame, text=label, command=lambda c=cmd: self._do(c),
@@ -1693,6 +1703,7 @@ class ControlPanel(tk.Frame):
             b.grid(row=row, column=col, sticky='ew', padx=2, pady=2)
             self._btn_refs[cmd] = b; self._btn_bgs[cmd] = bg
             self._act_btns[action] = b
+            self._act_btn_cmds.add(cmd)
 
     def set_prog_lang(self, lang: str):
         """Prepne jazyk akčných tlačidiel podľa prog_lang sveta."""
