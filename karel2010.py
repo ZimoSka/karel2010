@@ -1760,7 +1760,7 @@ class ControlPanel(tk.Frame):
             method = self._DIRECT.get(cmd_key)
             if method:
                 # Kontrola zakázaných príkazov aj pri priamom volaní
-                tok = self._CMD_TO_TOKEN.get(cmd_key, '')
+                tok = KW.get(cmd_key, '')
                 if tok and tok in w.settings.disabled_cmds:
                     raise KarelError("Príkaz je zakázaný v tomto svete!")
                 getattr(w, method)()
