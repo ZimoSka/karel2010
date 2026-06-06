@@ -48,6 +48,10 @@ Dialóg má šesť záložiek:
 | **Názov sveta** | Krátky názov zobrazený v titulku okna. |
 | **Popis / zadanie úlohy** | HTML text zobrazený žiakovi. Použi panel nástrojov B/I/U/H1/H2/H3 na formátovanie. Opíš úlohu, daj tipy alebo motivačný kontext. |
 
+Zadanie úlohy sa žiakovi zobrazí dvoma spôsobmi:
+- **Automaticky** — dialóg sa otvorí hneď po načítaní sveta (ak pole nie je prázdne).
+- **Na požiadanie** — žiak si ho môže kedykoľvek znova otvoriť tlačidlom **📋 Zadanie** v paneli nástrojov.
+
 **Tipy pre HTML:**
 - Použij `<b>tučné</b>`, `<i>kurzíva</i>`, `<u>podčiarknuté</u>` na zvýraznenie.
 - Použij `<h1>`, `<h2>`, `<h3>` na nadpisy.
@@ -199,6 +203,8 @@ role = teacher
 ```
 
 Platné hodnoty: `student`, `teacher`, `admin`.
+
+Ak súbor neexistuje, aplikácia štartuje s úrovňou **Admin** — čerstvé stiahnutie teda funguje bez akejkoľvek konfigurácie. Obmedzenie prístupu: vytvor `karel.ini` s `role = student` a nastav ho ako read-only pre žiacke OS-účty.
 
 ---
 

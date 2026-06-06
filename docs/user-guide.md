@@ -74,6 +74,10 @@ Type your Karel program in the editor at the bottom. Commands are **highlighted 
 - Commands forbidden by the teacher appear **red**.
 - Comments (`//` or `{ }`) appear greyed out.
 
+### Task description
+
+Click **📋 Zadanie** in the toolbar to show the task description for the current world. If the world has a description, it also appears automatically when the world is opened.
+
 ### Running a program
 
 1. Write your program in the editor.

@@ -1848,6 +1848,71 @@ class MissionResultDialog(tk.Toplevel):
                   font=('Arial',10,'bold'), cursor='hand2').pack(side='right', padx=12)
 
 
+class IntroDialog(tk.Toplevel):
+    """Zobrazí úvodné zadanie úlohy (intro_html) pre aktuálny svet."""
+    _BG = '#0a0a1c'; _FG = '#ccccee'
+
+    def __init__(self, app, title: str, html_msg: str):
+        super().__init__(app)
+        self.title("Zadanie úlohy")
+        self.configure(bg=self._BG)
+        self.resizable(True, True)
+        self.transient(app)
+        self.grab_set()
+        self._build(title, html_msg)
+        self.update_idletasks()
+        # Vycentruj voči rodičovskému oknu
+        pw, ph = app.winfo_width(), app.winfo_height()
+        px, py = app.winfo_rootx(), app.winfo_rooty()
+        ww, wh = min(self.winfo_width(), 520), min(self.winfo_height(), 420)
+        self.geometry(f'{ww}x{wh}+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    @staticmethod
+    def _strip_html(html: str) -> str:
+        txt = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+        txt = re.sub(r'<h[1-6][^>]*>', '\n', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'</h[1-6]>', '\n', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'<p[^>]*>', '\n', txt, flags=re.IGNORECASE)
+        txt = re.sub(r'<[^>]+>', '', txt)
+        for ent, ch in [('&lt;','<'),('&gt;','>'),('&amp;','&'),('&nbsp;',' ')]:
+            txt = txt.replace(ent, ch)
+        return re.sub(r'\n{3,}', '\n\n', txt).strip()
+
+    def _build(self, title: str, html_msg: str):
+        # Hlavička s názvom sveta
+        hf = tk.Frame(self, bg='#111135', pady=12, padx=20)
+        hf.pack(fill='x')
+        tk.Label(hf, text=title or "Zadanie úlohy", bg='#111135', fg='#44aaff',
+                 font=('Arial', 14, 'bold')).pack(anchor='w')
+
+        # Telo — Text widget so scrollbarom
+        tf = tk.Frame(self, bg=self._BG, padx=16, pady=10)
+        tf.pack(fill='both', expand=True)
+        sb = tk.Scrollbar(tf, bg='#222244')
+        sb.pack(side='right', fill='y')
+        txt_w = tk.Text(tf, wrap='word', bg='#0d0d22', fg=self._FG,
+                        font=('Arial', 11), relief='flat', bd=0,
+                        yscrollcommand=sb.set, state='normal',
+                        padx=10, pady=8, cursor='arrow',
+                        selectbackground='#223355')
+        txt_w.pack(fill='both', expand=True)
+        sb.config(command=txt_w.yview)
+
+        # Vlož obsah
+        content = self._strip_html(html_msg) if html_msg else "(Žiadne zadanie)"
+        txt_w.insert('1.0', content)
+        txt_w.configure(state='disabled')   # len na čítanie
+
+        # Tlačidlo OK
+        bf = tk.Frame(self, bg='#111130', pady=8)
+        bf.pack(fill='x')
+        tk.Button(bf, text='OK', command=self.destroy,
+                  bg='#2a5a9a', fg='white', relief='flat', padx=28, pady=5,
+                  font=('Arial', 10, 'bold'), cursor='hand2').pack(side='right', padx=12)
+        self.bind('<Return>', lambda _: self.destroy())
+        self.bind('<Escape>', lambda _: self.destroy())
+
+
 class WorldSettingsDialog(tk.Toplevel):
     """Modálny dialóg na nastavenie parametrov miestnosti."""
     _BG='#0a0a1c'; _BG2='#111130'; _BG3='#060610'
@@ -2410,6 +2475,9 @@ class App(tk.Tk):
                       padx=10,pady=4,font=('Arial',10,'bold'),cursor='hand2',
                       activebackground='#4477bb',activeforeground='white',bd=0)
             b.pack(side='left',padx=2); return b
+        # Tlačidlo Zadanie — zobrazí intro_html aktuálneho sveta
+        self._intro_btn=btn("📋 Zadanie", self._show_intro, '#2a4a7a')
+        tk.Frame(bar,width=8,bg='#111130').pack(side='left')
         self._run_btn=btn("▶ Spustiť",self._run,'#1a6a2a')
         btn("⏹ Stop",   self._stop,'#6a1a1a')
         btn("↺ Reset",  self._reset,'#4a4a1a')
@@ -2494,6 +2562,14 @@ class App(tk.Tk):
 
     def _reset(self):
         self._stop(); self._reset_world(); self._status("Reset.","#88cc88")
+
+    def _show_intro(self):
+        """Zobrazí úvodné zadanie úlohy (intro_html) aktuálneho sveta."""
+        w = self._base
+        if not w.intro_html and not w.title:
+            self._status("Tento svet nemá žiadne zadanie.", '#888888')
+            return
+        IntroDialog(self, w.title, w.intro_html)
 
     def _settings_editor(self):
         WorldSettingsDialog(self)
@@ -2611,6 +2687,9 @@ class App(tk.Tk):
             title = self._base.title or os.path.splitext(os.path.basename(p))[0]
             self._world_title_var.set(title)
             self._status(f"Svet: {os.path.basename(p)}")
+            # Automaticky zobraz zadanie úlohy ak existuje
+            if self._base.intro_html:
+                self.after(200, self._show_intro)
         except Exception as e: messagebox.showerror("Chyba",str(e))
 
     def _save_world(self):
@@ -2659,17 +2738,17 @@ _ROLES      = ['student', 'teacher', 'admin']
 _ROLE_LABEL = {'student': 'Žiak',  'teacher': 'Učiteľ', 'admin': 'Admin'}
 
 def _ini_read_role() -> str:
-    """Načíta rolu z karel.ini; ak súbor neexistuje vráti 'student'."""
+    """Načíta rolu z karel.ini; ak súbor neexistuje vráti 'admin'."""
     cfg = configparser.ConfigParser()
     if os.path.exists(_INI_PATH):
         try:
             cfg.read(_INI_PATH, encoding='utf-8')
-            r = cfg.get('user', 'role', fallback='student').strip().lower()
+            r = cfg.get('user', 'role', fallback='admin').strip().lower()
             if r in _ROLES:
                 return r
         except Exception:
             pass
-    return 'student'
+    return 'admin'
 
 def _ini_write_role(role: str) -> bool:
     """Uloží rolu do karel.ini. Vráti True pri úspechu."""

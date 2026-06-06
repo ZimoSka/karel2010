@@ -127,7 +127,7 @@ Aktívna úroveň je uložená v `karel.ini` (vedľa skriptu). Bezpečnosť je n
 | **Učiteľ** | Navyše: ukladanie svetov, editor nastavení sveta |
 | **Admin** | Navyše: globálne nastavenia aplikácie (rezervované) |
 
-Aktuálna úroveň sa zobrazuje v titulku okna. Zmeníte ju cez **Nastavenia → Zmeniť úroveň...** (dostupné len ak má aktuálny OS-používateľ právo zápisu do `karel.ini`).
+Aktuálna úroveň sa zobrazuje v titulku okna. Zmeníte ju cez **Nastavenia → Zmeniť úroveň...** (dostupné len ak má aktuálny OS-používateľ právo zápisu do `karel.ini`). Ak `karel.ini` chýba, aplikácia štartuje ako **Admin** — čerstvé stiahnutie funguje bez konfigurácie.
 
 ```ini
 ; karel.ini

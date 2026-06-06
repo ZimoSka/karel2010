@@ -74,6 +74,10 @@ Programy píš v editore na spodku okna. Príkazy sa **automaticky zvýrazňujú
 - Príkazy zakázané učiteľom sú **červené**.
 - Komentáre (`//` alebo `{ }`) sú sivé.
 
+### Zadanie úlohy
+
+Klikni na **📋 Zadanie** v paneli nástrojov — zobrazí sa popis úlohy pre aktuálny svet. Ak svet obsahuje zadanie, zobrazí sa automaticky aj pri jeho otvorení.
+
 ### Spustenie programu
 
 1. Napíš program do editora.

@@ -48,6 +48,10 @@ The dialog has six tabs:
 | **World title** | Short name shown in the window title bar. |
 | **Task description** | HTML text shown to the student. Use the B/I/U/H1/H2/H3 toolbar to format. Describe the task, give hints or motivational context. |
 
+The task description is shown to the student in two ways:
+- **Automatically** — a dialog pops up when the student opens the world (if the field is not empty).
+- **On demand** — the student can re-open it anytime via the **📋 Zadanie** button in the toolbar.
+
 **HTML tips:**
 - Use `<b>bold</b>`, `<i>italic</i>`, `<u>underline</u>` for emphasis.
 - Use `<h1>`, `<h2>`, `<h3>` for headings.
@@ -201,7 +205,7 @@ role = teacher
 
 Valid values: `student`, `teacher`, `admin`.
 
-If the file is missing, the app creates it with `role = student` on first launch (if the folder is writable).
+If the file is missing, the app defaults to **Admin** role — so a fresh download works out of the box without any configuration. Restrict access by creating `karel.ini` with `role = student` and setting it read-only for student OS accounts.
 
 ---
 

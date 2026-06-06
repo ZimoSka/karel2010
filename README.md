@@ -134,7 +134,7 @@ The active role is stored in `karel.ini` (next to the script). Security is OS-le
 | **Teacher** | + save worlds, open World Settings editor |
 | **Admin** | + global application settings (reserved for future use) |
 
-The current role is shown in the title bar. Change it via **Settings → Change role...** (only available if `karel.ini` is writable by the current OS user).
+The current role is shown in the title bar. Change it via **Settings → Change role...** (only available if `karel.ini` is writable by the current OS user). If `karel.ini` is missing the app defaults to **Admin** — a fresh download works out of the box.
 
 ```ini
 ; karel.ini
