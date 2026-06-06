@@ -2096,7 +2096,7 @@ class WorldSettingsDialog(tk.Toplevel):
         # Aktuálna poloha Karela (kde sa teraz nachádza, nie štartovacia)
         self._cur_world = app._world
         self._cam  = app._canvas.cam
-        self.title("Nastavenia sveta")
+        self.title(_T('world_settings.title'))
         self.configure(bg=self._BG)
         self.resizable(False, False)
         self.grab_set()
@@ -2122,13 +2122,13 @@ class WorldSettingsDialog(tk.Toplevel):
     def _build_popis(self, p):
         w = self._work
         # Názov sveta
-        nf = self._frame(p, 'Názov sveta'); nf.pack(fill='x', pady=(0,8))
+        nf = self._frame(p, _T('world_settings.frame_title')); nf.pack(fill='x', pady=(0,8))
         self._title_var = tk.StringVar(value=w.title)
         tk.Entry(nf, textvariable=self._title_var, bg='#1a1a44', fg='white',
                  font=('Arial',11), insertbackground='white', relief='flat',
                  ).pack(fill='x', padx=8, pady=7)
         # Popis / zadanie úlohy
-        df = self._frame(p, 'Popis / zadanie úlohy  (HTML)')
+        df = self._frame(p, _T('world_settings.frame_desc'))
         df.pack(fill='both', expand=True)
         # Toolbar
         tb = tk.Frame(df, bg=self._BG2, padx=4, pady=3); tb.pack(fill='x')
@@ -2178,22 +2178,22 @@ class WorldSettingsDialog(tk.Toplevel):
         nb = ttk.Notebook(self)
         nb.pack(fill='both', expand=True, padx=8, pady=(8,4))
         tabs = {}
-        for name in ('Popis','Miestnosť','Zásoby','Príkazy','Pohľad','Misia'):
+        tab_keys = ['tab_desc','tab_room','tab_inv','tab_cmds','tab_view','tab_mission']
+        tab_builders = [self._build_popis, self._build_room, self._build_inventory,
+                        self._build_cmds, self._build_camera, self._build_mission]
+        self._nb_tabs = []
+        for key, builder in zip(tab_keys, tab_builders):
             f = tk.Frame(nb, bg=self._BG, padx=10, pady=8)
-            nb.add(f, text=name); tabs[name]=f
-        self._build_popis(tabs['Popis'])
-        self._build_room(tabs['Miestnosť'])
-        self._build_inventory(tabs['Zásoby'])
-        self._build_cmds(tabs['Príkazy'])
-        self._build_camera(tabs['Pohľad'])
-        self._build_mission(tabs['Misia'])
+            nb.add(f, text=_T(f'world_settings.{key}'))
+            self._nb_tabs.append((key, f))
+            builder(f)
         # Tlačidlá
         bf = tk.Frame(self, bg=self._BG2, pady=6); bf.pack(fill='x')
-        tk.Button(bf, text='Zrušiť', command=self.destroy,
+        tk.Button(bf, text=_T('world_settings.btn_cancel'), command=self.destroy,
                   bg='#3a1a1a', fg='white', relief='flat', padx=16, pady=4,
                   font=('Arial',10), cursor='hand2',
                   activebackground='#5a2a2a').pack(side='right', padx=8)
-        tk.Button(bf, text='Použiť a zavrieť', command=self._apply,
+        tk.Button(bf, text=_T('world_settings.btn_apply'), command=self._apply,
                   bg='#1a4a1a', fg='white', relief='flat', padx=16, pady=4,
                   font=('Arial',10,'bold'), cursor='hand2',
                   activebackground='#2a6a2a').pack(side='right', padx=4)
@@ -2203,16 +2203,16 @@ class WorldSettingsDialog(tk.Toplevel):
         w    = self._work
         wcur = self._cur_world   # aktuálny stav — odkiaľ Karel teraz je
         # Rozmery
-        rf = self._frame(p, 'Rozmery'); rf.pack(fill='x', pady=(0,8))
+        rf = self._frame(p, _T('world_settings.frame_size')); rf.pack(fill='x', pady=(0,8))
         self._w_var = tk.IntVar(value=w.width)
         self._h_var = tk.IntVar(value=w.height)
-        for col,(lbl,var) in enumerate([('Šírka:',self._w_var),('Výška:',self._h_var)]):
+        for col,(lbl,var) in enumerate([(_T('world_settings.lbl_width'),self._w_var),(_T('world_settings.lbl_height'),self._h_var)]):
             self._lbl(rf,lbl).grid(row=0,column=col*2,sticky='e',padx=(8,2),pady=6)
             ttk.Spinbox(rf,textvariable=var,from_=3,to=50,
                         width=4,font=('Consolas',11)
                         ).grid(row=0,column=col*2+1,padx=(0,16))
         # Pozícia Karela — predvyplnená z AKTUÁLNEJ polohy (nie zo štartu)
-        pf = self._frame(p, 'Pozícia Karela (štartovacia)'); pf.pack(fill='x', pady=(0,4))
+        pf = self._frame(p, _T('world_settings.frame_pos')); pf.pack(fill='x', pady=(0,4))
         self._kx_var = tk.IntVar(value=wcur.karel_x)
         self._ky_var = tk.IntVar(value=wcur.karel_y)
         self._lbl(pf,'X:').grid(row=0,column=0,sticky='e',padx=(8,2),pady=6)
@@ -2226,37 +2226,38 @@ class WorldSettingsDialog(tk.Toplevel):
         self._hnote.grid(row=1,column=0,columnspan=4,sticky='ew',padx=8,pady=(0,4))
         if wcur.karel_x != w.karel_x or wcur.karel_y != w.karel_y:
             self._hnote.config(
-                text=f'ℹ  Predvyplnené z aktuálnej polohy ({wcur.karel_x},{wcur.karel_y}). '
-                     f'Štartovacia bola ({w.karel_x},{w.karel_y}).')
+                text=_T('world_settings.hnote_pos').format(
+                    x=wcur.karel_x, y=wcur.karel_y,
+                    sx=w.karel_x, sy=w.karel_y))
         self._kx_var.trace_add('write', lambda *a: self._upd_hnote())
         self._ky_var.trace_add('write', lambda *a: self._upd_hnote())
         # Smer
-        sf = self._frame(p, 'Smer Karela (štartovací)'); sf.pack(fill='x', pady=(0,8))
+        sf = self._frame(p, _T('world_settings.frame_dir')); sf.pack(fill='x', pady=(0,8))
         self._dir_var = tk.StringVar(value=wcur.karel_dir.to_str())
-        for col,(txt,val) in enumerate([('↑ Sever','N'),('→ Východ','E'),
-                                         ('↓ Juh','S'),('← Západ','W')]):
+        for col,(txt,val) in enumerate([(_T('world_settings.dir_n'),'N'),(_T('world_settings.dir_e'),'E'),
+                                         (_T('world_settings.dir_s'),'S'),(_T('world_settings.dir_w'),'W')]):
             tk.Radiobutton(sf,text=txt,variable=self._dir_var,value=val,
                            bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
                            activebackground=self._BG,font=('Arial',9)
                            ).grid(row=0,column=col,padx=8,pady=6)
         # Max. výška výstupu
-        cf = self._frame(p, 'Pohyb — obmedzenia'); cf.pack(fill='x')
+        cf = self._frame(p, _T('world_settings.frame_move')); cf.pack(fill='x')
         self._max_climb_var = tk.IntVar(value=w.settings.max_climb)
-        self._lbl(cf, 'Max. výška výstupu:').grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
+        self._lbl(cf, _T('world_settings.lbl_max_climb')).grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
         ttk.Spinbox(cf, textvariable=self._max_climb_var, from_=0, to=20,
                     width=4, font=('Consolas',11)).grid(row=0,column=1,sticky='w')
-        tk.Label(cf, text='tehiel  (0 = Karel nemôže vyliezť, 1 = default)',
+        tk.Label(cf, text=_T('world_settings.lbl_max_climb_note'),
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')
                  ).grid(row=0,column=2,sticky='w',padx=(6,8))
         # Jazyk programovania
-        lf = self._frame(p, 'Jazyk programovania'); lf.pack(fill='x')
+        lf = self._frame(p, _T('world_settings.frame_lang')); lf.pack(fill='x')
         self._prog_lang_var = tk.StringVar(value=w.settings.prog_lang)
-        tk.Label(lf, text='Žiaci programujú v:',
+        tk.Label(lf, text=_T('world_settings.lbl_prog_lang'),
                  bg=self._BG, fg=self._FG, font=('Arial',9)
                  ).grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
         lbf = tk.Frame(lf,bg=self._BG); lbf.grid(row=0,column=1,sticky='w')
-        for lang,lbl in [('sk','Slovenčina (dopredu, vlavo…)'),
-                          ('en','English (forward, left…)')]:
+        for lang,lbl in [('sk', _T('world_settings.lang_sk')),
+                          ('en', _T('world_settings.lang_en'))]:
             tk.Radiobutton(lbf, text=lbl, variable=self._prog_lang_var, value=lang,
                            bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
                            activebackground=self._BG, font=('Arial',9)
@@ -2270,7 +2271,7 @@ class WorldSettingsDialog(tk.Toplevel):
                 h = w._height(x,y)
                 if h>0:
                     self._hnote.config(
-                        text=f'⚠  Na ({x},{y}) je stoh výšky {h} — Karel bude navrchu.')
+                        text=_T('world_settings.hnote_stack').format(x=x, y=y, h=h))
                 else:
                     self._hnote.config(text='')
         except (ValueError, tk.TclError): pass
@@ -2278,14 +2279,14 @@ class WorldSettingsDialog(tk.Toplevel):
     # -- Tab: Zásoby ----------------------------------------------------------
     def _build_inventory(self, p):
         s = self._work.settings
-        tk.Label(p,text='Počet predmetov, ktoré má Karel k dispozícii:',
+        tk.Label(p,text=_T('world_settings.inv_intro'),
                  bg=self._BG,fg=self._FG2,font=('Arial',9,'italic')
                  ).pack(anchor='w',pady=(0,10))
         self._inv: dict = {}
         for key,label,limit in [
-            ('brick',    'Malé tehly:',  s.brick_limit),
-            ('big_brick','Veľké tehly:', s.big_brick_limit),
-            ('mark',     'Značky:',      s.mark_limit),
+            ('brick',    _T('world_settings.inv_brick'),    s.brick_limit),
+            ('big_brick',_T('world_settings.inv_big_brick'),s.big_brick_limit),
+            ('mark',     _T('world_settings.inv_mark'),     s.mark_limit),
         ]:
             row = tk.Frame(p,bg=self._BG); row.pack(fill='x',pady=4)
             unl = tk.BooleanVar(value=(limit==-1))
@@ -2295,7 +2296,7 @@ class WorldSettingsDialog(tk.Toplevel):
             sp = ttk.Spinbox(row,textvariable=cnt,from_=0,to=9999,
                              width=6,font=('Consolas',11))
             sp.pack(side='left',padx=(0,10))
-            cb = tk.Checkbutton(row,text='Neobmedzene (∞)',variable=unl,
+            cb = tk.Checkbutton(row,text=_T('world_settings.inv_unlimited'),variable=unl,
                                 bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
                                 activebackground=self._BG,font=('Arial',9))
             cb.pack(side='left')
@@ -2308,16 +2309,16 @@ class WorldSettingsDialog(tk.Toplevel):
     # -- Tab: Príkazy ---------------------------------------------------------
     def _build_cmds(self, p):
         s = self._work.settings
-        tk.Label(p,text='Zaškrtnuté príkazy sú zakázané (červené v editore, nefunkčné tlačidlá):',
+        tk.Label(p,text=_T('world_settings.cmds_intro'),
                  bg=self._BG,fg=self._FG2,font=('Arial',8,'italic')
                  ).pack(anchor='w',pady=(0,6))
         self._cmd_vars: dict = {}
         groups = [
-            ('Pohyb',     [('FORWARD','Dopredu'),('BACK','Dozadu'),
-                           ('LEFT','Vlavo'),('RIGHT','Vpravo')]),
-            ('Tehly',     [('DROP','Polož'),('DROP_BIG','Polož Veľkú'),('PICK','Zdvihni')]),
-            ('Značky',    [('MARK','Označ'),('CLEAR','Odznač')]),
-            ('Rýchlosť',  [('SLOWLY','Pomaly'),('QUICKLY','Rýchlo')]),
+            (_T('world_settings.grp_move'),   [('FORWARD',_T('world_settings.cmd_forward')),('BACK',_T('world_settings.cmd_back')),
+                                                ('LEFT',_T('world_settings.cmd_left')),('RIGHT',_T('world_settings.cmd_right'))]),
+            (_T('world_settings.grp_bricks'), [('DROP',_T('world_settings.cmd_drop')),('DROP_BIG',_T('world_settings.cmd_drop_big')),('PICK',_T('world_settings.cmd_pick'))]),
+            (_T('world_settings.grp_marks'),  [('MARK',_T('world_settings.cmd_mark')),('CLEAR',_T('world_settings.cmd_clear'))]),
+            (_T('world_settings.grp_speed'),  [('SLOWLY',_T('world_settings.cmd_slowly')),('QUICKLY',_T('world_settings.cmd_quickly'))]),
         ]
         for grp,cmds in groups:
             gf = self._frame(p,grp); gf.pack(fill='x',pady=(0,4))
@@ -2331,7 +2332,7 @@ class WorldSettingsDialog(tk.Toplevel):
                 self._cmd_vars[tok] = var
         self._sep(p)
         self._proc_var = tk.BooleanVar(value=s.disable_procedure)
-        tk.Checkbutton(p,text='Zakázať definovanie vlastných príkazov  (prikaz … koniec)',
+        tk.Checkbutton(p,text=_T('world_settings.disable_proc'),
                        variable=self._proc_var,
                        bg=self._BG,fg=self._FG,selectcolor='#3a1a1a',
                        activebackground=self._BG,font=('Arial',9)
@@ -2341,22 +2342,21 @@ class WorldSettingsDialog(tk.Toplevel):
     def _build_camera(self, p):
         s = self._work.settings
         self._cam_lock_var = tk.BooleanVar(value=s.camera_locked)
-        tk.Checkbutton(p,text='Zamknúť pohľad  (myš nebude otáčať scénou)',
+        tk.Checkbutton(p,text=_T('world_settings.cam_lock'),
                        variable=self._cam_lock_var,
                        bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
                        activebackground=self._BG,font=('Arial',10)
                        ).pack(anchor='w',pady=(0,10))
-        tk.Label(p,text='Zamkne sa aktuálny pohľad kamery '
-                        '(nastav pohľad v 3D okne pred otvorením tohto dialógu):',
+        tk.Label(p,text=_T('world_settings.cam_lock_note'),
                  bg=self._BG,fg=self._FG2,font=('Arial',9,'italic'),
                  wraplength=360,justify='left').pack(anchor='w',pady=(0,8))
         cf = tk.Frame(p,bg=self._BG2,padx=10,pady=8); cf.pack(fill='x')
         az_d = round(math.degrees(self._cam.az)%360,1)
         el_d = round(math.degrees(self._cam.el),1)
         for row,(lbl,val) in enumerate([
-            ('Azimut:',       f'{az_d}°'),
-            ('Elevácia:',     f'{el_d}°'),
-            ('Vzdialenosť:',  f'{round(self._cam.dist,1)}'),
+            (_T('world_settings.cam_az'),   f'{az_d}°'),
+            (_T('world_settings.cam_el'),   f'{el_d}°'),
+            (_T('world_settings.cam_dist'), f'{round(self._cam.dist,1)}'),
         ]):
             tk.Label(cf,text=lbl,bg=self._BG2,fg=self._FG2,
                      font=('Arial',9),anchor='w').grid(row=row,column=0,sticky='w',pady=2)
@@ -2367,11 +2367,11 @@ class WorldSettingsDialog(tk.Toplevel):
     def _build_mission(self, p):
         w = self._work
         # Režim vyhodnocovania
-        ef = self._frame(p, 'Vyhodnocovanie misie'); ef.pack(fill='x', pady=(0,8))
+        ef = self._frame(p, _T('world_settings.frame_eval')); ef.pack(fill='x', pady=(0,8))
         self._eval_var = tk.StringVar(value=w.mission_eval)
         for col,(val,lbl,note) in enumerate([
-            ('on_finish', 'Po skončení programu', '(spustí sa po zbehnutí celého programu)'),
-            ('on_step',   'Po každom kroku',      '(kontroluje sa po každom príkaze aj pri priamom ovládaní)'),
+            ('on_finish', _T('world_settings.eval_finish'), _T('world_settings.eval_finish_note')),
+            ('on_step',   _T('world_settings.eval_step'),   _T('world_settings.eval_step_note')),
         ]):
             cf = tk.Frame(ef, bg=self._BG); cf.grid(row=0, column=col, padx=8, pady=6, sticky='w')
             tk.Radiobutton(cf, text=lbl, variable=self._eval_var, value=val,
@@ -2385,7 +2385,7 @@ class WorldSettingsDialog(tk.Toplevel):
         # Reset pri neúspechu — len pre on_finish
         self._reset_on_failure_var = tk.BooleanVar(value=w.mission_reset_on_failure)
         self._reset_cb = tk.Checkbutton(ef,
-            text='Pri neúspechu resetovať svet do počiatočného stavu  (program žiakovi zostane)',
+            text=_T('world_settings.reset_on_fail'),
             variable=self._reset_on_failure_var,
             bg=self._BG, fg='#ffcc66', selectcolor='#2a2000',
             activebackground=self._BG, font=('Arial',9))
@@ -2393,7 +2393,7 @@ class WorldSettingsDialog(tk.Toplevel):
         self._upd_reset_cb()   # nastav počiatočnú viditeľnosť
 
         # Zoznam podmienok
-        cf2 = self._frame(p, 'Podmienky splnenia  (všetky musia byť splnené naraz)')
+        cf2 = self._frame(p, _T('world_settings.frame_conds'))
         cf2.pack(fill='both', expand=True, pady=(0,4))
         lf = tk.Frame(cf2, bg=self._BG); lf.pack(fill='both', expand=True, padx=8, pady=(6,4))
         self._cond_lb = tk.Listbox(lf, bg='#0d0d22', fg='#ccccee',
@@ -2410,20 +2410,20 @@ class WorldSettingsDialog(tk.Toplevel):
             self._cond_lb.insert('end', '  ' + c.describe())
 
         bf2 = tk.Frame(cf2, bg=self._BG); bf2.pack(fill='x', padx=8, pady=(0,6))
-        tk.Button(bf2, text='＋ Pridať podmienku', command=self._add_condition,
+        tk.Button(bf2, text=_T('world_settings.btn_add_cond'), command=self._add_condition,
                   bg='#1a4a1a', fg='white', relief='flat', padx=8, pady=3,
                   font=('Arial',9), cursor='hand2').pack(side='left', padx=(0,6))
-        tk.Button(bf2, text='− Odstrániť vybraté', command=self._remove_condition,
+        tk.Button(bf2, text=_T('world_settings.btn_del_cond'), command=self._remove_condition,
                   bg='#4a1a1a', fg='white', relief='flat', padx=8, pady=3,
                   font=('Arial',9), cursor='hand2').pack(side='left')
 
         # HTML správy
-        mf = self._frame(p, 'Správy pre žiaka'); mf.pack(fill='x', pady=(4,0))
+        mf = self._frame(p, _T('world_settings.frame_msgs')); mf.pack(fill='x', pady=(4,0))
         self._msg_success_var = tk.StringVar(value=w.success_html)
         self._msg_failure_var = tk.StringVar(value=w.failure_html)
         for row2,(lbl,var) in enumerate([
-            ('Správa pri úspechu:', self._msg_success_var),
-            ('Správa pri neúspechu:', self._msg_failure_var),
+            (_T('world_settings.msg_success'), self._msg_success_var),
+            (_T('world_settings.msg_failure'), self._msg_failure_var),
         ]):
             tk.Label(mf, text=lbl, bg=self._BG, fg=self._FG2,
                      font=('Arial',8)).grid(row=row2, column=0, sticky='w', padx=8, pady=3)

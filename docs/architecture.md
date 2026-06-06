@@ -359,6 +359,7 @@ INI files with sections:
 | `[control]` | Direct control panel labels |
 | `[status]` | Status bar messages |
 | `[action_labels]` | Display text on Karel action buttons (DROP, PICK, …) |
+| `[world_settings]` | All labels in WorldSettingsDialog (6 tabs) |
 
 Loaded by `_load_ui_lang(lang)` into `_ui_strings` flat dict (key = `section.key`).
 
