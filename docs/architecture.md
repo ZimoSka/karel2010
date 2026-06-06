@@ -330,8 +330,13 @@ all(c.check(world) for c in world.goal_conditions)
 
 | Setting | Stored in | Controls |
 |---------|-----------|---------|
-| `ui_lang` | `karel.ini [ui] lang` | Menu, toolbar, labels, status messages |
-| `prog_lang` | `.karxml <settings><prog_lang>` | Direct control button labels and commands |
+| `ui_lang` | `karel.ini [ui] lang` | Menu, toolbar, labels, status messages, **action button display labels** |
+| `prog_lang` | `.karxml <settings><prog_lang>` | Karel commands sent to interpreter, commands list in editor |
+
+The split is intentional:
+- A teacher sets `ui_lang` once globally (e.g. Slovak). All UI text appears in that language.
+- A teacher sets `prog_lang` per world (e.g. English). Students write code in that language.
+- Action buttons show **display labels** (GUI lang: "Polož tehlu") but send **commands** (prog lang: "drop" or "poloz") to Karel.
 
 ### Interpreter keyword files (`lang/interpreter/*.lng`)
 
@@ -386,12 +391,19 @@ Available languages are discovered at runtime by `_available_ui_langs()` (scans 
 _ACTION_TOKEN = {'drop': 'DROP', 'drop_big': 'DROP_BIG', ...}
 
 _prog_btn(action) → (label, command)
-  label   = _prog_action_labels[TOKEN]   # from lang/{prog_lang}.ini [action_labels]
-  command = _primary_kw(TOKEN, _current_prog_lang)  # from interpreter/*.lng
+  label   = _ui_strings['action_labels.{token}']   # GUI lang — e.g. "Polož tehlu"
+  command = _primary_kw(TOKEN, _current_prog_lang)  # prog lang — e.g. "poloz" or "drop"
 ```
 
-`_switch_prog_lang(lang)` updates both `_current_prog_lang` and `_prog_action_labels`.
-`ControlPanel.set_prog_lang(lang)` calls `_switch_prog_lang` then rebuilds buttons.
+- `_switch_prog_lang(lang)` sets `_current_prog_lang` (no longer loads action labels).
+- `ControlPanel.set_prog_lang(lang)` calls `_switch_prog_lang` then rebuilds buttons.
+- `ControlPanel.retranslate()` also calls `_rebuild_act_buttons()` so GUI lang change
+  immediately updates button display labels.
+- `_act_btn_cmds` tracks which cmd keys in `_btn_refs` belong to action buttons (as
+  opposed to fixed movement arrows). Keys are cleaned up before each rebuild to avoid
+  stale references to destroyed widgets.
+- Command restriction checks in `_do()` and `apply_restrictions()` use `KW.get(cmd)`
+  (all languages) instead of a hardcoded Slovak-only dict.
 
 ### Fallback chain
 

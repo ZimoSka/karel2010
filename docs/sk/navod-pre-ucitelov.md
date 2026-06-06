@@ -178,24 +178,29 @@ Karel 2010 má dve nezávislé nastavenia jazyka:
 
 ### Jazyk GUI
 
-Mení sa v **Nastavenia → Globálne nastavenia...** (len admin). Zmena sa prejaví okamžite — bez reštartu. Ukladá sa do `karel.ini`:
+Mení sa v **Nastavenia → Globálne nastavenia...** (len admin). Dropdown zobrazuje všetky dostupné jazyky nájdené v `lang/*.ini`. Zmena sa prejaví okamžite — bez reštartu. Ukladá sa do `karel.ini`:
 
 ```ini
 [ui]
 lang = sk
 ```
 
-Podporované hodnoty: `sk` (slovenčina), `en` (angličtina).
-
-Prekladové reťazce sú v `lang/sk.ini` a `lang/en.ini`. Nový jazyk pridáš vytvorením `lang/xx.ini` s rovnakými kľúčmi.
+Prekladové reťazce sú v `lang/sk.ini`, `lang/en.ini` atď. Nový jazyk GUI pridáš vytvorením `lang/xx.ini` so sekciou `[meta] name = ...` a všetkými kľúčmi. Dropdown ho automaticky zistí pri ďalšom spustení.
 
 ### Jazyk programovania
 
-Nastavuje sa per-svet v záložke **Miestnosť** editora sveta. Ovplyvňuje:
-- Labely akčných tlačidiel v priamom ovládaní (*Polož tehlu* vs *Drop brick*)
-- Príkazy odosielané po kliknutí na tlačidlá (`poloz` vs `drop`)
+Nastavuje sa per-svet v záložke **Miestnosť** editora sveta cez dropdown, ktorý zobrazuje všetky dostupné jazyky z `lang/interpreter/*.lng`. Nový programovací jazyk = nový súbor `lang/interpreter/xx.lng`. Žiadne zmeny v kóde nie sú potrebné.
 
-Interpreter vždy akceptuje **obe** varianty (SK aj EN) — žiaci môžu vždy písať príkazy v ľubovoľnom jazyku v príkazovom paneli. Nastavenie ovplyvňuje len predvolené labely v UI.
+**Čo riadi ktoré nastavenie:**
+
+| Prvok | Sleduje |
+|-------|---------|
+| Labely akčných tlačidiel (*Polož tehlu* / *Drop brick*) | **Jazyk GUI** |
+| Príkaz odoslaný Karelovi po kliknutí (`poloz` / `drop`) | **Jazyk programovania** |
+| Zoznam príkazov v editore (`dopredu` / `forward`) | **Jazyk programovania** |
+| Ostatný text UI (menu, labely, záložky) | **Jazyk GUI** |
+
+Interpreter vždy akceptuje **všetky** načítané jazyky súčasne — žiaci môžu písať `forward` aj `dopredu` bez ohľadu na nastavenie jazyka sveta. Nastavenie ovplyvňuje čo sa zobrazí v zozname príkazov a na tlačidlách.
 
 Ukladá sa do `.karxml`:
 

@@ -181,24 +181,29 @@ Karel 2010 has two independent language settings:
 
 ### GUI language
 
-Changed in **Settings → Global settings...** (admin only). Takes effect immediately — no restart needed. Stored in `karel.ini`:
+Changed in **Settings → Global settings...** (admin only). A dropdown lists all available languages discovered from `lang/*.ini` files. Takes effect immediately — no restart needed. Stored in `karel.ini`:
 
 ```ini
 [ui]
 lang = en
 ```
 
-Supported values: `sk` (Slovak), `en` (English).
-
-Translation strings are in `lang/sk.ini` and `lang/en.ini`. You can add new languages by creating `lang/xx.ini` with the same keys.
+Translation strings live in `lang/sk.ini`, `lang/en.ini`, etc. Adding a new UI language = create `lang/xx.ini` with a `[meta] name = ...` section and all translation keys. The dropdown auto-detects it on next launch.
 
 ### Programming language
 
-Set per-world in the **Room** tab of World Settings. Affects:
-- Labels on the direct control action buttons (*Polož tehlu* vs *Drop brick*)
-- Commands sent when those buttons are clicked (`poloz` vs `drop`)
+Set per-world in the **Room** tab of World Settings via a dropdown that lists all available languages from `lang/interpreter/*.lng`. Adding a new programming language = create `lang/interpreter/xx.lng`. No code changes needed.
 
-The interpreter always accepts **both** SK and EN keywords — so students can always type either language in the command panel regardless of this setting. The setting only controls the default labels shown in the UI.
+**What the two language settings control:**
+
+| Element | Follows |
+|---------|---------|
+| Action button labels (*Polož tehlu* / *Drop brick*) | **GUI language** |
+| Command sent to Karel when button clicked (`poloz` / `drop`) | **Programming language** |
+| Commands list in the editor (`dopredu` / `forward`) | **Programming language** |
+| All other UI text (menus, labels, tabs) | **GUI language** |
+
+The interpreter always accepts **all** loaded languages simultaneously — students can type `forward` or `dopredu` regardless of the world's prog_lang setting. The setting controls what appears in the command list and on buttons.
 
 Stored in `.karxml`:
 
