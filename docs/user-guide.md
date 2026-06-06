@@ -232,6 +232,20 @@ After your program finishes (or during direct control if the teacher chose "afte
 
 ---
 
+## User roles and restricted mode
+
+Karel 2010 can run in three modes depending on what the teacher has configured. The current mode is shown in the window title bar.
+
+| Mode | What you can do |
+|------|----------------|
+| **Student** | Open worlds; write and save programs. Some menu items may be greyed out. |
+| **Teacher** | + Save worlds, open the World Settings editor. |
+| **Admin** | + Global application settings. |
+
+If a menu item is greyed out it means you do not have the required role. Ask your teacher or system administrator.
+
+---
+
 ## Troubleshooting
 
 | Problem | Likely cause | Solution |

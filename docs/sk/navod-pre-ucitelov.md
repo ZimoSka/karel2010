@@ -163,6 +163,45 @@ Obe polia podporujú prostý text alebo HTML.
 
 ---
 
+## Úrovne používateľov
+
+Aktívna úroveň je uložená v `karel.ini` (vedľa skriptu). Bezpečnosť je na úrovni OS — kto má právo zápisu do tohto súboru, môže meniť úroveň.
+
+| Úroveň | Čo môže robiť |
+|--------|--------------|
+| **Žiak** | Otváranie svetov; písanie a ukladanie programov |
+| **Učiteľ** | Navyše: ukladanie svetov, editor nastavení sveta (⚙) |
+| **Admin** | Navyše: globálne nastavenia aplikácie (rezervované) |
+
+Aktuálna úroveň sa zobrazuje v titulku okna: `Karel 2010  [Učiteľ]`. Zmeníte ju cez **Nastavenia → Zmeniť úroveň...** — ale len ak má aktuálny OS-používateľ právo zápisu do `karel.ini`.
+
+### Ako funguje bezpečnosť
+
+Žiadne heslo — bezpečnosť je delegovaná na operačný systém. Admin nastaví prístupové práva k súboru `karel.ini`:
+
+| Prístup OS k `karel.ini` | Efekt |
+|--------------------------|-------|
+| Čítanie + zápis | Používateľ môže meniť úroveň cez menu |
+| Len čítanie | Úroveň sa načíta pri štarte, ale nedá sa meniť z aplikácie |
+| Bez prístupu / súbor chýba | Predvolená úroveň **Žiak** |
+
+**Typické nastavenie v triede:**
+1. Nainštaluj Karel 2010 do priečinka, napr. `C:\KarelSchool\`.
+2. Nastav učiteľský/adminský účet ako jediný so zápisom do `karel.ini`.
+3. Žiacke OS-účty majú len právo čítania.
+4. Vytvor `karel.ini` ručne s `role = teacher` — učiteľský počítač má zapisovateľnú kópiu, žiacke majú kópiu read-only.
+
+### Formát karel.ini
+
+```ini
+[user]
+role = teacher
+```
+
+Platné hodnoty: `student`, `teacher`, `admin`.
+
+---
+
 ## Uloženie sveta
 
 `Edituj → Uložiť svet ako XML` uloží kompletný svet do `.karxml` súboru vrátane:

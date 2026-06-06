@@ -324,6 +324,42 @@ all(c.check(world) for c in world.goal_conditions)
 
 ---
 
+## User role system
+
+### Configuration file
+
+```
+karel.ini          (next to karel2010.py)
+```
+
+```ini
+[user]
+role = teacher     # student | teacher | admin
+```
+
+Read at startup via `_ini_read_role()`. Written via `_ini_write_role()`. Writable check via `_ini_is_writable()` (delegates to `os.access(W_OK)`).
+
+### Role enforcement
+
+`App._role` holds the current role string. `App._apply_role_to_ui()` is called once after `_build_ui()` and again whenever the role changes. It uses `Menu.entryconfigure(index, state=...)` to enable/disable individual menu entries.
+
+| Role | Disabled menu items |
+|------|---------------------|
+| `student` | Edit → Save world, Edit → Save world as XML, Edit → ⚙ World Settings |
+| `teacher` | *(none)* |
+| `admin` | *(none — reserved for future global settings)* |
+
+### Changing the role
+
+`App._change_role()` — called from **Settings → Change role...**:
+1. Checks `_ini_is_writable()` — shows a warning and returns if not.
+2. Opens `RoleDialog` (a `Toplevel` with radio buttons for each role).
+3. On confirmation writes the new role to `karel.ini` and calls `_apply_role_to_ui()`.
+
+Security is purely OS-level: set the file-system permissions on `karel.ini` to read-only for student accounts.
+
+---
+
 ## Key design decisions
 
 ### Runs from current position

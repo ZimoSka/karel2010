@@ -228,6 +228,20 @@ Po skončení programu (alebo počas priameho ovládania, ak učiteľ zvolil „
 
 ---
 
+## Úrovne používateľov a obmedzený režim
+
+Karel 2010 môže bežať v troch režimoch podľa toho, čo nastavil učiteľ. Aktuálny režim je zobrazený v titulku okna.
+
+| Režim | Čo môžeš robiť |
+|-------|---------------|
+| **Žiak** | Otváranie svetov; písanie a ukladanie programov. Niektoré položky menu môžu byť sivé. |
+| **Učiteľ** | Navyše: ukladanie svetov, editor nastavení sveta. |
+| **Admin** | Navyše: globálne nastavenia aplikácie. |
+
+Ak je nejaká položka menu sivá, nemáš potrebnú úroveň prístupu. Požiadaj učiteľa alebo správcu systému.
+
+---
+
 ## Riešenie problémov
 
 | Problém | Pravdepodobná príčina | Riešenie |
