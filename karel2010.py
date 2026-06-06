@@ -1861,10 +1861,10 @@ class IntroDialog(tk.Toplevel):
         self.grab_set()
         self._build(title, html_msg)
         self.update_idletasks()
-        # Vycentruj voči rodičovskému oknu
+        # Vycentruj voči rodičovskému oknu; pevná veľkosť aby sa neorezalo OK tlačidlo
+        ww, wh = 500, 400
         pw, ph = app.winfo_width(), app.winfo_height()
         px, py = app.winfo_rootx(), app.winfo_rooty()
-        ww, wh = min(self.winfo_width(), 520), min(self.winfo_height(), 420)
         self.geometry(f'{ww}x{wh}+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
     @staticmethod
