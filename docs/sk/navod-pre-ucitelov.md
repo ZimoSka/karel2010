@@ -167,6 +167,46 @@ Obe polia podporujú prostý text alebo HTML.
 
 ---
 
+## Nastavenia jazyka
+
+Karel 2010 má dve nezávislé nastavenia jazyka:
+
+| Nastavenie | Kde | Rozsah | Kto mení |
+|-----------|-----|--------|---------|
+| **Jazyk GUI** | `karel.ini` → `[ui] lang` | Všetky menu, tlačidlá, labely, stavové správy | Admin cez **Nastavenia → Globálne nastavenia...** |
+| **Jazyk programovania** | Editor sveta → záložka Miestnosť | Labely tlačidiel v priamom ovládaní; kľúčové slová Karla | Učiteľ per svet |
+
+### Jazyk GUI
+
+Mení sa v **Nastavenia → Globálne nastavenia...** (len admin). Zmena sa prejaví okamžite — bez reštartu. Ukladá sa do `karel.ini`:
+
+```ini
+[ui]
+lang = sk
+```
+
+Podporované hodnoty: `sk` (slovenčina), `en` (angličtina).
+
+Prekladové reťazce sú v `lang/sk.ini` a `lang/en.ini`. Nový jazyk pridáš vytvorením `lang/xx.ini` s rovnakými kľúčmi.
+
+### Jazyk programovania
+
+Nastavuje sa per-svet v záložke **Miestnosť** editora sveta. Ovplyvňuje:
+- Labely akčných tlačidiel v priamom ovládaní (*Polož tehlu* vs *Drop brick*)
+- Príkazy odosielané po kliknutí na tlačidlá (`poloz` vs `drop`)
+
+Interpreter vždy akceptuje **obe** varianty (SK aj EN) — žiaci môžu vždy písať príkazy v ľubovoľnom jazyku v príkazovom paneli. Nastavenie ovplyvňuje len predvolené labely v UI.
+
+Ukladá sa do `.karxml`:
+
+```xml
+<settings>
+  <prog_lang>en</prog_lang>
+</settings>
+```
+
+---
+
 ## Úrovne používateľov
 
 Aktívna úroveň je uložená v `karel.ini` (vedľa skriptu). Bezpečnosť je na úrovni OS — kto má právo zápisu do tohto súboru, môže meniť úroveň.

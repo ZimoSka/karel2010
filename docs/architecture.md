@@ -324,6 +324,66 @@ all(c.check(world) for c in world.goal_conditions)
 
 ---
 
+## Language system
+
+### Two independent language settings
+
+| Setting | Stored in | Controls |
+|---------|-----------|---------|
+| `ui_lang` | `karel.ini [ui] lang` | Menu, toolbar, labels, status messages |
+| `prog_lang` | `.karxml <settings><prog_lang>` | Direct control button labels and commands |
+
+### Interpreter keyword files (`lang/interpreter/*.lng`)
+
+```
+# Format: TOKEN = primary_word  alias1  alias2 ...
+FORWARD = dopredu
+DROP    = poloz  polož
+```
+
+- **All `.lng` files are loaded and merged** into the global `KW` dict at startup via `_load_all_interpreter_langs()`.
+- The interpreter therefore **accepts every language simultaneously** — a student can always type `forward` even in a Slovak-configured world.
+- `_LANG_PRIMARY[lang][TOKEN]` = canonical (first) word for that language.
+- `_primary_kw(token, lang)` returns the canonical word with EN fallback.
+- **Adding a new language** (DE, FR, IT, …) = create `lang/interpreter/xx.lng` with the same TOKEN names and that language's keywords. No code changes needed.
+
+### UI string files (`lang/sk.ini`, `lang/en.ini`, …)
+
+INI files with sections:
+
+| Section | Purpose |
+|---------|---------|
+| `[menu]` | Menu item labels |
+| `[toolbar]` | Toolbar button text |
+| `[nav]` | Navigator panel labels |
+| `[control]` | Direct control panel labels |
+| `[status]` | Status bar messages |
+| `[action_labels]` | Display text on Karel action buttons (DROP, PICK, …) |
+
+Loaded by `_load_ui_lang(lang)` into `_ui_strings` flat dict (key = `section.key`).
+
+### Action buttons
+
+```
+_ACTION_TOKEN = {'drop': 'DROP', 'drop_big': 'DROP_BIG', ...}
+
+_prog_btn(action) → (label, command)
+  label   = _prog_action_labels[TOKEN]   # from lang/{prog_lang}.ini [action_labels]
+  command = _primary_kw(TOKEN, _current_prog_lang)  # from interpreter/*.lng
+```
+
+`_switch_prog_lang(lang)` updates both `_current_prog_lang` and `_prog_action_labels`.
+`ControlPanel.set_prog_lang(lang)` calls `_switch_prog_lang` then rebuilds buttons.
+
+### Fallback chain
+
+1. `lang/interpreter/{lang}.lng` → if missing, skips that language
+2. `lang/{lang}.ini` → if missing, falls back to `lang/sk.ini`
+3. `_fallback_bkw()` → hardcoded SK+EN if `lang/interpreter/` is missing entirely
+4. `_T(key)` → returns the key itself if translation is missing
+
+---
+
 ## User role system
 
 ### Configuration file

@@ -62,6 +62,8 @@ The task description is shown to the student in two ways:
 
 ### Tab 2 — Room (Miestnosť)
 
+> **Programming language** is also set here — see the *Programming language* section below.
+
 | Field | Purpose |
 |-------|---------|
 | **Width / Height** | Dimensions of the room grid (3–50 tiles). |
@@ -165,6 +167,46 @@ Enter the text shown to the student after evaluation:
 - **Failure message**: Shown when conditions are not met (red dialog).
 
 Both fields support plain text or HTML.
+
+---
+
+## Language settings
+
+Karel 2010 has two independent language settings:
+
+| Setting | Where | Scope | Who changes it |
+|---------|-------|-------|----------------|
+| **GUI language** | `karel.ini` → `[ui] lang` | All menus, buttons, labels, status messages | Admin via **Settings → Global settings...** |
+| **Programming language** | World Settings → Room tab | Karel keywords on direct control buttons; which language students type commands in | Teacher per world |
+
+### GUI language
+
+Changed in **Settings → Global settings...** (admin only). Takes effect immediately — no restart needed. Stored in `karel.ini`:
+
+```ini
+[ui]
+lang = en
+```
+
+Supported values: `sk` (Slovak), `en` (English).
+
+Translation strings are in `lang/sk.ini` and `lang/en.ini`. You can add new languages by creating `lang/xx.ini` with the same keys.
+
+### Programming language
+
+Set per-world in the **Room** tab of World Settings. Affects:
+- Labels on the direct control action buttons (*Polož tehlu* vs *Drop brick*)
+- Commands sent when those buttons are clicked (`poloz` vs `drop`)
+
+The interpreter always accepts **both** SK and EN keywords — so students can always type either language in the command panel regardless of this setting. The setting only controls the default labels shown in the UI.
+
+Stored in `.karxml`:
+
+```xml
+<settings>
+  <prog_lang>en</prog_lang>
+</settings>
+```
 
 ---
 
