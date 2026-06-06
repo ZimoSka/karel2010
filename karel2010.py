@@ -1821,7 +1821,7 @@ class GoalConditionDialog(tk.Toplevel):
         super().__init__(parent)
         self._world  = world
         self.result  = None
-        self.title("Pridať podmienku")
+        self.title(_T('goal_condition.title'))
         self.configure(bg=self._BG)
         self.resizable(False, False)
         self.grab_set(); self.transient(parent)
@@ -1835,12 +1835,12 @@ class GoalConditionDialog(tk.Toplevel):
     def _build(self):
         # Typ podmienky
         tf = tk.Frame(self, bg=self._BG, padx=12, pady=8); tf.pack(fill='x')
-        tk.Label(tf, text='Typ podmienky:', bg=self._BG, fg=self._FG,
+        tk.Label(tf, text=_T('goal_condition.type_label'), bg=self._BG, fg=self._FG,
                  font=('Arial',9,'bold')).pack(side='left', padx=(0,12))
         self._type_var = tk.StringVar(value='karel_pos')
-        for val,lbl in [('karel_pos','Poloha Karela'),
-                        ('cell_state','Stav políčka'),
-                        ('snapshot','Snímok miestnosti')]:
+        for val,lbl in [('karel_pos', _T('goal_condition.type_karel_pos')),
+                        ('cell_state',_T('goal_condition.type_cell_state')),
+                        ('snapshot',  _T('goal_condition.type_snapshot'))]:
             tk.Radiobutton(tf, text=lbl, variable=self._type_var, value=val,
                            bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
                            activebackground=self._BG, font=('Arial',9),
@@ -1850,10 +1850,10 @@ class GoalConditionDialog(tk.Toplevel):
         self._content.pack(fill='both', expand=True)
         tk.Frame(self, bg='#334466', height=1).pack(fill='x')
         bf = tk.Frame(self, bg='#111130', pady=6); bf.pack(fill='x')
-        tk.Button(bf, text='Zrušiť', command=self.destroy,
+        tk.Button(bf, text=_T('goal_condition.btn_cancel'), command=self.destroy,
                   bg='#3a1a1a', fg='white', relief='flat', padx=12, pady=4,
                   font=('Arial',9), cursor='hand2').pack(side='right', padx=8)
-        tk.Button(bf, text='Pridať podmienku', command=self._ok,
+        tk.Button(bf, text=_T('goal_condition.btn_add'), command=self._ok,
                   bg='#1a4a1a', fg='white', relief='flat', padx=12, pady=4,
                   font=('Arial',9,'bold'), cursor='hand2').pack(side='right', padx=4)
         self._switch_type()
@@ -1871,7 +1871,7 @@ class GoalConditionDialog(tk.Toplevel):
 
     def _build_karel_pos(self):
         p = self._content; wd = self._world
-        tk.Label(p, text='Zaškrtni podmienky, ktoré má Karel splniť (nezaškrtnuté = ľubovoľná hodnota):',
+        tk.Label(p, text=_T('goal_condition.kp_intro'),
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic'),
                  wraplength=380).pack(anchor='w', pady=(0,8))
         self._kp_x_en = tk.BooleanVar(value=True)
@@ -1883,7 +1883,7 @@ class GoalConditionDialog(tk.Toplevel):
         for en_var, val_var, lbl, lo, hi in [
             (self._kp_x_en, self._kp_x, 'X:', 0, wd.width-1),
             (self._kp_y_en, self._kp_y, 'Y:', 0, wd.height-1),
-            (self._kp_h_en, self._kp_h, 'Výška tehiel:', 0, 99),
+            (self._kp_h_en, self._kp_h, _T('goal_condition.kp_height'), 0, 99),
         ]:
             row = tk.Frame(p, bg=self._BG); row.pack(fill='x', pady=2)
             tk.Checkbutton(row, variable=en_var, bg=self._BG, fg=self._FG,
@@ -1894,7 +1894,7 @@ class GoalConditionDialog(tk.Toplevel):
 
     def _build_cell_state(self):
         p = self._content; wd = self._world
-        tk.Label(p, text='Zadaj súradnice políčka a jeho požadovaný stav:',
+        tk.Label(p, text=_T('goal_condition.cs_intro'),
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')).pack(anchor='w', pady=(0,8))
         cr = tk.Frame(p, bg=self._BG); cr.pack(fill='x', pady=2)
         self._cs_x = tk.IntVar(value=wd.karel_x)
@@ -1915,14 +1915,14 @@ class GoalConditionDialog(tk.Toplevel):
         mr = tk.Frame(p, bg=self._BG); mr.pack(fill='x', pady=2)
         tk.Checkbutton(mr, variable=self._cs_marks_en, bg=self._BG, fg=self._FG,
                        selectcolor='#1a1a44', activebackground=self._BG).pack(side='left')
-        self._lbl(mr, 'Značka:').pack(side='left')
-        tk.Checkbutton(mr, text='prítomná (áno)', variable=self._cs_marks,
+        self._lbl(mr, _T('goal_condition.cs_mark')).pack(side='left')
+        tk.Checkbutton(mr, text=_T('goal_condition.cs_mark_yes'), variable=self._cs_marks,
                        bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
                        activebackground=self._BG, font=('Arial',9)).pack(side='left')
         # tehly
         for en_var, val_var, lbl in [
-            (self._cs_bricks_en, self._cs_bricks, 'Malé tehly (počet):'),
-            (self._cs_bb_en,     self._cs_bb,     'Veľké tehly (počet):'),
+            (self._cs_bricks_en, self._cs_bricks, _T('goal_condition.cs_bricks')),
+            (self._cs_bb_en,     self._cs_bb,     _T('goal_condition.cs_big_bricks')),
         ]:
             row = tk.Frame(p, bg=self._BG); row.pack(fill='x', pady=2)
             tk.Checkbutton(row, variable=en_var, bg=self._BG, fg=self._FG,
@@ -1936,21 +1936,18 @@ class GoalConditionDialog(tk.Toplevel):
         br_c = sum(wd.bricks[y][x] for y in range(wd.height) for x in range(wd.width))
         bb_c = sum(wd.big_bricks[y][x] for y in range(wd.height) for x in range(wd.width))
         mk_c = sum(1 for y in range(wd.height) for x in range(wd.width) if wd.marks[y][x])
-        tk.Label(p, text=(
-            'Zachytí aktuálny stav celej miestnosti ako cieľový.\n'
-            'Podmienka je splnená keď rozmiestnenie tehál a značiek\n'
-            'zodpovedá tomuto snímku.'),
+        tk.Label(p, text=_T('goal_condition.snap_desc').replace('\\n','\n'),
             bg=self._BG, fg=self._FG2, font=('Arial',9,'italic'),
             wraplength=360, justify='left').pack(anchor='w', pady=(0,10))
-        tk.Label(p, text=f"Aktuálny stav:  {br_c}× malá tehla   {bb_c}× veľká tehla   {mk_c}× značka",
+        tk.Label(p, text=_T('goal_condition.snap_status').format(br=br_c, bb=bb_c, mk=mk_c),
                  bg='#1a1a33', fg='#88ccff', font=('Consolas',9),
                  padx=10, pady=5).pack(fill='x', pady=(0,8))
         self._snap_karel = tk.BooleanVar(value=True)
-        tk.Checkbutton(p, text='Zahrnúť aj polohu a smer Karela',
+        tk.Checkbutton(p, text=_T('goal_condition.snap_inc_karel'),
                        variable=self._snap_karel,
                        bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
                        activebackground=self._BG, font=('Arial',9)).pack(anchor='w')
-        tk.Label(p, text='ℹ  Snímok sa zachytí z aktuálneho stavu sveta pri kliknutí Pridať.',
+        tk.Label(p, text=_T('goal_condition.snap_note'),
                  bg=self._BG, fg='#aaaacc', font=('Arial',8,'italic')).pack(anchor='w', pady=(8,0))
 
     def _ok(self):
@@ -1961,8 +1958,8 @@ class GoalConditionDialog(tk.Toplevel):
                 y = int(self._kp_y.get()) if self._kp_y_en.get() else None
                 h = int(self._kp_h.get()) if self._kp_h_en.get() else None
                 if x is None and y is None and h is None:
-                    messagebox.showwarning("Upozornenie",
-                        "Zaškrtni aspoň jednu podmienku.", parent=self); return
+                    messagebox.showwarning(_T('goal_condition.warn_title'),
+                        _T('goal_condition.warn_no_cond'), parent=self); return
                 self.result = GoalKarelPos(x=x, y=y, height=h)
             elif t == 'cell_state':
                 x = int(self._cs_x.get()); y = int(self._cs_y.get())
@@ -1970,14 +1967,14 @@ class GoalConditionDialog(tk.Toplevel):
                 bricks     = int(self._cs_bricks.get()) if self._cs_bricks_en.get() else None
                 big_bricks = int(self._cs_bb.get())     if self._cs_bb_en.get()     else None
                 if marks is None and bricks is None and big_bricks is None:
-                    messagebox.showwarning("Upozornenie",
-                        "Zaškrtni aspoň jednu podmienku.", parent=self); return
+                    messagebox.showwarning(_T('goal_condition.warn_title'),
+                        _T('goal_condition.warn_no_cond'), parent=self); return
                 self.result = GoalCellState(x, y, marks=marks, bricks=bricks, big_bricks=big_bricks)
             else:  # snapshot
                 self.result = GoalSnapshot.from_world(
                     self._world, include_karel=self._snap_karel.get())
         except Exception as e:
-            messagebox.showerror("Chyba", str(e), parent=self); return
+            messagebox.showerror(_T('goal_condition.err_title'), str(e), parent=self); return
         self.destroy()
 
 
