@@ -1566,7 +1566,7 @@ class ProgramPanel(tk.Frame):
 
     def set_prog_lang(self, lang: str):
         """Aktualizuje zoznam príkazov a strom filtra pri zmene prog_lang sveta."""
-        # _switch_prog_lang() už bol volaný v ControlPanel.set_prog_lang()
+        _switch_prog_lang(lang)   # sám nastaví _current_prog_lang (idempotentné)
         self._fill_list(_cmds_list())
         self._build_filter_tree()
 
@@ -1710,6 +1710,8 @@ class ControlPanel(tk.Frame):
         self._nb.tab(self._t2, text=_T('control.tab_command'))
         if hasattr(self,'_cmd_prompt_lbl'):
             self._cmd_prompt_lbl.configure(text=_T('control.cmd_prompt'))
+        # Labely akčných tlačidiel sledujú GUI jazyk — prekreslíme ich
+        self._rebuild_act_buttons()
 
     def _build_cmdtab(self,p):
         self._cmd_prompt_lbl=tk.Label(p,text=_T('control.cmd_prompt'),bg='#0a0a1c',fg='#8888aa',
@@ -3021,8 +3023,7 @@ def _available_prog_langs() -> list:
 
 # Aktuálny prekladový slovník — naplní sa pri štarte cez _load_ui_lang()
 _ui_strings:        dict = {}
-_prog_action_labels: dict = {}  # TOKEN → display label  (z prog_lang súboru)
-_current_prog_lang:  str  = 'sk'
+_current_prog_lang: str  = 'sk'
 
 def _load_ui_lang(lang: str = 'sk') -> None:
     """Načíta lang/{lang}.ini do _ui_strings (všetky sekcie okrem action_labels)."""
@@ -3059,25 +3060,21 @@ _ACTION_TOKEN = {
 }
 
 def _switch_prog_lang(lang: str) -> None:
-    """Prepne aktuálny programovací jazyk — načíta [action_labels] z lang/{lang}.ini."""
-    global _prog_action_labels, _current_prog_lang
+    """Prepne aktuálny programovací jazyk (nastaví _current_prog_lang).
+    Labely akčných tlačidiel sledujú GUI jazyk (_ui_strings), nie prog_lang."""
+    global _current_prog_lang
     _current_prog_lang = lang
-    path = os.path.join(_LANG_DIR, f'{lang}.ini')
-    if not os.path.exists(path):
-        path = os.path.join(_LANG_DIR, 'sk.ini')
-    cfg = configparser.ConfigParser(interpolation=None)
-    cfg.read(path, encoding='utf-8')
-    labels = {}
-    for key, val in (cfg.items('action_labels') if cfg.has_section('action_labels') else []):
-        labels[key.upper()] = val.replace('\\n', '\n')
-    _prog_action_labels = labels
 
 def _prog_btn(action: str) -> tuple:
     """Vráti (display_label, karel_command) pre danú akciu.
-    Label pochádza z [action_labels] aktuálneho prog_lang súboru.
+    Label pochádza z [action_labels] GUI jazykového súboru (sleduje GUI lang).
     Príkaz je primárne kľúčové slovo z interpreter/*.lng pre aktuálny prog_lang."""
     token = _ACTION_TOKEN.get(action, action.upper())
-    label = _prog_action_labels.get(token) or _primary_kw(token, _current_prog_lang)
+    # Label = GUI jazyk (action_labels sekcia z _ui_strings)
+    label = (_ui_strings.get('action_labels.' + token.lower())
+             or _primary_kw(token, _current_prog_lang))
+    label = label.replace('\\n', '\n')   # ini ukladá \n ako literal backslash-n
+    # Command = programovací jazyk
     cmd   = _primary_kw(token, _current_prog_lang)
     return label, cmd
 
