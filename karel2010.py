@@ -1446,15 +1446,36 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
         if tag: tw.tag_add(tag,_hlidx(src,m.start()),_hlidx(src,m.end()))
 
 
-ALL_CMDS_SK = ['Dopredu','Dozadu','Vlavo','Vpravo',
-               'Poloz','Poloz_Velku','Zdvihni','Oznac','Odznac',
-               'Pomaly','Rychlo']
-ALL_CMDS_STR= ['Opakuj N Krat ... Koniec',
-               'Kym Podmienka Rob ... Koniec',
-               'Ak Podmienka Potom ... Koniec',
-               'Ak ... Potom ... Inak ... Koniec',
-               'Prikaz Meno\nZaciatok\n\nKoniec']
-ALL_CMDS_COND=['Stena','Tehla','Volno','Znacka','Pravda','Nepravda','Nie Stena','Nie Tehla']
+def _cmds_list() -> list:
+    """Zoznam základných príkazov v aktuálnom prog_lang (pre filter panel)."""
+    p = _primary_kw
+    L = _current_prog_lang
+    return [p('FORWARD',L), p('BACK',L), p('LEFT',L), p('RIGHT',L),
+            p('DROP',L), p('DROP_BIG',L), p('PICK',L),
+            p('MARK',L), p('CLEAR',L),
+            p('SLOWLY',L), p('QUICKLY',L)]
+
+def _cmds_structs() -> list:
+    """Zoznam riadiacich štruktúr v aktuálnom prog_lang."""
+    p = _primary_kw; L = _current_prog_lang
+    rep = p('REPEAT',L); tim = p('TIMES',L); end = p('END',L)
+    whl = p('WHILE',L);  cnd = '…';         rob = p('DO',L)
+    ifs = p('IF',L);     thn = p('THEN',L); els = p('ELSE',L)
+    prc = p('PROCEDURE',L); bgn = p('BEGIN',L)
+    return [
+        f'{rep} N {tim} ... {end}',
+        f'{whl} {cnd} {rob} ... {end}',
+        f'{ifs} {cnd} {thn} ... {end}',
+        f'{ifs} ... {thn} ... {els} ... {end}',
+        f'{prc} Meno\n{bgn}\n\n{end}',
+    ]
+
+def _cmds_conds() -> list:
+    """Zoznam podmienok v aktuálnom prog_lang."""
+    p = _primary_kw; L = _current_prog_lang; n = p('NOT',L)
+    return [p('WALL',L), p('BRICK',L), p('FREE',L), p('SIGN',L),
+            p('TRUE',L), p('FALSE',L),
+            f'{n} {p("WALL",L)}', f'{n} {p("BRICK",L)}']
 
 class ProgramPanel(tk.Frame):
     def __init__(self,parent,**kw):
@@ -1467,8 +1488,9 @@ class ProgramPanel(tk.Frame):
     def _build(self):
         hdr=tk.Frame(self,bg='#0d1030')
         hdr.pack(fill='x')
-        tk.Label(hdr,text="Môj program...",bg='#0d1030',fg='#44ff88',
-                 font=('Arial',11,'bold'),pady=4,padx=8).pack(side='left')
+        self._hdr_lbl=tk.Label(hdr,text=_T('program_panel.title'),bg='#0d1030',fg='#44ff88',
+                 font=('Arial',11,'bold'),pady=4,padx=8)
+        self._hdr_lbl.pack(side='left')
 
         body=tk.Frame(self,bg='#080814'); body.pack(fill='both',expand=True)
         body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=1)
@@ -1495,8 +1517,9 @@ class ProgramPanel(tk.Frame):
         # ---- Stred: zoznam príkazov ----
         mf=tk.Frame(body,bg='#080814')
         mf.grid(row=0,column=1,sticky='nsew',padx=1,pady=3)
-        tk.Label(mf,text="Príkazy",bg='#0d1030',fg='#aaaacc',
-                 font=('Arial',9,'bold'),pady=2).pack(fill='x')
+        self._cmd_list_hdr=tk.Label(mf,text=_T('program_panel.cmd_list_hdr'),
+                 bg='#0d1030',fg='#aaaacc',font=('Arial',9,'bold'),pady=2)
+        self._cmd_list_hdr.pack(fill='x')
         self._lb=tk.Listbox(mf,bg='#04040e',fg='#dcdcaa',font=('Consolas',11),
                              relief='flat',selectbackground='#2244aa',
                              activestyle='dotbox',exportselection=False)
@@ -1504,25 +1527,47 @@ class ProgramPanel(tk.Frame):
         self._lb.config(yscrollcommand=sc.set)
         sc.pack(side='right',fill='y'); self._lb.pack(fill='both',expand=True)
         self._lb.bind('<Double-Button-1>',self._insert)
-        self._fill_list(ALL_CMDS_SK)
+        self._fill_list(_cmds_list())
 
         # ---- Pravý: filter strom ----
         rf=tk.Frame(body,bg='#080814')
         rf.grid(row=0,column=2,sticky='nsew',padx=(1,3),pady=3)
-        tk.Label(rf,text="Filter",bg='#0d1030',fg='#aaaacc',
-                 font=('Arial',9,'bold'),pady=2).pack(fill='x')
+        self._filter_hdr=tk.Label(rf,text=_T('program_panel.filter_hdr'),
+                 bg='#0d1030',fg='#aaaacc',font=('Arial',9,'bold'),pady=2)
+        self._filter_hdr.pack(fill='x')
         style=ttk.Style(); style.configure('P.Treeview',background='#04040e',
                            foreground='#ccccdd',fieldbackground='#04040e',font=('Arial',9))
         self._tv=ttk.Treeview(rf,show='tree',selectmode='browse',
                                style='P.Treeview')
         self._tv.pack(fill='both',expand=True)
-        root=self._tv.insert('','end',text='📋 Príkazy',open=True)
-        self._sys =self._tv.insert(root,'end',text='⚙ Systémové',open=True)
-        self._tmov=self._tv.insert(self._sys,'end',text='🚶 Pohyb')
-        self._tstr=self._tv.insert(self._sys,'end',text='🔀 Štruktúry')
-        self._tcnd=self._tv.insert(self._sys,'end',text='❓ Podmienky')
-        self._tusr=self._tv.insert(root,'end',text='⭐ Tvoje príkazy',open=True)
+        self._build_filter_tree()
         self._tv.bind('<<TreeviewSelect>>',self._on_filter)
+
+    def _build_filter_tree(self):
+        """Vybuduje (alebo prebuduje) strom filtra s aktuálnymi prekladmi."""
+        # Zmaž existujúce položky
+        for item in self._tv.get_children():
+            self._tv.delete(item)
+        root=self._tv.insert('','end',text=_T('program_panel.filter_root'),open=True)
+        self._sys =self._tv.insert(root,'end',text=_T('program_panel.filter_sys'),open=True)
+        self._tmov=self._tv.insert(self._sys,'end',text=_T('program_panel.filter_mov'))
+        self._tstr=self._tv.insert(self._sys,'end',text=_T('program_panel.filter_str'))
+        self._tcnd=self._tv.insert(self._sys,'end',text=_T('program_panel.filter_cnd'))
+        self._tusr=self._tv.insert(root,'end',text=_T('program_panel.filter_usr'),open=True)
+
+    def retranslate(self):
+        """Aktualizuje UI labely po zmene jazyka GUI."""
+        self._hdr_lbl.configure(text=_T('program_panel.title'))
+        self._cmd_list_hdr.configure(text=_T('program_panel.cmd_list_hdr'))
+        self._filter_hdr.configure(text=_T('program_panel.filter_hdr'))
+        self._build_filter_tree()
+        self._fill_list(_cmds_list())
+
+    def set_prog_lang(self, lang: str):
+        """Aktualizuje zoznam príkazov a strom filtra pri zmene prog_lang sveta."""
+        # _switch_prog_lang() už bol volaný v ControlPanel.set_prog_lang()
+        self._fill_list(_cmds_list())
+        self._build_filter_tree()
 
     def _fill_list(self,items):
         self._lb.delete(0,'end')
@@ -1532,11 +1577,11 @@ class ProgramPanel(tk.Frame):
         sel=self._tv.selection()
         if not sel: return
         item=sel[0]
-        if item==self._tmov:   self._fill_list(ALL_CMDS_SK[:4])
-        elif item==self._tstr: self._fill_list(ALL_CMDS_STR)
-        elif item==self._tcnd: self._fill_list(ALL_CMDS_COND)
+        if item==self._tmov:   self._fill_list(_cmds_list()[:4])
+        elif item==self._tstr: self._fill_list(_cmds_structs())
+        elif item==self._tcnd: self._fill_list(_cmds_conds())
         elif item==self._tusr: self._fill_list(self._user_procs)
-        else:                  self._fill_list(ALL_CMDS_SK+ALL_CMDS_COND)
+        else:                  self._fill_list(_cmds_list()+_cmds_conds())
 
     def _insert(self,e=None):
         sel=self._lb.curselection()
@@ -2559,6 +2604,7 @@ class App(tk.Tk):
         # Panely
         self._nav.retranslate()
         self._ctrl.retranslate()
+        self._prog.retranslate()
 
     def _global_settings(self):
         """Otvorí dialóg globálnych nastavení (len pre admina)."""
@@ -2758,6 +2804,7 @@ class App(tk.Tk):
         self._nav.set_camera_locked(s.camera_locked)
         self._ctrl.apply_restrictions(s)
         self._ctrl.set_prog_lang(s.prog_lang)   # aktualizuje akčné tlačidlá podľa jazyka sveta
+        self._prog.set_prog_lang(s.prog_lang)   # aktualizuje zoznam príkazov a filter
         self._prog.set_disabled_cmds(s.disabled_cmds, s.disable_procedure)
 
     def _on_step(self):
