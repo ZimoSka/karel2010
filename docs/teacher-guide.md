@@ -164,6 +164,47 @@ Both fields support plain text or HTML.
 
 ---
 
+## User roles
+
+Karel 2010 supports three user roles that restrict what the current user can do. The active role is stored in `karel.ini` (next to `karel2010.py`).
+
+| Role | Permissions |
+|------|-------------|
+| **Student** | Open worlds; open and save programs. Cannot modify or save worlds. |
+| **Teacher** | Everything a student can do, plus: save worlds, open the World Settings editor. |
+| **Admin** | Everything a teacher can do, plus: global application settings (future). |
+
+The current role is shown in the window title bar: `Karel 2010  [Učiteľ]`.
+
+### How role security works
+
+There is no password — security is delegated to the operating system. The admin sets the file-system permissions on `karel.ini`:
+
+| OS-level access to `karel.ini` | Effect |
+|-------------------------------|--------|
+| Read + Write | User can change the role via **Settings → Change role...** |
+| Read only | Role is read at startup but cannot be changed from within the app |
+| No access / file missing | Defaults to **Student** role |
+
+**Typical classroom setup:**
+1. Install Karel 2010 in a folder like `C:\KarelSchool\`.
+2. Set the teacher/admin account as the only one with write access to `karel.ini`.
+3. Student OS accounts have read-only access to the folder.
+4. Create `karel.ini` manually with `role = teacher` — teacher machines have a writable copy, student machines have a read-only copy.
+
+### karel.ini format
+
+```ini
+[user]
+role = teacher
+```
+
+Valid values: `student`, `teacher`, `admin`.
+
+If the file is missing, the app creates it with `role = student` on first launch (if the folder is writable).
+
+---
+
 ## Saving the world
 
 `Edit → Save world as XML` saves the complete world to a `.karxml` file, including:

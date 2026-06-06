@@ -7,7 +7,7 @@ Spustenie:  python karel2010.py
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import threading, time, re, os, json, math, struct
+import threading, time, re, os, json, math, struct, configparser
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from enum import Enum
@@ -2261,6 +2261,7 @@ class App(tk.Tk):
         self.title("Karel 2010")
         self.geometry("1240x820")
         self.configure(bg='#060610')
+        self._role = _ini_read_role()            # úroveň z karel.ini
         self._base=World.from_json(BUILTIN_WORLD)
         self._world=self._base.copy()
         self._interp=KarelInterpreter(self._world)
@@ -2268,13 +2269,20 @@ class App(tk.Tk):
         self._last_procs={}   # procedúry z posledného úspešného parsovania
         self._build_menu(); self._build_ui()
         self._load_ex(list(EXAMPLES.keys())[0])
+        self._apply_role_to_ui()                 # skryje/zobrazí položky podľa roly
 
     # ---- Menu ------------------------------------------------------------
     def _build_menu(self):
         mb=tk.Menu(self,bg='#1a1a33',fg='#ccccff',tearoff=0)
         self.config(menu=mb)
+        self._menubar = mb
+
         def sub(lbl):
-            m=tk.Menu(mb,tearoff=0,bg='#1a1a33',fg='#ccccff'); mb.add_cascade(label=lbl,menu=m); return m
+            m=tk.Menu(mb,tearoff=0,bg='#1a1a33',fg='#ccccff')
+            mb.add_cascade(label=lbl,menu=m)
+            return m
+
+        # Edituj — ukladanie sveta a nastavenia vyžadujú rolu teacher+
         e=sub("Edituj")
         e.add_command(label="Otvoriť program",command=self._open_prg)
         e.add_command(label="Uložiť program", command=self._save_prg)
@@ -2285,18 +2293,65 @@ class App(tk.Tk):
         e.add_command(label="Uložiť svet ako XML",  command=self._save_world_xml)
         e.add_separator()
         e.add_command(label="⚙  Nastavenia sveta...", command=self._settings_editor)
+        self._menu_edit = e   # referencie pre apply_role_to_ui
+
         p=sub("Pohľad")
         p.add_command(label="Reset pohľadu",
                       command=lambda:[setattr(self._canvas.cam,'az',math.radians(225)),
                                       setattr(self._canvas.cam,'el',math.radians(28)),
                                       self._canvas.render(),
                                       self._nav.render_axes()])
+
         pr=sub("Program")
         pr.add_command(label="Spustiť ▶", command=self._run)
         pr.add_command(label="Stop    ⏹", command=self._stop)
         pr.add_command(label="Reset   ↺", command=self._reset)
+
+        # Nastavenia — viditeľné vždy, ale zmena roly len ak je .ini zapisateľné
+        n=sub("Nastavenia")
+        n.add_command(label="Zmeniť úroveň...", command=self._change_role)
+        self._menu_nast = n
+
         h=sub("Pomoc")
         h.add_command(label="O programe",command=self._about)
+
+    def _apply_role_to_ui(self):
+        """Skryje / zobrazí položky menu podľa aktuálnej roly."""
+        role = self._role
+        is_teacher = _ROLES.index(role) >= _ROLES.index('teacher')  # teacher alebo admin
+        # is_admin = role == 'admin'  # rezervované pre budúce globálne nastavenia
+
+        e = self._menu_edit
+        # Indexy položiek v menu Edituj:
+        # 0 Otvoriť program, 1 Uložiť program,
+        # 2 separator, 3 Otvoriť svet, 4 Uložiť svet,
+        # 5 separator, 6 Uložiť svet ako XML,
+        # 7 separator, 8 ⚙ Nastavenia sveta
+        teacher_items = [4, 6, 8]   # indexy vyhradené pre teachera+
+        for idx in teacher_items:
+            e.entryconfigure(idx, state='normal' if is_teacher else 'disabled')
+
+        # Titulok okna — zobrazuje rolu
+        lbl = _ROLE_LABEL.get(role, role)
+        self.title(f"Karel 2010  [{lbl}]")
+
+    def _change_role(self):
+        """Zmení rolu v karel.ini ak má používateľ právo zápisu."""
+        if not _ini_is_writable():
+            messagebox.showwarning("Zmena úrovne",
+                "Nemáte právo meniť konfiguráciu.\n"
+                "(Súbor karel.ini nie je zapisateľný pre aktuálneho používateľa.)")
+            return
+        dlg = RoleDialog(self, self._role)
+        self.wait_window(dlg)
+        if dlg.result and dlg.result != self._role:
+            if _ini_write_role(dlg.result):
+                self._role = dlg.result
+                self._apply_role_to_ui()
+                lbl = _ROLE_LABEL.get(self._role, self._role)
+                self._status(f"Úroveň zmenená na: {lbl}", "#44aacc")
+            else:
+                messagebox.showerror("Chyba", "Nepodarilo sa uložiť karel.ini.")
 
     # ---- UI Layout -------------------------------------------------------
     def _build_ui(self):
@@ -2590,6 +2645,113 @@ class App(tk.Tk):
             "Mark: Karel marks the tile he stands on.\n"
             "Karel can climb 1 brick, not 2.\n\n"
             "github.com/ZimoSka/karel2010")
+
+
+# =========================================================================
+# ÚROVNE POUŽÍVATEĽOV  /  USER ROLES
+# =========================================================================
+
+# Cesta ku konfiguračnému súboru — vedľa skriptu
+_INI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'karel.ini')
+
+# Poradie úrovní (vyšší index = vyššia úroveň)
+_ROLES      = ['student', 'teacher', 'admin']
+_ROLE_LABEL = {'student': 'Žiak',  'teacher': 'Učiteľ', 'admin': 'Admin'}
+
+def _ini_read_role() -> str:
+    """Načíta rolu z karel.ini; ak súbor neexistuje vráti 'student'."""
+    cfg = configparser.ConfigParser()
+    if os.path.exists(_INI_PATH):
+        try:
+            cfg.read(_INI_PATH, encoding='utf-8')
+            r = cfg.get('user', 'role', fallback='student').strip().lower()
+            if r in _ROLES:
+                return r
+        except Exception:
+            pass
+    return 'student'
+
+def _ini_write_role(role: str) -> bool:
+    """Uloží rolu do karel.ini. Vráti True pri úspechu."""
+    cfg = configparser.ConfigParser()
+    if os.path.exists(_INI_PATH):
+        try:
+            cfg.read(_INI_PATH, encoding='utf-8')
+        except Exception:
+            pass
+    if not cfg.has_section('user'):
+        cfg.add_section('user')
+    cfg.set('user', 'role', role)
+    try:
+        with open(_INI_PATH, 'w', encoding='utf-8') as f:
+            cfg.write(f)
+        return True
+    except (PermissionError, OSError):
+        return False
+
+def _ini_is_writable() -> bool:
+    """Vráti True ak má aktuálny OS-používateľ právo meniť karel.ini."""
+    if os.path.exists(_INI_PATH):
+        return os.access(_INI_PATH, os.W_OK)
+    # Súbor ešte neexistuje — skúsime zapísať
+    try:
+        open(_INI_PATH, 'a').close()
+        return True
+    except (PermissionError, OSError):
+        return False
+
+
+class RoleDialog(tk.Toplevel):
+    """Dialóg na zmenu úrovne používateľa."""
+    def __init__(self, parent, current_role: str):
+        super().__init__(parent)
+        self.title("Zmeniť úroveň používateľa")
+        self.configure(bg='#1a1a33')
+        self.resizable(False, False)
+        self.grab_set()
+        self.result = None
+
+        tk.Label(self, text="Vyberte úroveň:", bg='#1a1a33', fg='#ccccff',
+                 font=('Arial', 11)).pack(padx=20, pady=(16, 8))
+
+        self._var = tk.StringVar(value=current_role)
+        for r in _ROLES:
+            rb = tk.Radiobutton(self, text=_ROLE_LABEL[r], variable=self._var, value=r,
+                                bg='#1a1a33', fg='#ccccff', selectcolor='#333366',
+                                activebackground='#1a1a33', activeforeground='#ffffff',
+                                font=('Arial', 10))
+            rb.pack(anchor='w', padx=30, pady=2)
+
+        # Popisy úrovní
+        descs = {
+            'student':  "Otváranie svetov, písanie a ukladanie programov.",
+            'teacher':  "Navyše: tvorba a ukladanie svetov, editor nastavení.",
+            'admin':    "Navyše: globálne nastavenia aplikácie.",
+        }
+        self._desc_var = tk.StringVar()
+        self._var.trace_add('write', lambda *_: self._upd_desc(descs))
+        self._upd_desc(descs)
+        tk.Label(self, textvariable=self._desc_var, bg='#1a1a33', fg='#8888bb',
+                 font=('Arial', 9), wraplength=280, justify='left').pack(
+                 padx=20, pady=(6, 0))
+
+        bf = tk.Frame(self, bg='#1a1a33')
+        bf.pack(pady=14)
+        tk.Button(bf, text="OK", width=10, command=self._ok,
+                  bg='#2a5a9a', fg='white', relief='flat',
+                  activebackground='#4477bb').pack(side='left', padx=6)
+        tk.Button(bf, text="Zrušiť", width=10, command=self.destroy,
+                  bg='#3a3a55', fg='white', relief='flat',
+                  activebackground='#555577').pack(side='left', padx=6)
+        self.bind('<Return>', lambda _: self._ok())
+        self.bind('<Escape>', lambda _: self.destroy())
+
+    def _upd_desc(self, descs):
+        self._desc_var.set(descs.get(self._var.get(), ''))
+
+    def _ok(self):
+        self.result = self._var.get()
+        self.destroy()
 
 
 # =========================================================================

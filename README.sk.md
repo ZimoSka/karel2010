@@ -117,6 +117,26 @@ Otvor cez `Edituj → Nastavenia sveta...` na nastavenie všetkých parametrov s
 | **Pohľad** | Zamknutie kamery na pevný uhol |
 | **Misia** | Cieľové podmienky, režim vyhodnocovania, správy pre žiaka |
 
+## Úrovne používateľov
+
+Aktívna úroveň je uložená v `karel.ini` (vedľa skriptu). Bezpečnosť je na úrovni OS — kto má právo zápisu do tohto súboru, môže meniť úroveň.
+
+| Úroveň | Čo môže robiť |
+|--------|--------------|
+| **Žiak** | Otváranie svetov; písanie a ukladanie programov |
+| **Učiteľ** | Navyše: ukladanie svetov, editor nastavení sveta |
+| **Admin** | Navyše: globálne nastavenia aplikácie (rezervované) |
+
+Aktuálna úroveň sa zobrazuje v titulku okna. Zmeníte ju cez **Nastavenia → Zmeniť úroveň...** (dostupné len ak má aktuálny OS-používateľ právo zápisu do `karel.ini`).
+
+```ini
+; karel.ini
+[user]
+role = teacher
+```
+
+---
+
 ## Systém misií
 
 Systém misií umožňuje učiteľovi definovať, čo musí žiak dosiahnuť. Konfiguruje sa v záložke **Misia** dialógu Nastavení sveta.

@@ -124,6 +124,26 @@ Open via `Edit → World Settings...` to configure all world parameters across s
 | **View** | Lock camera to a fixed angle |
 | **Mission** | Goal conditions, evaluation mode, success/failure messages |
 
+## User Roles
+
+The active role is stored in `karel.ini` (next to the script). Security is OS-level — whoever has write access to that file can change the role.
+
+| Role | What they can do |
+|------|-----------------|
+| **Student** | Open worlds; open and save programs |
+| **Teacher** | + save worlds, open World Settings editor |
+| **Admin** | + global application settings (reserved for future use) |
+
+The current role is shown in the title bar. Change it via **Settings → Change role...** (only available if `karel.ini` is writable by the current OS user).
+
+```ini
+; karel.ini
+[user]
+role = teacher
+```
+
+---
+
 ## Mission System
 
 The mission system lets a teacher define what the student must achieve. It is configured in the **Mission** tab of the World Settings dialog.
