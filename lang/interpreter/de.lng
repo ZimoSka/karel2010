@@ -1,0 +1,37 @@
+# Karel 2010 – German interpreter keywords / Deutsche Interpreter-Schlüsselwörter
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+# Umlaut variants: ö/ä/ü (primary), oe/ae/ue (alias), o/a/u (alias)
+
+BEGIN      = anfang
+END        = ende
+PROCEDURE  = prozedur
+REPEAT     = wiederhole
+TIMES      = mal
+END_REPEAT = *wiederhole
+WHILE      = solange
+NOT        = nicht
+DO         = tue
+END_WHILE  = *solange
+IF         = wenn
+THEN       = dann
+ELSE       = sonst
+END_IF     = *wenn
+FORWARD    = vorwärts  vorwaerts  vorwarts
+BACK       = zurück  zurueck  zuruck
+LEFT       = links
+RIGHT      = rechts
+DROP       = lege
+PICK       = hebe
+DROP_BIG   = lege_gross
+MARK       = markiere
+CLEAR      = lösche  loesche  losche
+WALL       = wand
+BRICK      = stein
+FREE       = frei
+SIGN       = markierung
+FALSE      = falsch
+TRUE       = wahr
+SLOWLY     = langsam
+QUICKLY    = schnell

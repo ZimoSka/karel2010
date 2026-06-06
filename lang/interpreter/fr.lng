@@ -1,0 +1,37 @@
+# Karel 2010 – French interpreter keywords / Mots-clés interpréteur français
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+# Accent variants: with accent (primary), without accent (alias)
+
+BEGIN      = début  debut
+END        = fin
+PROCEDURE  = procedure
+REPEAT     = répète  repete
+TIMES      = fois
+END_REPEAT = *répète  *repete
+WHILE      = tantque
+NOT        = pas
+DO         = faire
+END_WHILE  = *tantque
+IF         = si
+THEN       = alors
+ELSE       = sinon
+END_IF     = *si
+FORWARD    = avance
+BACK       = recule
+LEFT       = gauche
+RIGHT      = droite
+DROP       = pose
+PICK       = prends
+DROP_BIG   = pose_grande
+MARK       = marque
+CLEAR      = efface
+WALL       = mur
+BRICK      = brique
+FREE       = libre
+SIGN       = marqueur
+FALSE      = faux
+TRUE       = vrai
+SLOWLY     = lentement
+QUICKLY    = vite

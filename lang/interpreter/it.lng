@@ -1,0 +1,36 @@
+# Karel 2010 – Italian interpreter keywords / Parole chiave interprete italiano
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+
+BEGIN      = inizio
+END        = fine
+PROCEDURE  = procedura
+REPEAT     = ripeti
+TIMES      = volte
+END_REPEAT = *ripeti
+WHILE      = mentre
+NOT        = non
+DO         = fai
+END_WHILE  = *mentre
+IF         = se
+THEN       = allora
+ELSE       = altrimenti
+END_IF     = *se
+FORWARD    = avanza
+BACK       = arretra
+LEFT       = sinistra
+RIGHT      = destra
+DROP       = posa
+PICK       = prendi
+DROP_BIG   = posa_grande
+MARK       = marca
+CLEAR      = cancella
+WALL       = muro
+BRICK      = mattone
+FREE       = libero
+SIGN       = segno
+FALSE      = falso
+TRUE       = vero
+SLOWLY     = lentamente
+QUICKLY    = presto
