@@ -504,7 +504,8 @@ class World:
             pl_el = st.find('prog_lang')
             w.settings.prog_lang = (pl_el.text.strip().lower()
                                     if pl_el is not None and pl_el.text else 'sk')
-            if w.settings.prog_lang not in _PROG_LANGS:
+            # fallback: ak .lng pre daný jazyk neexistuje, použi sk
+            if not os.path.exists(os.path.join(_INTERP_LANG_DIR, f'{w.settings.prog_lang}.lng')):
                 w.settings.prog_lang = 'sk'
             w.settings.brick_limit     = _gi('brick_limit',-1)
             w.settings.big_brick_limit = _gi('big_brick_limit',-1)
@@ -2251,17 +2252,37 @@ class WorldSettingsDialog(tk.Toplevel):
                  ).grid(row=0,column=2,sticky='w',padx=(6,8))
         # Jazyk programovania
         lf = self._frame(p, _T('world_settings.frame_lang')); lf.pack(fill='x')
-        self._prog_lang_var = tk.StringVar(value=w.settings.prog_lang)
+        prog_langs = _available_prog_langs()   # [(code, name), ...]
+        self._prog_lang_codes = [c for c,_ in prog_langs]
+        self._prog_lang_var   = tk.StringVar()
         tk.Label(lf, text=_T('world_settings.lbl_prog_lang'),
                  bg=self._BG, fg=self._FG, font=('Arial',9)
                  ).grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
-        lbf = tk.Frame(lf,bg=self._BG); lbf.grid(row=0,column=1,sticky='w')
-        for lang,lbl in [('sk', _T('world_settings.lang_sk')),
-                          ('en', _T('world_settings.lang_en'))]:
-            tk.Radiobutton(lbf, text=lbl, variable=self._prog_lang_var, value=lang,
-                           bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
-                           activebackground=self._BG, font=('Arial',9)
-                           ).pack(anchor='w', padx=4, pady=2)
+        cb_prog = ttk.Combobox(lf, textvariable=self._prog_lang_var,
+                               values=[n for _,n in prog_langs],
+                               state='readonly', width=26, font=('Arial',9))
+        cb_prog.grid(row=0,column=1,sticky='w',padx=(0,8),pady=6)
+        try:
+            cb_prog.current(self._prog_lang_codes.index(w.settings.prog_lang))
+        except ValueError:
+            cb_prog.current(0)
+        # Live update Commands tab pri zmene jazyka
+        cb_prog.bind('<<ComboboxSelected>>', lambda e: self._on_prog_lang_changed())
+
+    def _get_prog_lang_code(self) -> str:
+        """Vráti aktuálne vybraný kód programovacieho jazyka z Comboboxu."""
+        try:
+            names = [n for _,n in _available_prog_langs()]
+            idx   = names.index(self._prog_lang_var.get())
+            return self._prog_lang_codes[idx]
+        except (ValueError, IndexError, AttributeError):
+            return 'sk'
+
+    def _on_prog_lang_changed(self):
+        """Zavolá sa pri zmene Comboboxu prog_lang — live update názvov príkazov."""
+        lang = self._get_prog_lang_code()
+        for tok, cb in self._cmd_cbs.items():
+            cb.configure(text=_primary_kw(tok, lang))
 
     def _upd_hnote(self):
         try:
@@ -2309,27 +2330,33 @@ class WorldSettingsDialog(tk.Toplevel):
     # -- Tab: Príkazy ---------------------------------------------------------
     def _build_cmds(self, p):
         s = self._work.settings
-        tk.Label(p,text=_T('world_settings.cmds_intro'),
-                 bg=self._BG,fg=self._FG2,font=('Arial',8,'italic')
-                 ).pack(anchor='w',pady=(0,6))
-        self._cmd_vars: dict = {}
-        groups = [
-            (_T('world_settings.grp_move'),   [('FORWARD',_T('world_settings.cmd_forward')),('BACK',_T('world_settings.cmd_back')),
-                                                ('LEFT',_T('world_settings.cmd_left')),('RIGHT',_T('world_settings.cmd_right'))]),
-            (_T('world_settings.grp_bricks'), [('DROP',_T('world_settings.cmd_drop')),('DROP_BIG',_T('world_settings.cmd_drop_big')),('PICK',_T('world_settings.cmd_pick'))]),
-            (_T('world_settings.grp_marks'),  [('MARK',_T('world_settings.cmd_mark')),('CLEAR',_T('world_settings.cmd_clear'))]),
-            (_T('world_settings.grp_speed'),  [('SLOWLY',_T('world_settings.cmd_slowly')),('QUICKLY',_T('world_settings.cmd_quickly'))]),
+        self._cmds_intro_lbl = tk.Label(p,text=_T('world_settings.cmds_intro'),
+                 bg=self._BG,fg=self._FG2,font=('Arial',8,'italic'))
+        self._cmds_intro_lbl.pack(anchor='w',pady=(0,6))
+        self._cmd_vars:     dict = {}   # tok → BooleanVar
+        self._cmd_cbs:      dict = {}   # tok → Checkbutton (pre live update textu)
+        self._cmd_grp_keys: list = [    # [(grp_T_key, [(TOK,...), ...]), ...]
+            ('world_settings.grp_move',   ['FORWARD','BACK','LEFT','RIGHT']),
+            ('world_settings.grp_bricks', ['DROP','DROP_BIG','PICK']),
+            ('world_settings.grp_marks',  ['MARK','CLEAR']),
+            ('world_settings.grp_speed',  ['SLOWLY','QUICKLY']),
         ]
-        for grp,cmds in groups:
-            gf = self._frame(p,grp); gf.pack(fill='x',pady=(0,4))
-            for col,(tok,label) in enumerate(cmds):
+        self._cmd_grp_frames: list = []   # LabelFrame widgety — pre live update titulu
+        self._cmds_parent = p             # uschováme pre rebuild (ak by bol potrebný)
+        lang = self._get_prog_lang_code()
+        for grp_key, toks in self._cmd_grp_keys:
+            gf = self._frame(p, _T(grp_key)); gf.pack(fill='x',pady=(0,4))
+            self._cmd_grp_frames.append((grp_key, gf))
+            for col, tok in enumerate(toks):
                 var = tk.BooleanVar(value=(tok in s.disabled_cmds))
-                fg = '#ff6666' if tok in s.disabled_cmds else self._FG
-                tk.Checkbutton(gf,text=label,variable=var,
-                               bg=self._BG,fg=fg,selectcolor='#3a1a1a',
-                               activebackground=self._BG,font=('Arial',9)
-                               ).grid(row=0,column=col,padx=8,pady=4,sticky='w')
+                fg  = '#ff6666' if tok in s.disabled_cmds else self._FG
+                label = _primary_kw(tok, lang)
+                cb = tk.Checkbutton(gf, text=label, variable=var,
+                               bg=self._BG, fg=fg, selectcolor='#3a1a1a',
+                               activebackground=self._BG, font=('Arial',9))
+                cb.grid(row=0, column=col, padx=8, pady=4, sticky='w')
                 self._cmd_vars[tok] = var
+                self._cmd_cbs[tok]  = cb
         self._sep(p)
         self._proc_var = tk.BooleanVar(value=s.disable_procedure)
         tk.Checkbutton(p,text=_T('world_settings.disable_proc'),
@@ -2469,7 +2496,7 @@ class WorldSettingsDialog(tk.Toplevel):
         w.karel_dir = Direction.from_str(self._dir_var.get())
         try:   s.max_climb = max(0, int(self._max_climb_var.get()))
         except (ValueError, tk.TclError): s.max_climb = 1
-        s.prog_lang = self._prog_lang_var.get()
+        s.prog_lang = self._get_prog_lang_code()
         # 3. Zásoby
         for key,(unl,cnt) in self._inv.items():
             try:   val = -1 if unl.get() else max(0,int(cnt.get()))
@@ -2956,8 +2983,41 @@ _ROLE_LABEL = {'student': 'Žiak',  'teacher': 'Učiteľ', 'admin': 'Admin'}
 # -------------------------------------------------------------------------
 
 _LANG_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lang')
-_UI_LANGS   = ['sk', 'en']
-_PROG_LANGS = ['sk', 'en']
+
+def _available_ui_langs() -> list:
+    """Vráti [(kód, zobrazené_meno), …] pre všetky dostupné jazyky GUI (lang/*.ini).
+    Zoradené podľa kódu.  Fallback: [('sk','Slovenčina'),('en','English')]."""
+    langs = []
+    if os.path.isdir(_LANG_DIR):
+        for fname in sorted(os.listdir(_LANG_DIR)):
+            if fname.endswith('.ini') and not fname.startswith('_'):
+                code = fname[:-4]
+                cfg  = configparser.ConfigParser(interpolation=None)
+                try:
+                    cfg.read(os.path.join(_LANG_DIR, fname), encoding='utf-8')
+                    name = cfg.get('meta', 'name', fallback=code)
+                except Exception:
+                    name = code
+                langs.append((code, name))
+    return langs or [('sk', 'Slovenčina'), ('en', 'English')]
+
+def _available_prog_langs() -> list:
+    """Vráti [(kód, zobrazené_meno), …] pre všetky dostupné programovacie jazyky
+    (lang/interpreter/*.lng).  Meno načíta z lang/{kód}.ini [meta] name, inak kód."""
+    langs = []
+    if os.path.isdir(_INTERP_LANG_DIR):
+        for fname in sorted(os.listdir(_INTERP_LANG_DIR)):
+            if fname.endswith('.lng'):
+                code     = fname[:-4]
+                ini_path = os.path.join(_LANG_DIR, f'{code}.ini')
+                cfg      = configparser.ConfigParser(interpolation=None)
+                try:
+                    cfg.read(ini_path, encoding='utf-8')
+                    name = cfg.get('meta', 'name', fallback=code)
+                except Exception:
+                    name = code
+                langs.append((code, name))
+    return langs or [('sk', 'Slovenčina'), ('en', 'English')]
 
 # Aktuálny prekladový slovník — naplní sa pri štarte cez _load_ui_lang()
 _ui_strings:        dict = {}
@@ -3028,7 +3088,7 @@ def _ini_read_ui_lang() -> str:
         try:
             cfg.read(_INI_PATH, encoding='utf-8')
             lang = cfg.get('ui', 'lang', fallback='sk').strip().lower()
-            if lang in _UI_LANGS:
+            if os.path.exists(os.path.join(_LANG_DIR, f'{lang}.ini')):
                 return lang
         except Exception:
             pass
@@ -3131,13 +3191,19 @@ class GlobalSettingsDialog(tk.Toplevel):
 
         # --- Jazyk GUI ---
         self._row(gf, "Jazyk rozhrania (GUI):", 0)
-        self._ui_lang_var = tk.StringVar(value=_ini_read_ui_lang())
-        uf = tk.Frame(gf, bg=self._BG); uf.grid(row=0, column=1, sticky='w', pady=6)
-        for lang, lbl in [('sk', 'Slovenčina'), ('en', 'English')]:
-            tk.Radiobutton(uf, text=lbl, variable=self._ui_lang_var, value=lang,
-                           bg=self._BG, fg=self._FG, selectcolor='#333366',
-                           activebackground=self._BG, font=('Arial', 10)
-                           ).pack(side='left', padx=6)
+        ui_langs = _available_ui_langs()   # [(code, name), ...]
+        cur_ui   = _ini_read_ui_lang()
+        self._ui_lang_codes  = [c for c,_ in ui_langs]
+        self._ui_lang_var    = tk.StringVar()
+        cb_ui = ttk.Combobox(gf, textvariable=self._ui_lang_var,
+                             values=[n for _,n in ui_langs],
+                             state='readonly', width=22, font=('Arial', 10))
+        cb_ui.grid(row=0, column=1, sticky='w', padx=8, pady=6)
+        # nastav aktuálnu hodnotu
+        try:
+            cb_ui.current(self._ui_lang_codes.index(cur_ui))
+        except ValueError:
+            cb_ui.current(0)
 
         # --- Oddeľovač ---
         tk.Frame(gf, bg='#333355', height=1).grid(
@@ -3161,7 +3227,15 @@ class GlobalSettingsDialog(tk.Toplevel):
         self.bind('<Escape>', lambda _: self.destroy())
 
     def _apply(self):
-        new_lang = self._ui_lang_var.get()
+        # Combobox zobrazuje meno — potrebujeme kód
+        idx = 0
+        try:
+            from_langs = _available_ui_langs()
+            names = [n for _,n in from_langs]
+            idx = names.index(self._ui_lang_var.get())
+            new_lang = from_langs[idx][0]
+        except (ValueError, IndexError):
+            new_lang = 'sk'
         old_lang = _ini_read_ui_lang()
         if new_lang != old_lang:
             if not _ini_is_writable():

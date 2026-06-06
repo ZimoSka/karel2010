@@ -347,7 +347,22 @@ DROP    = poloz  polož
 - `_primary_kw(token, lang)` returns the canonical word with EN fallback.
 - **Adding a new language** (DE, FR, IT, …) = create `lang/interpreter/xx.lng` with the same TOKEN names and that language's keywords. No code changes needed.
 
+### Adding a new language
+
+To add e.g. German (`de`):
+
+1. Create `lang/interpreter/de.lng` with German keyword translations.
+2. Create `lang/de.ini` with a `[meta] name = Deutsch` section plus all other sections.
+3. Both dropdowns (GUI language in Global Settings, prog language in World Settings) will automatically include the new language on next startup — **no code changes needed**.
+
 ### UI string files (`lang/sk.ini`, `lang/en.ini`, …)
+
+Each file starts with a `[meta]` section used for the language picker display name:
+
+```ini
+[meta]
+name = Slovenčina
+```
 
 INI files with sections:
 
@@ -362,6 +377,8 @@ INI files with sections:
 | `[world_settings]` | All labels in WorldSettingsDialog (6 tabs) |
 
 Loaded by `_load_ui_lang(lang)` into `_ui_strings` flat dict (key = `section.key`).
+
+Available languages are discovered at runtime by `_available_ui_langs()` (scans `lang/*.ini`) and `_available_prog_langs()` (scans `lang/interpreter/*.lng`). The language pickers are `ttk.Combobox` widgets populated dynamically — adding a new language file is sufficient.
 
 ### Action buttons
 
