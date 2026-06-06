@@ -124,6 +124,21 @@ Open via `Edit → World Settings...` to configure all world parameters across s
 | **View** | Lock camera to a fixed angle |
 | **Mission** | Goal conditions, evaluation mode, success/failure messages |
 
+## Language Settings
+
+Two independent language settings:
+
+| Setting | Scope | Changed by |
+|---------|-------|-----------|
+| **GUI language** | All menus, buttons, labels | Admin via **Settings → Global settings...** |
+| **Programming language** | Direct control button labels, command keywords | Teacher per world (Room tab in World Settings) |
+
+GUI language is stored in `karel.ini → [ui] lang = <code>`. Built-in translations: **Slovak** (`sk`), **English** (`en`), **German** (`de`), **French** (`fr`), **Italian** (`it`). Translation files are in `lang/<code>.ini`. Both dropdowns auto-populate from the files present — adding a new language requires only creating the INI file.
+
+Programming language is stored per world in `.karxml → <settings><prog_lang>en</prog_lang></settings>`. The interpreter always accepts keywords from all loaded languages simultaneously.
+
+---
+
 ## User Roles
 
 The active role is stored in `karel.ini` (next to the script). Security is OS-level — whoever has write access to that file can change the role.

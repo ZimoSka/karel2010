@@ -117,6 +117,21 @@ Otvor cez `Edituj → Nastavenia sveta...` na nastavenie všetkých parametrov s
 | **Pohľad** | Zamknutie kamery na pevný uhol |
 | **Misia** | Cieľové podmienky, režim vyhodnocovania, správy pre žiaka |
 
+## Nastavenia jazyka
+
+Dve nezávislé nastavenia jazyka:
+
+| Nastavenie | Rozsah | Kto mení |
+|-----------|--------|---------|
+| **Jazyk GUI** | Všetky menu, tlačidlá, labely | Admin cez **Nastavenia → Globálne nastavenia...** |
+| **Jazyk programovania** | Labely tlačidiel priameho ovládania, kľúčové slová | Učiteľ per svet (záložka Miestnosť v editore sveta) |
+
+Jazyk GUI sa ukladá do `karel.ini → [ui] lang = <kód>`. Zabudované preklady: **slovenčina** (`sk`), **angličtina** (`en`), **nemčina** (`de`), **francúzština** (`fr`), **taliančina** (`it`). Prekladové súbory sú v `lang/<kód>.ini`. Oba výberové zoznamy sa automaticky naplnia podľa prítomných súborov — pridanie nového jazyka vyžaduje len vytvorenie INI súboru.
+
+Jazyk programovania sa ukladá per svet do `.karxml → <settings><prog_lang>en</prog_lang></settings>`. Interpreter vždy akceptuje kľúčové slová zo všetkých načítaných jazykov súčasne.
+
+---
+
 ## Úrovne používateľov
 
 Aktívna úroveň je uložená v `karel.ini` (vedľa skriptu). Bezpečnosť je na úrovni OS — kto má právo zápisu do tohto súboru, môže meniť úroveň.
