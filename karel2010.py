@@ -1372,9 +1372,6 @@ class NavigatorPanel(tk.Frame):
             self._preset_btns.append(b)
             self._preset_btn_keys.append(key)
 
-        tk.Checkbutton(self,text="Voľný pohyb",bg='#0a0a1c',fg='#888899',
-                       selectcolor='#1a1a44',activebackground='#0a0a1c',
-                       font=('Arial',8)).pack(anchor='w',padx=6,pady=2)
         self.render_axes()
 
     def retranslate(self):
@@ -1774,19 +1771,13 @@ class ControlPanel(tk.Frame):
                   Direction.EAST:'→',  Direction.WEST:'←'}
         self._dir_lbl.config(text=arrows.get(w.karel_dir,'→'))
 
-    # Mapovanie: zobrazené meno príkazu → token CMD_T
-    _CMD_TO_TOKEN = {
-        'dopredu':'FORWARD','dozadu':'BACK','vlavo':'LEFT','vpravo':'RIGHT',
-        'poloz':'DROP','poloz_velku':'DROP_BIG','zdvihni':'PICK',
-        'oznac':'MARK','odznac':'CLEAR',
-    }
-
     def apply_restrictions(self, settings):
         """Zakáže/povolí tlačidlá podľa nastavení sveta."""
         if not hasattr(self,'_btn_refs'): return
         disabled = settings.disabled_cmds if settings else set()
         for cmd, btn in self._btn_refs.items():
-            tok = self._CMD_TO_TOKEN.get(cmd,'')
+            # KW obsahuje všetky jazyky — tok nájde 'forward' aj 'dopredu' → 'FORWARD'
+            tok = KW.get(cmd.lower(), '')
             if tok in disabled:
                 btn.configure(state='disabled', bg='#222222', fg='#555555', cursor='')
             else:
@@ -2523,11 +2514,16 @@ class WorldSettingsDialog(tk.Toplevel):
         w.success_html            = self._msg_success_var.get().strip()
         w.failure_html            = self._msg_failure_var.get().strip()
         # Aplikuj na app
-        self._app._base = w
-        self._app._reset_world()
-        # Ak sa zmenil názov sveta, aktualizuj titulok okna
-        self._app._world_title_var.set(w.title or "Karlov Svet")
-        self.destroy()
+        try:
+            self._app._base = w
+            self._app._reset_world()
+            # Ak sa zmenil názov sveta, aktualizuj titulok okna
+            self._app._world_title_var.set(w.title or "Karlov Svet")
+        except Exception as e:
+            import traceback
+            messagebox.showerror("Chyba pri aplikovaní nastavení", traceback.format_exc())
+        finally:
+            self.destroy()
 
 
 # =========================================================================
