@@ -3204,6 +3204,10 @@ class App(tk.Tk):
         p=filedialog.asksaveasfilename(title="Uložiť svet",
             defaultextension='.karjson',filetypes=[("Karel svet","*.karjson"),("JSON","*.json")])
         if not p: return
+        if p.lower().endswith('.karxml') or p.lower().endswith('.xml'):
+            messagebox.showwarning("Upozornenie",
+                "Pre XML formát použi 'Uložiť ako XML' — JSON formát neukladá podmienky misie ani texty zadania.")
+            return
         try:
             self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
             with open(p,'w',encoding='utf-8') as f: json.dump(self._world.to_json(),f,indent=2)

@@ -3,27 +3,17 @@
   <karel x="5" y="1" dir="E"/>
   <walls>
     <wall x="0" y="0" side="S"/>
-    <wall x="0" y="9" side="N"/>
-    <wall x="1" y="0" side="S"/>
-    <wall x="1" y="9" side="N"/>
-    <wall x="2" y="0" side="S"/>
-    <wall x="2" y="9" side="N"/>
-    <wall x="3" y="0" side="S"/>
-    <wall x="3" y="9" side="N"/>
-    <wall x="4" y="0" side="S"/>
-    <wall x="4" y="9" side="N"/>
-    <wall x="5" y="0" side="S"/>
-    <wall x="5" y="9" side="N"/>
-    <wall x="6" y="0" side="S"/>
-    <wall x="6" y="9" side="N"/>
-    <wall x="7" y="0" side="S"/>
-    <wall x="7" y="9" side="N"/>
-    <wall x="8" y="0" side="S"/>
-    <wall x="8" y="9" side="N"/>
-    <wall x="9" y="0" side="S"/>
-    <wall x="9" y="9" side="N"/>
     <wall x="0" y="0" side="W"/>
+    <wall x="1" y="0" side="S"/>
+    <wall x="2" y="0" side="S"/>
+    <wall x="3" y="0" side="S"/>
+    <wall x="4" y="0" side="S"/>
+    <wall x="5" y="0" side="S"/>
+    <wall x="6" y="0" side="S"/>
+    <wall x="7" y="0" side="S"/>
+    <wall x="8" y="0" side="S"/>
     <wall x="9" y="0" side="E"/>
+    <wall x="9" y="0" side="S"/>
     <wall x="0" y="1" side="W"/>
     <wall x="9" y="1" side="E"/>
     <wall x="0" y="2" side="W"/>
@@ -40,62 +30,73 @@
     <wall x="9" y="7" side="E"/>
     <wall x="0" y="8" side="W"/>
     <wall x="9" y="8" side="E"/>
+    <wall x="0" y="9" side="N"/>
     <wall x="0" y="9" side="W"/>
+    <wall x="1" y="9" side="N"/>
+    <wall x="2" y="9" side="N"/>
+    <wall x="3" y="9" side="N"/>
+    <wall x="4" y="9" side="N"/>
+    <wall x="5" y="9" side="N"/>
+    <wall x="6" y="9" side="N"/>
+    <wall x="7" y="9" side="N"/>
+    <wall x="8" y="9" side="N"/>
     <wall x="9" y="9" side="E"/>
+    <wall x="9" y="9" side="N"/>
   </walls>
   <bricks>
     <brick x="1" y="1" count="1"/>
-    <brick x="1" y="2" count="1"/>
-    <brick x="1" y="3" count="1"/>
-    <brick x="1" y="4" count="1"/>
-    <brick x="1" y="5" count="1"/>
-    <brick x="1" y="6" count="1"/>
-    <brick x="1" y="7" count="1"/>
-    <brick x="1" y="8" count="1"/>
     <brick x="2" y="1" count="1"/>
-    <brick x="2" y="8" count="1"/>
     <brick x="3" y="1" count="1"/>
-    <brick x="3" y="8" count="1"/>
-    <brick x="4" y="1" count="1"/>
-    <brick x="4" y="8" count="1"/>
     <brick x="5" y="1" count="1"/>
-    <brick x="5" y="8" count="1"/>
     <brick x="6" y="1" count="1"/>
-    <brick x="6" y="8" count="1"/>
     <brick x="7" y="1" count="1"/>
-    <brick x="7" y="8" count="1"/>
     <brick x="8" y="1" count="1"/>
+    <brick x="1" y="2" count="1"/>
     <brick x="8" y="2" count="1"/>
+    <brick x="1" y="3" count="1"/>
     <brick x="8" y="3" count="1"/>
+    <brick x="1" y="4" count="1"/>
     <brick x="8" y="4" count="1"/>
+    <brick x="1" y="5" count="1"/>
     <brick x="8" y="5" count="1"/>
+    <brick x="1" y="6" count="1"/>
     <brick x="8" y="6" count="1"/>
+    <brick x="1" y="7" count="1"/>
     <brick x="8" y="7" count="1"/>
+    <brick x="1" y="8" count="1"/>
+    <brick x="2" y="8" count="1"/>
+    <brick x="3" y="8" count="1"/>
+    <brick x="4" y="8" count="1"/>
+    <brick x="5" y="8" count="1"/>
+    <brick x="6" y="8" count="1"/>
+    <brick x="7" y="8" count="1"/>
     <brick x="8" y="8" count="1"/>
   </bricks>
   <bigbricks/>
-  <marks/>
+  <marks>
+    <mark x="3" y="1"/>
+  </marks>
   <title>01</title>
-  <intro>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
-&lt;b&gt;&lt;center&gt;
-Karel stojí na múriku,&lt;br&gt; napíšte program, aby prešiel celý múrik a nespadol!
-&lt;/b&gt;&lt;/center
-&lt;/font&gt;</intro>
-  <success>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
-&lt;b&gt;&lt;center&gt;
-Výborne,&lt;br&gt; zvládol si to.
-&lt;/b&gt;&lt;/center
-&lt;/font&gt;</success>
-  <failure>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
-&lt;b&gt;&lt;center&gt;
-Aúúúúúú,&lt;br&gt; spadol si z múrika...
-&lt;/b&gt;&lt;/center
-&lt;/font&gt;</failure>
-  <mission>
-    <condition check="karel_pos" z="1" negate="true" eval="failure" when="on_step" op="or"/>
-    <condition check="karel_pos" z="1" eval="success" when="on_finish" op="or"/>
-  </mission>
-  <program>Začiatok
-
+  <intro>&amp;lt;font color=yellow size=6 face=&amp;quot;Arial&amp;quot;&amp;gt;
+&amp;lt;b&amp;gt;&amp;lt;center&amp;gt;
+Karel stoji na muriku,&amp;lt;br&amp;gt; napisite program, aby presiel cely murik a nespadol!
+&amp;lt;/b&amp;gt;&amp;lt;/center
+&amp;lt;/font&amp;gt;</intro>
+  <success>&amp;lt;font color=yellow size=6 face=&amp;quot;Arial&amp;quot;&amp;gt;
+&amp;lt;b&amp;gt;&amp;lt;center&amp;gt;
+Vyborne,&amp;lt;br&amp;gt; zvladol si to.
+&amp;lt;/b&amp;gt;&amp;lt;/center
+&amp;lt;/font&amp;gt;</success>
+  <failure>&amp;lt;font color=yellow size=6 face=&amp;quot;Arial&amp;quot;&amp;gt;
+&amp;lt;b&amp;gt;&amp;lt;center&amp;gt;
+Auuuu,&amp;lt;br&amp;gt; spadol si z murika...
+&amp;lt;/b&amp;gt;&amp;lt;/center
+&amp;lt;/font&amp;gt;</failure>
+  <program>Zacatok
+ 
 Koniec</program>
+  <mission>
+    <condition check="karel_pos" eval="failure" when="on_step" op="or" negate="true" z="1"/>
+    <condition check="karel_pos" eval="success" when="on_finish" op="or" z="1"/>
+  </mission>
 </world>
