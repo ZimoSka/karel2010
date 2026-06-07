@@ -72,3 +72,7 @@
 | 7 | **História príkazov** — šípky nahor/dole v command boxe |
 | 8 | **Gramatika do externého súboru** |
 | 9 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
+| 10 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
+| 11 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
+| 12 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
+| 13 | **Úprava GUI layoutu** — okná sa neprekrývajú; fixný layout alebo docking panelov |
