@@ -1923,14 +1923,16 @@ class ControlPanel(tk.Frame):
 # =========================================================================
 
 class GoalConditionDialog(tk.Toplevel):
-    """Sub-dialóg: pridanie jednej podmienky misie."""
+    """Sub-dialóg: pridanie / editácia jednej podmienky misie."""
     _BG='#0a0a1c'; _FG='#ccccee'; _FG2='#888899'
 
-    def __init__(self, parent, world):
+    def __init__(self, parent, world, edit_cond=None):
         super().__init__(parent)
-        self._world  = world
-        self.result  = None
-        self.title(_T('goal_condition.title'))
+        self._world     = world
+        self._edit_cond = edit_cond   # GoalCondition alebo None (nový)
+        self.result     = None
+        title_key = 'goal_condition.title_edit' if edit_cond else 'goal_condition.title'
+        self.title(_T(title_key))
         self.configure(bg=self._BG)
         self.resizable(False, False)
         self.grab_set(); self.transient(parent)
@@ -1942,11 +1944,13 @@ class GoalConditionDialog(tk.Toplevel):
         self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
     def _build(self):
+        ec = self._edit_cond
         # Typ podmienky
         tf = tk.Frame(self, bg=self._BG, padx=12, pady=8); tf.pack(fill='x')
         tk.Label(tf, text=_T('goal_condition.type_label'), bg=self._BG, fg=self._FG,
                  font=('Arial',9,'bold')).pack(side='left', padx=(0,12))
-        self._type_var = tk.StringVar(value='karel_pos')
+        default_type = ec.check if ec and ec.check in ('karel_pos','cell_state','snapshot') else 'karel_pos'
+        self._type_var = tk.StringVar(value=default_type)
         for val,lbl in [('karel_pos', _T('goal_condition.type_karel_pos')),
                         ('cell_state',_T('goal_condition.type_cell_state')),
                         ('snapshot',  _T('goal_condition.type_snapshot'))]:
@@ -1966,7 +1970,7 @@ class GoalConditionDialog(tk.Toplevel):
         r1 = tk.Frame(cf, bg='#0d0d22'); r1.pack(fill='x', pady=(0,4))
         tk.Label(r1, text=_T('goal_condition.lbl_eval'), bg='#0d0d22', fg=self._FG2,
                  font=('Arial',8), width=10, anchor='w').pack(side='left')
-        self._eval_var = tk.StringVar(value='success')
+        self._eval_var = tk.StringVar(value=ec.eval  if ec else 'success')
         for val, lbl in [('success', _T('goal_condition.eval_success')),
                          ('failure', _T('goal_condition.eval_failure'))]:
             tk.Radiobutton(r1, text=lbl, variable=self._eval_var, value=val,
@@ -1977,7 +1981,7 @@ class GoalConditionDialog(tk.Toplevel):
         tk.Frame(r1, bg='#334466', width=1).pack(side='left', fill='y', padx=10)
         tk.Label(r1, text=_T('goal_condition.lbl_when'), bg='#0d0d22', fg=self._FG2,
                  font=('Arial',8), width=5, anchor='w').pack(side='left')
-        self._when_var = tk.StringVar(value='on_finish')
+        self._when_var = tk.StringVar(value=ec.when if ec else 'on_finish')
         for val, lbl in [('on_finish', _T('goal_condition.when_finish')),
                          ('on_step',   _T('goal_condition.when_step'))]:
             tk.Radiobutton(r1, text=lbl, variable=self._when_var, value=val,
@@ -1989,7 +1993,7 @@ class GoalConditionDialog(tk.Toplevel):
         r2 = tk.Frame(cf, bg='#0d0d22'); r2.pack(fill='x')
         tk.Label(r2, text=_T('goal_condition.lbl_op'), bg='#0d0d22', fg=self._FG2,
                  font=('Arial',8), width=10, anchor='w').pack(side='left')
-        self._op_var = tk.StringVar(value='or')
+        self._op_var = tk.StringVar(value=ec.op if ec else 'or')
         for val, lbl in [('or', 'OR'), ('and', 'AND')]:
             tk.Radiobutton(r2, text=lbl, variable=self._op_var, value=val,
                            bg='#0d0d22', fg='#aaaaff',
@@ -1998,7 +2002,7 @@ class GoalConditionDialog(tk.Toplevel):
         tk.Label(r2, text=_T('goal_condition.op_note'), bg='#0d0d22', fg='#556677',
                  font=('Arial',8,'italic')).pack(side='left', padx=(4,20))
 
-        self._negate_var = tk.BooleanVar(value=False)
+        self._negate_var = tk.BooleanVar(value=ec.negate if ec else False)
         tk.Checkbutton(r2, text=_T('goal_condition.lbl_negate'),
                        variable=self._negate_var,
                        bg='#0d0d22', fg='#ffaa44', selectcolor='#2a1a00',
@@ -2010,7 +2014,8 @@ class GoalConditionDialog(tk.Toplevel):
         tk.Button(bf, text=_T('goal_condition.btn_cancel'), command=self.destroy,
                   bg='#3a1a1a', fg='white', relief='flat', padx=12, pady=4,
                   font=('Arial',9), cursor='hand2').pack(side='right', padx=8)
-        tk.Button(bf, text=_T('goal_condition.btn_add'), command=self._ok,
+        btn_lbl = _T('goal_condition.btn_save') if ec else _T('goal_condition.btn_add')
+        tk.Button(bf, text=btn_lbl, command=self._ok,
                   bg='#1a4a1a', fg='white', relief='flat', padx=12, pady=4,
                   font=('Arial',9,'bold'), cursor='hand2').pack(side='right', padx=4)
         self._switch_type()
@@ -2027,16 +2032,17 @@ class GoalConditionDialog(tk.Toplevel):
                         font=('Arial',9), width=w, anchor='w')
 
     def _build_karel_pos(self):
-        p = self._content; wd = self._world
+        p = self._content; wd = self._world; ec = self._edit_cond
         tk.Label(p, text=_T('goal_condition.kp_intro'),
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic'),
                  wraplength=380).pack(anchor='w', pady=(0,8))
-        self._kp_x_en = tk.BooleanVar(value=True)
-        self._kp_y_en = tk.BooleanVar(value=True)
-        self._kp_h_en = tk.BooleanVar(value=False)
-        self._kp_x    = tk.IntVar(value=wd.karel_x)
-        self._kp_y    = tk.IntVar(value=wd.karel_y)
-        self._kp_h    = tk.IntVar(value=wd._height(wd.karel_x, wd.karel_y))
+        # pri editácii pred-vyplníme z existujúcej podmienky, inak z aktuálnej pozície Karela
+        self._kp_x_en = tk.BooleanVar(value=ec.x is not None if ec else True)
+        self._kp_y_en = tk.BooleanVar(value=ec.y is not None if ec else True)
+        self._kp_h_en = tk.BooleanVar(value=ec.z is not None if ec else False)
+        self._kp_x    = tk.IntVar(value=ec.x if (ec and ec.x is not None) else wd.karel_x)
+        self._kp_y    = tk.IntVar(value=ec.y if (ec and ec.y is not None) else wd.karel_y)
+        self._kp_h    = tk.IntVar(value=ec.z if (ec and ec.z is not None) else wd._height(wd.karel_x, wd.karel_y))
         for en_var, val_var, lbl, lo, hi in [
             (self._kp_x_en, self._kp_x, 'X:', 0, wd.width-1),
             (self._kp_y_en, self._kp_y, 'Y:', 0, wd.height-1),
@@ -2050,24 +2056,24 @@ class GoalConditionDialog(tk.Toplevel):
                         width=5, font=('Consolas',10)).pack(side='left')
 
     def _build_cell_state(self):
-        p = self._content; wd = self._world
+        p = self._content; wd = self._world; ec = self._edit_cond
         tk.Label(p, text=_T('goal_condition.cs_intro'),
                  bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')).pack(anchor='w', pady=(0,8))
         cr = tk.Frame(p, bg=self._BG); cr.pack(fill='x', pady=2)
-        self._cs_x = tk.IntVar(value=wd.karel_x)
-        self._cs_y = tk.IntVar(value=wd.karel_y)
+        self._cs_x = tk.IntVar(value=ec.x if (ec and ec.x is not None) else wd.karel_x)
+        self._cs_y = tk.IntVar(value=ec.y if (ec and ec.y is not None) else wd.karel_y)
         for lbl, var, lo, hi in [('X:', self._cs_x, 0, wd.width-1),
                                    ('Y:', self._cs_y, 0, wd.height-1)]:
             tk.Label(cr, text=lbl, bg=self._BG, fg=self._FG,
                      font=('Arial',9)).pack(side='left', padx=(8,2))
             ttk.Spinbox(cr, textvariable=var, from_=lo, to=hi,
                         width=4, font=('Consolas',10)).pack(side='left', padx=(0,10))
-        self._cs_marks_en  = tk.BooleanVar(value=False)
-        self._cs_bricks_en = tk.BooleanVar(value=False)
-        self._cs_bb_en     = tk.BooleanVar(value=False)
-        self._cs_marks  = tk.BooleanVar(value=False)
-        self._cs_bricks = tk.IntVar(value=0)
-        self._cs_bb     = tk.IntVar(value=0)
+        self._cs_marks_en  = tk.BooleanVar(value=ec.cell_marks      is not None if ec else False)
+        self._cs_bricks_en = tk.BooleanVar(value=ec.cell_bricks     is not None if ec else False)
+        self._cs_bb_en     = tk.BooleanVar(value=ec.cell_big_bricks is not None if ec else False)
+        self._cs_marks  = tk.BooleanVar(value=bool(ec.cell_marks)          if (ec and ec.cell_marks      is not None) else False)
+        self._cs_bricks = tk.IntVar(value=ec.cell_bricks                   if (ec and ec.cell_bricks     is not None) else 0)
+        self._cs_bb     = tk.IntVar(value=ec.cell_big_bricks               if (ec and ec.cell_big_bricks is not None) else 0)
         # značka
         mr = tk.Frame(p, bg=self._BG); mr.pack(fill='x', pady=2)
         tk.Checkbutton(mr, variable=self._cs_marks_en, bg=self._BG, fg=self._FG,
@@ -2089,17 +2095,28 @@ class GoalConditionDialog(tk.Toplevel):
                         width=5, font=('Consolas',10)).pack(side='left')
 
     def _build_snapshot(self):
-        p = self._content; wd = self._world
-        br_c = sum(wd.bricks[y][x] for y in range(wd.height) for x in range(wd.width))
-        bb_c = sum(wd.big_bricks[y][x] for y in range(wd.height) for x in range(wd.width))
-        mk_c = sum(1 for y in range(wd.height) for x in range(wd.width) if wd.marks[y][x])
+        p = self._content; wd = self._world; ec = self._edit_cond
+        # pri editácii ukážeme štatistiky uloženého snímku, inak aktuálneho sveta
+        if ec and ec.snap:
+            s = ec.snap
+            h = wd.height; w2 = wd.width
+            br_c = sum(s['bricks'][y][x]     for y in range(h) for x in range(w2))
+            bb_c = sum(s['big_bricks'][y][x] for y in range(h) for x in range(w2))
+            mk_c = sum(1 for y in range(h) for x in range(w2) if s['marks'][y][x])
+            status_lbl = _T('goal_condition.snap_status_saved')
+        else:
+            br_c = sum(wd.bricks[y][x]     for y in range(wd.height) for x in range(wd.width))
+            bb_c = sum(wd.big_bricks[y][x] for y in range(wd.height) for x in range(wd.width))
+            mk_c = sum(1 for y in range(wd.height) for x in range(wd.width) if wd.marks[y][x])
+            status_lbl = _T('goal_condition.snap_status')
         tk.Label(p, text=_T('goal_condition.snap_desc').replace('\\n','\n'),
             bg=self._BG, fg=self._FG2, font=('Arial',9,'italic'),
             wraplength=360, justify='left').pack(anchor='w', pady=(0,10))
-        tk.Label(p, text=_T('goal_condition.snap_status').format(br=br_c, bb=bb_c, mk=mk_c),
+        tk.Label(p, text=status_lbl.format(br=br_c, bb=bb_c, mk=mk_c),
                  bg='#1a1a33', fg='#88ccff', font=('Consolas',9),
                  padx=10, pady=5).pack(fill='x', pady=(0,8))
-        self._snap_karel = tk.BooleanVar(value=True)
+        inc_karel = (ec.snap.get('karel_x') is not None) if (ec and ec.snap) else True
+        self._snap_karel = tk.BooleanVar(value=inc_karel)
         tk.Checkbutton(p, text=_T('goal_condition.snap_inc_karel'),
                        variable=self._snap_karel,
                        bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
@@ -2660,9 +2677,13 @@ class WorldSettingsDialog(tk.Toplevel):
         for c in self._goal_conditions:
             self._cond_lb.insert('end', '  ' + c.describe())
 
+        self._cond_lb.bind('<Double-Button-1>', lambda e: self._edit_condition())
         bf2 = tk.Frame(cf2, bg=self._BG); bf2.pack(fill='x', padx=8, pady=(0,6))
         tk.Button(bf2, text=_T('world_settings.btn_add_cond'), command=self._add_condition,
                   bg='#1a4a1a', fg='white', relief='flat', padx=8, pady=3,
+                  font=('Arial',9), cursor='hand2').pack(side='left', padx=(0,6))
+        tk.Button(bf2, text=_T('world_settings.btn_edit_cond'), command=self._edit_condition,
+                  bg='#1a2a4a', fg='white', relief='flat', padx=8, pady=3,
                   font=('Arial',9), cursor='hand2').pack(side='left', padx=(0,6))
         tk.Button(bf2, text=_T('world_settings.btn_del_cond'), command=self._remove_condition,
                   bg='#4a1a1a', fg='white', relief='flat', padx=8, pady=3,
@@ -2689,6 +2710,18 @@ class WorldSettingsDialog(tk.Toplevel):
         if dlg.result:
             self._goal_conditions.append(dlg.result)
             self._cond_lb.insert('end', '  ' + dlg.result.describe())
+
+    def _edit_condition(self):
+        sel = self._cond_lb.curselection()
+        if not sel: return
+        idx = sel[0]
+        dlg = GoalConditionDialog(self, self._cur_world, edit_cond=self._goal_conditions[idx])
+        self.wait_window(dlg)
+        if dlg.result:
+            self._goal_conditions[idx] = dlg.result
+            self._cond_lb.delete(idx)
+            self._cond_lb.insert(idx, '  ' + dlg.result.describe())
+            self._cond_lb.selection_set(idx)
 
     def _remove_condition(self):
         sel = self._cond_lb.curselection()
