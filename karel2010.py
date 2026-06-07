@@ -338,6 +338,24 @@ class World:
         if self.bricks[ny][nx]<=0: raise KarelError("Žiadna (malá) tehla na zdvihnutie!")
         self.bricks[ny][nx]-=1
         if self._bricks_left >= 0: self._bricks_left += 1
+
+    def pick_big_brick(self):
+        """Zdvihne kvader spred Karela — len cez GUI, nie programovo."""
+        if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť kvader cez stenu!")
+        nx,ny=self._front()
+        if self.big_bricks[ny][nx]<=0: raise KarelError("Žiadny kvader na zdvihnutie!")
+        self.big_bricks[ny][nx]-=1
+        if self._big_bricks_left >= 0: self._big_bricks_left += 1
+
+    def pick_any_brick(self):
+        """Zdvihne malú tehlu ak je; ak nie, zdvihne kvader. Používa sa len z GUI."""
+        nx,ny=self._front()
+        if self.bricks[ny][nx] > 0:
+            self.pick_brick()
+        elif self.big_bricks[ny][nx] > 0:
+            self.pick_big_brick()
+        else:
+            raise KarelError("Pred Karelom nie je žiadna tehla ani kvader!")
     def mark(self):
         if not self.marks[self.karel_y][self.karel_x]:
             if self._marks_left == 0: raise KarelError("Nemáš žiadne značky!")
@@ -1043,26 +1061,29 @@ def world_faces(w):
                     F.append(_face([(x0,y0,WALL_H),(x0,y1,WALL_H),(x0+0.06,y1,WALL_H),(x0+0.06,y0,WALL_H)],FC['wall_top'],False,'',n))
 
     # Malé tehly / small bricks  — normály = back-face culling, žiadne artefakty
-    for gy in range(H):
-        for gx in range(W):
-            n=w.bricks[gy][gx]
-            for z in range(n):
-                z0,z1=z*BRICK_H,(z+1)*BRICK_H
-                m=0.07; bx0,bx1,by0,by1=gx+m,gx+1-m,gy+m,gy+1-m
-                F.append(_face([(bx0,by0,z1),(bx1,by0,z1),(bx1,by1,z1),(bx0,by1,z1)],FC['brick_top'],True,'#441100',(0,0,1)))
-                F.append(_face([(bx0,by0,z0),(bx1,by0,z0),(bx1,by0,z1),(bx0,by0,z1)],FC['brick_s'],True,'#330000',(0,-1,0)))
-                F.append(_face([(bx1,by0,z0),(bx1,by1,z0),(bx1,by1,z1),(bx1,by0,z1)],FC['brick_d'],True,'#330000',(1,0,0)))
-                F.append(_face([(bx1,by1,z0),(bx0,by1,z0),(bx0,by1,z1),(bx1,by1,z1)],FC['brick_s'],True,'#330000',(0,1,0)))
-                F.append(_face([(bx0,by1,z0),(bx0,by0,z0),(bx0,by0,z1),(bx0,by1,z1)],FC['brick_d'],True,'#330000',(-1,0,0)))
-
-    # Kvader (veľká tehla) — renderuje sa ako JEDEN monolitický blok bez vrstiev
+    # Malé tehly sedia NA VRCHU kvadera (ak je prítomný), nie pod ním
     BIG_H = BRICK_H * World.BIG_BRICK_UNITS
     for gy in range(H):
         for gx in range(W):
+            n=w.bricks[gy][gx]
+            base_z = w.big_bricks[gy][gx] * BIG_H   # 0 ak nie je kvader, BIG_H ak je
+            for z in range(n):
+                z0 = base_z + z*BRICK_H
+                z1 = base_z + (z+1)*BRICK_H
+                m=0.07; bx0,bx1,by0,by1=gx+m,gx+1-m,gy+m,gy+1-m
+                F.append(_face([(bx0,by0,z1),(bx1,by0,z1),(bx1,by1,z1),(bx0,by1,z1)],FC['brick_top'],True,'#114400',(0,0,1)))
+                F.append(_face([(bx0,by0,z0),(bx1,by0,z0),(bx1,by0,z1),(bx0,by0,z1)],FC['brick_s'],True,'#113300',(0,-1,0)))
+                F.append(_face([(bx1,by0,z0),(bx1,by1,z0),(bx1,by1,z1),(bx1,by0,z1)],FC['brick_d'],True,'#112200',(1,0,0)))
+                F.append(_face([(bx1,by1,z0),(bx0,by1,z0),(bx0,by1,z1),(bx1,by1,z1)],FC['brick_s'],True,'#113300',(0,1,0)))
+                F.append(_face([(bx0,by1,z0),(bx0,by0,z0),(bx0,by0,z1),(bx0,by1,z1)],FC['brick_d'],True,'#112200',(-1,0,0)))
+
+    # Kvader (veľká tehla) — renderuje sa ako JEDEN monolitický blok bez vrstiev
+    # BIG_H je už definovaný vyššie v sekcii malých tehál
+    for gy in range(H):
+        for gx in range(W):
             nb = w.big_bricks[gy][gx]
-            base_z = w.bricks[gy][gx] * BRICK_H
             for z in range(nb):
-                z0 = base_z + z * BIG_H
+                z0 = z * BIG_H   # kvader je vždy na dne (malé tehly sú na vrchu)
                 z1 = z0 + BIG_H
                 m  = 0.05
                 bx0,bx1,by0,by1 = gx+m, gx+1-m, gy+m, gy+1-m
@@ -1769,8 +1790,8 @@ class ControlPanel(tk.Frame):
         'poloz':       'drop_brick',     'drop':     'drop_brick',
         'poloz_velku': 'drop_big_brick', 'drop_big': 'drop_big_brick',
         'drop_b':      'drop_big_brick', 'dropb':    'drop_big_brick',
-        'zdvihni': 'pick_brick',   'pick':    'pick_brick',
-        'zodvihni':'pick_brick',
+        'zdvihni': 'pick_any_brick', 'pick':   'pick_any_brick',
+        'zodvihni':'pick_any_brick',
         'oznac':   'mark',         'mark':    'mark',
         'odznac':  'clear',        'clear':   'clear',
         'ocisti':  'clear',
