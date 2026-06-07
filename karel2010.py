@@ -325,10 +325,12 @@ class World:
         nx,ny=self._front(); self.bricks[ny][nx]+=1
         if self._bricks_left > 0: self._bricks_left -= 1
     def drop_big_brick(self):
-        """Veľká tehla = BIG_BRICK_UNITS malých — ukladá sa do big_bricks."""
-        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
-        if self._big_bricks_left == 0: raise KarelError("Nemáš žiadne veľké tehly!")
-        nx,ny=self._front(); self.big_bricks[ny][nx]+=1
+        """Kvader (veľká tehla) — na políčku môže byť max 1 kvader."""
+        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť kvader cez stenu!")
+        if self._big_bricks_left == 0: raise KarelError("Nemáš žiadny kvader!")
+        nx,ny=self._front()
+        if self.big_bricks[ny][nx] >= 1: raise KarelError("Na tomto políčku už je kvader!")
+        self.big_bricks[ny][nx] = 1
         if self._big_bricks_left > 0: self._big_bricks_left -= 1
     def pick_brick(self):
         if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť tehlu cez stenu!")
@@ -346,7 +348,12 @@ class World:
             if self._marks_left >= 0: self._marks_left += 1
         self.marks[self.karel_y][self.karel_x]=False
 
-    def check_wall(self):  return self.is_wall_ahead()
+    def check_wall(self):
+        if self.is_wall_ahead(): return True
+        # Kvader pred Karelom — tiež sa správa ako stena
+        nx,ny = self._front()
+        return (0 <= nx < self.width and 0 <= ny < self.height and
+                self.big_bricks[ny][nx] > 0)
     def check_brick(self):
         nx,ny=self._front()
         return (0<=nx<self.width and 0<=ny<self.height and
@@ -949,8 +956,8 @@ FC={
     'grid':'#3344dd',
     'wall':'#dddd00','wall_dark':'#aaaa00','wall_top':'#ffff44',
     'wall_inner':'#888800',
-    'brick_top':'#cc4422','brick_s':'#882200','brick_d':'#661100',
-    # veľká tehla — hnedočervená, výraznejšia
+    'brick_top':'#44cc22','brick_s':'#228811','brick_d':'#115500',
+    # veľká tehla (kvader) — hnedá, výrazne odlíšená od malých tehál
     'bbrick_top':'#993311','bbrick_s':'#661100','bbrick_d':'#440a00',
     'mark':'#44ff88','mark2':'#ffff44',
     'ground':'#000033',
@@ -1048,9 +1055,7 @@ def world_faces(w):
                 F.append(_face([(bx1,by1,z0),(bx0,by1,z0),(bx0,by1,z1),(bx1,by1,z1)],FC['brick_s'],True,'#330000',(0,1,0)))
                 F.append(_face([(bx0,by1,z0),(bx0,by0,z0),(bx0,by0,z1),(bx0,by1,z1)],FC['brick_d'],True,'#330000',(-1,0,0)))
 
-    # Veľké tehly / big bricks
-    # Každá z 5 vrstiev je SAMOSTATNÁ plocha — painter's algorithm tak správne zoradzuje.
-    # Jeden obrovský polygon by mal nesprávne priemerné hĺbky a spôsoboval artefakty.
+    # Kvader (veľká tehla) — renderuje sa ako JEDEN monolitický blok bez vrstiev
     BIG_H = BRICK_H * World.BIG_BRICK_UNITS
     for gy in range(H):
         for gx in range(W):
@@ -1058,21 +1063,16 @@ def world_faces(w):
             base_z = w.bricks[gy][gx] * BRICK_H
             for z in range(nb):
                 z0 = base_z + z * BIG_H
+                z1 = z0 + BIG_H
                 m  = 0.05
                 bx0,bx1,by0,by1 = gx+m, gx+1-m, gy+m, gy+1-m
-
-                # 5 vrstiev — každá má vlastné bočné plochy + normály (back-face culling)
-                for layer in range(World.BIG_BRICK_UNITS):
-                    lz0 = z0 + layer * BRICK_H
-                    lz1 = lz0 + BRICK_H
-                    F.append(_face([(bx0,by0,lz0),(bx1,by0,lz0),(bx1,by0,lz1),(bx0,by0,lz1)],FC['bbrick_s'],True,'#220500',(0,-1,0)))
-                    F.append(_face([(bx1,by0,lz0),(bx1,by1,lz0),(bx1,by1,lz1),(bx1,by0,lz1)],FC['bbrick_d'],True,'#220500',(1,0,0)))
-                    F.append(_face([(bx1,by1,lz0),(bx0,by1,lz0),(bx0,by1,lz1),(bx1,by1,lz1)],FC['bbrick_s'],True,'#220500',(0,1,0)))
-                    F.append(_face([(bx0,by1,lz0),(bx0,by0,lz0),(bx0,by0,lz1),(bx0,by1,lz1)],FC['bbrick_d'],True,'#220500',(-1,0,0)))
-
-                # Horná plocha — len na vrchu celej tehly
-                z_top = z0 + BIG_H
-                F.append(_face([(bx0,by0,z_top),(bx1,by0,z_top),(bx1,by1,z_top),(bx0,by1,z_top)],FC['bbrick_top'],True,'#330800',(0,0,1)))
+                # 4 bočné plochy — celá výška naraz (žiadne vrstvové línie)
+                F.append(_face([(bx0,by0,z0),(bx1,by0,z0),(bx1,by0,z1),(bx0,by0,z1)],FC['bbrick_s'],True,'#220500',(0,-1,0)))
+                F.append(_face([(bx1,by0,z0),(bx1,by1,z0),(bx1,by1,z1),(bx1,by0,z1)],FC['bbrick_d'],True,'#220500',(1,0,0)))
+                F.append(_face([(bx1,by1,z0),(bx0,by1,z0),(bx0,by1,z1),(bx1,by1,z1)],FC['bbrick_s'],True,'#220500',(0,1,0)))
+                F.append(_face([(bx0,by1,z0),(bx0,by0,z0),(bx0,by0,z1),(bx0,by1,z1)],FC['bbrick_d'],True,'#220500',(-1,0,0)))
+                # Horná plocha
+                F.append(_face([(bx0,by0,z1),(bx1,by0,z1),(bx1,by1,z1),(bx0,by1,z1)],FC['bbrick_top'],True,'#330800',(0,0,1)))
     return F
 
 
