@@ -25,7 +25,16 @@ desktop.ini
 # Delphi binárne súbory (originál) — konvertované do .karxml
 *.kar
 
+# Runtime konfig (obsahuje lokálny stav — rola, jazyk)
+karel.ini
+
+# Delphi binárne súbory (originál)
+*.dcu
+*.ddp
+
 # Dočasné súbory
 *.tmp
 *.bak
 *.swp
+.thumb/
+.claude/
