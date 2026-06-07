@@ -2824,8 +2824,6 @@ class App(tk.Tk):
         e.add_command(label=_T('menu.open_world'),   command=self._open_world)
         e.add_command(label=_T('menu.save_world'),   command=self._save_world)
         e.add_separator()
-        e.add_command(label=_T('menu.save_world_xml'), command=self._save_world_xml)
-        e.add_separator()
         e.add_command(label=_T('menu.world_settings'), command=self._settings_editor)
         self._menu_edit = e
 
@@ -3176,8 +3174,8 @@ class App(tk.Tk):
 
     def _open_world(self):
         p=filedialog.askopenfilename(title="Otvoriť svet",
-            filetypes=[("Karel svet","*.karxml *.karjson *.json"),("XML svet","*.karxml"),
-                       ("JSON svet","*.karjson *.json"),("Všetky","*.*")])
+            filetypes=[("Karel svet","*.karxml *.karjson *.json"),("Karel XML","*.karxml"),
+                       ("Karel JSON (starý formát)","*.karjson *.json"),("Všetky","*.*")])
         if not p: return
         try:
             if p.lower().endswith('.karxml') or p.lower().endswith('.xml'):
@@ -3202,30 +3200,14 @@ class App(tk.Tk):
 
     def _save_world(self):
         p=filedialog.asksaveasfilename(title="Uložiť svet",
-            defaultextension='.karjson',filetypes=[("Karel svet","*.karjson"),("JSON","*.json")])
-        if not p: return
-        if p.lower().endswith('.karxml') or p.lower().endswith('.xml'):
-            messagebox.showwarning("Upozornenie",
-                "Pre XML formát použi 'Uložiť ako XML' — JSON formát neukladá podmienky misie ani texty zadania.")
-            return
-        try:
-            self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
-            with open(p,'w',encoding='utf-8') as f: json.dump(self._world.to_json(),f,indent=2)
-            self._base = self._world.copy()   # uložený stav = nový základ
-            self._status(f"Svet uložený: {os.path.basename(p)}")
-        except Exception as e: messagebox.showerror("Chyba",str(e))
-
-    def _save_world_xml(self):
-        p=filedialog.asksaveasfilename(title="Uložiť svet ako XML",
-            defaultextension='.karxml',filetypes=[("Karel XML svet","*.karxml"),("Všetky","*.*")])
+            defaultextension='.karxml',filetypes=[("Karel svet","*.karxml"),("Všetky","*.*")])
         if not p: return
         try:
-            # Ulož aj aktuálny program do sveta
             self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
             xml_str = self._world.to_xml()
             with open(p,'w',encoding='utf-8') as f: f.write(xml_str)
             self._base = self._world.copy()   # uložený stav = nový základ
-            self._status(f"Svet uložený (XML): {os.path.basename(p)}")
+            self._status(f"Svet uložený: {os.path.basename(p)}")
         except Exception as e: messagebox.showerror("Chyba",str(e))
 
     def _about(self):
