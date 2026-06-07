@@ -1429,7 +1429,7 @@ class NavigatorPanel(tk.Frame):
                      padx=2,relief='flat')
             lbl.grid(row=0,column=c,sticky='ew')
             self._inv_hdr.append((lbl,key))
-        ifr.columnconfigure(1,weight=1)
+        ifr.columnconfigure(0,weight=1)   # item stĺpec sa rozťahuje, nie Zostatok
         self._inv_vars=[tk.StringVar(value='∞') for _ in range(3)]
         self._inv_row_lbls=[]
         for r,(key,var) in enumerate(zip(['nav.small_brick','nav.big_brick','nav.mark'],
@@ -1587,8 +1587,8 @@ class ProgramPanel(tk.Frame):
         self._hdr_lbl.pack(side='left')
 
         body=tk.Frame(self,bg='#080814'); body.pack(fill='both',expand=True)
-        body.columnconfigure(0,weight=5); body.columnconfigure(1,weight=1,minsize=90)
-        body.columnconfigure(2,weight=1,minsize=90); body.rowconfigure(0,weight=1)
+        body.columnconfigure(0,weight=5); body.columnconfigure(1,weight=1,minsize=70)
+        body.columnconfigure(2,weight=1,minsize=70); body.rowconfigure(0,weight=1)
 
         # ---- Ľavý: editor ----
         ef=tk.Frame(body,bg='#080814')
@@ -1758,7 +1758,7 @@ class ControlPanel(tk.Frame):
     def _build_graphic(self,p):
         # ---- Pohybové šípky (ľavý stĺpec) + Akcie (pravý stĺpec) ----
         main=tk.Frame(p,bg='#0a0a1c'); main.pack(fill='both',expand=True,padx=2,pady=2)
-        main.columnconfigure(0,weight=1); main.columnconfigure(1,weight=1)
+        main.columnconfigure(0,weight=0); main.columnconfigure(1,weight=1)
         self._btn_refs: dict = {}   # cmd -> Button widget
         self._btn_bgs:  dict = {}   # cmd -> original bg
 
@@ -3033,7 +3033,7 @@ class App(tk.Tk):
                                  on_action=self._on_direct,
                                  get_procs=lambda:self._last_procs)
         self._ctrl.pack(fill='x',side='top')
-        hpane.add(rp,stretch='never',minsize=160)
+        hpane.add(rp,stretch='never',minsize=130)
 
         vpane.add(hpane,stretch='always',minsize=280)
 
