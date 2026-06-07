@@ -1949,15 +1949,19 @@ class GoalConditionDialog(tk.Toplevel):
         tf = tk.Frame(self, bg=self._BG, padx=12, pady=8); tf.pack(fill='x')
         tk.Label(tf, text=_T('goal_condition.type_label'), bg=self._BG, fg=self._FG,
                  font=('Arial',9,'bold')).pack(side='left', padx=(0,12))
-        default_type = ec.check if ec and ec.check in ('karel_pos','cell_state','snapshot') else 'karel_pos'
+        _all_types = ('karel_pos','cell_state','sign','brick_ahead','wall_ahead','snapshot')
+        default_type = ec.check if ec and ec.check in _all_types else 'karel_pos'
         self._type_var = tk.StringVar(value=default_type)
-        for val,lbl in [('karel_pos', _T('goal_condition.type_karel_pos')),
-                        ('cell_state',_T('goal_condition.type_cell_state')),
-                        ('snapshot',  _T('goal_condition.type_snapshot'))]:
+        for val,lbl in [('karel_pos',   _T('goal_condition.type_karel_pos')),
+                        ('cell_state',  _T('goal_condition.type_cell_state')),
+                        ('sign',        _T('goal_condition.type_sign')),
+                        ('brick_ahead', _T('goal_condition.type_brick_ahead')),
+                        ('wall_ahead',  _T('goal_condition.type_wall_ahead')),
+                        ('snapshot',    _T('goal_condition.type_snapshot'))]:
             tk.Radiobutton(tf, text=lbl, variable=self._type_var, value=val,
                            bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
                            activebackground=self._BG, font=('Arial',9),
-                           command=self._switch_type).pack(side='left', padx=6)
+                           command=self._switch_type).pack(side='left', padx=4)
         tk.Frame(self, bg='#334466', height=1).pack(fill='x')
         self._content = tk.Frame(self, bg=self._BG, padx=12, pady=8)
         self._content.pack(fill='both', expand=True)
@@ -2025,7 +2029,20 @@ class GoalConditionDialog(tk.Toplevel):
         t = self._type_var.get()
         if   t == 'karel_pos':  self._build_karel_pos()
         elif t == 'cell_state': self._build_cell_state()
-        else:                   self._build_snapshot()
+        elif t == 'snapshot':   self._build_snapshot()
+        else:                   self._build_simple_check(t)
+
+    def _build_simple_check(self, check_type: str):
+        p = self._content
+        descs = {
+            'sign':        _T('goal_condition.type_sign_desc'),
+            'brick_ahead': _T('goal_condition.type_brick_ahead_desc'),
+            'wall_ahead':  _T('goal_condition.type_wall_ahead_desc'),
+        }
+        desc = descs.get(check_type, check_type)
+        tk.Label(p, text=desc, bg=self._BG, fg=self._FG2,
+                 font=('Arial',9,'italic'), wraplength=380,
+                 justify='left').pack(anchor='w', pady=12, padx=6)
 
     def _lbl(self, p, txt, w=14):
         return tk.Label(p, text=txt, bg=self._BG, fg=self._FG,
@@ -2147,6 +2164,10 @@ class GoalConditionDialog(tk.Toplevel):
                         _T('goal_condition.warn_no_cond'), parent=self); return
                 self.result = GoalCondition('cell_state', x=x, y=y,
                     cell_marks=marks, cell_bricks=bricks, cell_big_bricks=big_bricks,
+                    eval_=self._eval_var.get(), when=self._when_var.get(),
+                    op=self._op_var.get(), negate=self._negate_var.get())
+            elif t in ('sign', 'brick_ahead', 'wall_ahead'):
+                self.result = GoalCondition(t,
                     eval_=self._eval_var.get(), when=self._when_var.get(),
                     op=self._op_var.get(), negate=self._negate_var.get())
             else:  # snapshot
