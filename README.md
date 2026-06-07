@@ -6,9 +6,23 @@ An educational programming simulator based on Karel the Robot — a Python port 
 
 ## Overview
 
-Karel is a robot that moves around a grid world. Students program it using a simple language, learning the fundamentals of algorithmic thinking. The language is available in **7 keyword sets**: Slovak, English, German, French, Italian, Spanish, and English (Pattis).
+Karel is a robot that moves around a grid world. Students program it using a simple language, learning the fundamentals of algorithmic thinking.
 
-Features:
+### Supported languages
+
+| Code | Language | GUI | Programming keywords |
+|------|----------|-----|----------------------|
+| `sk` | Slovenčina | ✓ | `dopredu`, `vlavo`, `opakuj` |
+| `en` | English | ✓ | `forward`, `left`, `repeat` |
+| `de` | Deutsch | ✓ | `vorwärts`, `links`, `wiederhole` |
+| `fr` | Français | ✓ | `avance`, `gauche`, `répète` |
+| `it` | Italiano | ✓ | `avanza`, `sinistra`, `ripeti` |
+| `es` | Español | ✓ | `adelante`, `izquierda`, `repite` |
+| `en_pattis` | English (Pattis 1981) | — | `move`, `turnleft`, `iterate` |
+
+See [docs/language-reference.md](docs/language-reference.md) for the full keyword table in all languages.
+
+### Features
 - **3D view** with Z-buffer rendering (perspective projection, mouse control)
 - **Program editor** with syntax highlighting and command filter
 - **Direct control** of Karel via buttons and typed commands
