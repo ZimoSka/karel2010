@@ -1580,17 +1580,22 @@ class ProgramPanel(tk.Frame):
 
     def _refresh_cmds_list(self):
         """Znovu naplní zoznam príkazov s ohľadom na aktuálne disabled_cmds."""
-        self._fill_list(_cmds_list(self._disabled_cmds))
+        self._fill_list(_cmds_list(self._effective_disabled()))
 
     def _fill_list(self,items):
         self._lb.delete(0,'end')
         for i in items: self._lb.insert('end',i)
 
+    def _effective_disabled(self) -> set:
+        """Vráti úplnú množinu zakázaných tokenov: disabled_cmds zo sveta + DISABLED
+        direktíva aktuálneho prog_lang (napr. BRICK pre en_pattis)."""
+        return self._disabled_cmds | _LANG_DISABLED.get(_current_prog_lang, set())
+
     def _on_filter(self,e=None):
         sel=self._tv.selection()
         if not sel: return
         item=sel[0]
-        d = self._disabled_cmds
+        d = self._effective_disabled()
         if item==self._tmov:
             p = _primary_kw; L = _current_prog_lang
             self._fill_list([p(t,L) for t in ['FORWARD','BACK','LEFT','RIGHT'] if t not in d])
