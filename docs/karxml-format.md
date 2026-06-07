@@ -148,7 +148,7 @@ All metadata elements are optional. HTML content should be wrapped in `<![CDATA[
 
 | Element | Type | Default | Description |
 |---------|------|---------|-------------|
-| `prog_lang` | string | `sk` | Programming language for this world. Valid values: `sk`, `en`, `en_pattis`, `de`, `fr`, `it`. Determines which keywords are primary (shown on buttons, used in templates). |
+| `prog_lang` | string | `sk` | Programming language for this world. Valid values: `sk`, `en`, `en_pattis`, `de`, `fr`, `it`, `es`. Determines which keywords are primary (shown on buttons, used in templates). |
 | `brick_limit` | int | -1 | Max small bricks Karel may place. `-1` = unlimited. |
 | `big_brick_limit` | int | -1 | Max big bricks. `-1` = unlimited. |
 | `mark_limit` | int | -1 | Max marks. `-1` = unlimited. |

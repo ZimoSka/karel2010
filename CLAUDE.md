@@ -87,11 +87,11 @@ _current_prog_lang: str  # aktuálne nastavený prog_lang
 ### Súbory jazykového systému
 ```
 lang/
-├── sk.ini, en.ini, de.ini, fr.ini, it.ini   ← GUI texty (menu, toolbar, dialógy)
-│                                               NEMIEŠAŤ s prog jazykmi — číta _available_ui_langs()
+├── sk.ini, en.ini, de.ini, fr.ini, it.ini, es.ini   ← GUI texty (menu, toolbar, dialógy, role_dialog)
+│                                                       NEMIEŠAŤ s prog jazykmi — číta _available_ui_langs()
 └── interpreter/
-    ├── sk.lng, en.lng, de.lng, fr.lng, it.lng   ← Karel kľúčové slová
-    └── en_pattis.lng                             ← Pattis štýl (s NAME + DISABLED direktívou)
+    ├── sk.lng, en.lng, de.lng, fr.lng, it.lng, es.lng   ← Karel kľúčové slová
+    └── en_pattis.lng                                     ← Pattis štýl (s NAME + DISABLED direktívou)
 ```
 
 ### Formát `.lng` súboru
@@ -236,6 +236,6 @@ Rola `student` skryje menu položky: Uložiť svet, Uložiť ako XML, Nastavenia
 
 ## Pridanie nového GUI jazyka
 
-1. Vytvoriť `lang/xx.ini` so sekciami: `[meta]`, `[menu]`, `[toolbar]`, `[nav]`, `[control]`, `[status]`, `[action_labels]`, `[world_settings]`, `[goal_condition]`
+1. Vytvoriť `lang/xx.ini` so sekciami: `[meta]`, `[menu]`, `[toolbar]`, `[nav]`, `[control]`, `[status]`, `[action_labels]`, `[world_settings]`, `[goal_condition]`, `[role_dialog]`
 2. Vytvoriť `lang/interpreter/xx.lng` s Karel kľúčovými slovami
 3. Oba dropdown sa automaticky doplnia — **žiadna zmena kódu nie je potrebná**

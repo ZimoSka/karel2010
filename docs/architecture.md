@@ -102,7 +102,7 @@ def _height(self, x, y):
 
 ```python
 class WorldSettings:
-    prog_lang:         str   # 'sk' | 'en' | 'en_pattis' | 'de' | 'fr' | 'it'  (per-world)
+    prog_lang:         str   # 'sk' | 'en' | 'en_pattis' | 'de' | 'fr' | 'it' | 'es'  (per-world)
     brick_limit:       int   # -1 = unlimited
     big_brick_limit:   int
     mark_limit:        int
@@ -382,19 +382,31 @@ MARK     = putbeeper  put_beeper  mark
 - `_LANG_DISABLED[lang]` = set of TOKEN names that are auto-disabled when this lang is selected (from `DISABLED` directive). May include both CMD tokens and COND tokens (e.g. `BRICK`).
 - `_LANG_NAME[lang]` = display name for the prog_lang dropdown (from `NAME` directive). If absent, the language code is used as fallback.
 - `_primary_kw(token, lang)` returns the canonical word with EN fallback.
-- **Adding a new language** (DE, FR, IT, …) = create `lang/interpreter/xx.lng` with the same TOKEN names and that language's keywords. No code changes needed.
+- **Adding a new language** (ES, PL, …) = create `lang/interpreter/xx.lng` with the same TOKEN names and that language's keywords. No code changes needed.
+
+### Currently available languages
+
+| Code | UI (`lang/xx.ini`) | Interpreter (`lang/interpreter/xx.lng`) |
+|------|--------------------|-----------------------------------------|
+| `sk` | Slovenčina | ✓ |
+| `en` | English | ✓ |
+| `de` | Deutsch | ✓ |
+| `fr` | Français | ✓ |
+| `it` | Italiano | ✓ |
+| `es` | Español | ✓ |
+| `en_pattis` | — (NAME directive in .lng) | ✓ (Pattis mode) |
 
 ### Adding a new language
 
-To add e.g. German (`de`):
+To add e.g. Polish (`pl`):
 
-1. Create `lang/interpreter/de.lng` with German keyword translations.
-2. Create `lang/de.ini` with a `[meta] name = Deutsch` section plus all other sections.
+1. Create `lang/interpreter/pl.lng` with Polish keyword translations.
+2. Create `lang/pl.ini` with a `[meta] name = Polski` section plus all other sections (including `[role_dialog]`).
 3. Both dropdowns (GUI language in Global Settings, prog language in World Settings) will automatically include the new language on next startup — **no code changes needed**.
 
 > **Important:** Do NOT put `.ini` files for prog-only languages (like `en_pattis`) into `lang/` — `_available_ui_langs()` reads all `lang/*.ini` and would show them in the GUI language dropdown. Use the `NAME` directive in the `.lng` file instead.
 
-### UI string files (`lang/sk.ini`, `lang/en.ini`, …)
+### UI string files (`lang/sk.ini`, `lang/en.ini`, `lang/es.ini`, …)
 
 Each file starts with a `[meta]` section used for the language picker display name:
 
@@ -415,6 +427,7 @@ INI files with sections:
 | `[action_labels]` | Display text on Karel action buttons (DROP, PICK, …) |
 | `[world_settings]` | All labels in WorldSettingsDialog (6 tabs) |
 | `[goal_condition]` | All labels in GoalConditionDialog ("Add condition") |
+| `[role_dialog]` | RoleDialog — title, role labels, descriptions, buttons |
 
 Loaded by `_load_ui_lang(lang)` into `_ui_strings` flat dict (key = `section.key`).
 
@@ -478,7 +491,7 @@ Read at startup via `_ini_read_role()`. Written via `_ini_write_role()`. Writabl
 
 `App._change_role()` — called from **Settings → Change role...**:
 1. Checks `_ini_is_writable()` — shows a warning and returns if not.
-2. Opens `RoleDialog` (a `Toplevel` with radio buttons for each role).
+2. Opens `RoleDialog` (a `Toplevel` with radio buttons for each role). All strings translated via `_T('role_dialog.*')`.
 3. On confirmation writes the new role to `karel.ini` and calls `_apply_role_to_ui()`.
 
 Security is purely OS-level: set the file-system permissions on `karel.ini` to read-only for student accounts.

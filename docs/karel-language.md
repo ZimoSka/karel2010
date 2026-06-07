@@ -1,6 +1,6 @@
 # Karel Language Reference
 
-Karel programs can be written in **Slovak, English, German, French, Italian** or **English (Pattis)** — all keyword sets are fully supported and can even be mixed in the same program. The active language is set per-world by the teacher in World Settings → Language tab (`prog_lang`). The interpreter always accepts all language variants simultaneously.
+Karel programs can be written in **Slovak, English, German, French, Italian, Spanish** or **English (Pattis)** — all keyword sets are fully supported and can even be mixed in the same program. The active language is set per-world by the teacher in World Settings → Language tab (`prog_lang`). The interpreter always accepts all language variants simultaneously.
 
 ---
 
