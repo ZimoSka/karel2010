@@ -6,6 +6,11 @@
 
 Príkaz `/compact` nespúšťať automaticky. Vždy sa opýtať používateľa a počkať na jeho súhlas.
 
+**Auto-compact je vypnutý** v `~/.claude.json` cez `autoCompactEnabled: false`.
+- POZOR: `settings.json` túto hodnotu ticho ignoruje — patrí do `~/.claude.json`.
+- Prejaví sa až po reštarte Claude Code.
+- Záloha pôvodného súboru: `~/.claude.json.bak`.
+
 ---
 
 ## ⚠️ Pravidlo: Dôležité informácie ukladať okamžite do súborov
