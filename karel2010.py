@@ -295,23 +295,18 @@ class World:
         return self.bricks[y][x] + self.big_bricks[y][x] * self.BIG_BRICK_UNITS
 
     def move_forward(self):
-        if self.is_wall_ahead(): raise KarelStop()
+        if self.is_wall_ahead(): return
         nx,ny = self._front()
         dh = self._height(nx,ny) - self._height(self.karel_x,self.karel_y)
-        mc = self.settings.max_climb
-        if dh > mc:
-            raise KarelStop()
+        if dh > self.settings.max_climb: return
         self.karel_x,self.karel_y = nx,ny
 
     def move_back(self):
         back=self.karel_dir.opposite()
-        if back.to_str() in self.walls[self.karel_y][self.karel_x]:
-            raise KarelStop()
+        if back.to_str() in self.walls[self.karel_y][self.karel_x]: return
         bx,by = self._step(self.karel_x,self.karel_y,back)
         dh = self._height(bx,by) - self._height(self.karel_x,self.karel_y)
-        mc = self.settings.max_climb
-        if dh > mc:
-            raise KarelStop()
+        if dh > self.settings.max_climb: return
         self.karel_x,self.karel_y = bx,by
 
     def turn_left(self):  self.karel_dir=self.karel_dir.left()
