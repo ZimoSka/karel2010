@@ -3205,7 +3205,9 @@ class App(tk.Tk):
             defaultextension='.karjson',filetypes=[("Karel svet","*.karjson"),("JSON","*.json")])
         if not p: return
         try:
+            self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
             with open(p,'w',encoding='utf-8') as f: json.dump(self._world.to_json(),f,indent=2)
+            self._base = self._world.copy()   # uložený stav = nový základ
             self._status(f"Svet uložený: {os.path.basename(p)}")
         except Exception as e: messagebox.showerror("Chyba",str(e))
 
@@ -3218,6 +3220,7 @@ class App(tk.Tk):
             self._world.program_text = self._prog.editor.get('1.0','end').rstrip()
             xml_str = self._world.to_xml()
             with open(p,'w',encoding='utf-8') as f: f.write(xml_str)
+            self._base = self._world.copy()   # uložený stav = nový základ
             self._status(f"Svet uložený (XML): {os.path.basename(p)}")
         except Exception as e: messagebox.showerror("Chyba",str(e))
 
