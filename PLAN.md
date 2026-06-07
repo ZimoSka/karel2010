@@ -37,6 +37,10 @@
 ### Preklady
 - 6 jazykov (sk/en/de/fr/it/es), 179 kľúčov, všetky zhodné — overené skriptom *(táto session)*
 
+### Editor
+- Zvýraznenie komentárov — `//`, `#`, `{ }` v editore
+- `zdvihni_kvader` ako programový príkaz
+
 ### Dokumentácia
 - `CLAUDE.md` — kompletná architektúra, pravidlá, GoalCondition, _base vs _world *(táto session)*
 - `PLAN.md` — tento súbor *(táto session)*
@@ -49,9 +53,7 @@
 
 | # | Úloha |
 |---|-------|
-| 1 | **Zvýraznenie komentárov** — `//`, `#`, `{ }` v editore bez farby |
-| 2 | **Logické spojky v jazyku** — `a` / `alebo` (AND/OR) v podmienkach Karel programu |
-| 3 | **`zdvihni_kvader` programovo?** — momentálne GUI only, potvrdiť zámer |
+| 1 | **Logické spojky v jazyku** — `a` / `alebo` (AND/OR) v podmienkach Karel programu |
 
 ## 🟡 Stredná priorita
 
