@@ -2048,7 +2048,6 @@ class MissionResultDialog(tk.Toplevel):
         self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
     @staticmethod
-    @staticmethod
     def _strip_html(raw: str) -> str:
         # Odstraň CDATA obal ak existuje
         txt = re.sub(r'<!\[CDATA\[([\s\S]*?)\]\]>', r'\1', raw)
@@ -2094,7 +2093,6 @@ class IntroDialog(tk.Toplevel):
         px, py = app.winfo_rootx(), app.winfo_rooty()
         self.geometry(f'{ww}x{wh}+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
-    @staticmethod
     @staticmethod
     def _strip_html(raw: str) -> str:
         # Odstraň CDATA obal ak existuje
