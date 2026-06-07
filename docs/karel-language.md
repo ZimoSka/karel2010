@@ -1,6 +1,6 @@
 # Karel Language Reference
 
-Karel programs can be written in **Slovak** or **English** — both keyword sets are fully supported and can even be mixed in the same program.
+Karel programs can be written in **Slovak, English, German, French, Italian** or **English (Pattis)** — all keyword sets are fully supported and can even be mixed in the same program. The active language is set per-world by the teacher in World Settings → Language tab (`prog_lang`). The interpreter always accepts all language variants simultaneously.
 
 ---
 
@@ -34,19 +34,19 @@ end
 
 ## Basic commands
 
-| Slovak | English | Description |
-|--------|---------|-------------|
-| `dopredu` | `forward` | Move one step forward |
-| `dozadu` / `vzad` | `back` | Move one step backward |
-| `vlavo` / `vľavo` | `left` | Turn 90° to the left |
-| `vpravo` | `right` | Turn 90° to the right |
-| `poloz` | `drop` | Place a small brick in front of Karel |
-| `zdvihni` / `zodvihni` | `pick` | Pick up a small brick in front of Karel |
-| `poloz_velku` / `poloz_v` | `drop_big` / `drop_b` | Place a big brick in front of Karel |
-| `oznac` | `mark` | Place a mark on the tile Karel stands on |
-| `odznac` | `clear` / `unmark` | Remove the mark from Karel's tile |
-| `pomaly` | `slowly` / `slow` | Slow Karel's speed down |
-| `rychlo` / `rýchlo` | `quickly` / `quick` | Speed Karel up |
+| Slovak | English | Pattis | Description |
+|--------|---------|--------|-------------|
+| `dopredu` | `forward` / `move` | `move` | Move one step forward |
+| `dozadu` / `vzad` | `back` | *(disabled)* | Move one step backward |
+| `vlavo` / `vľavo` | `left` / `turnleft` | `turnleft` | Turn 90° to the left |
+| `vpravo` | `right` / `turnright` | *(disabled)* | Turn 90° to the right |
+| `poloz` | `drop` | *(disabled)* | Place a small brick in front of Karel |
+| `zdvihni` / `zodvihni` | `pick` | *(disabled)* | Pick up a small brick in front of Karel |
+| `poloz_velku` / `poloz_v` | `drop_big` / `drop_b` | *(disabled)* | Place a big brick in front of Karel |
+| `oznac` | `mark` / `putbeeper` | `putbeeper` | Place a mark on the tile Karel stands on |
+| `odznac` | `clear` / `unmark` / `pickbeeper` | `pickbeeper` | Remove the mark from Karel's tile |
+| `pomaly` | `slowly` / `slow` | *(disabled)* | Slow Karel's speed down |
+| `rychlo` / `rýchlo` | `quickly` / `quick` | *(disabled)* | Speed Karel up |
 
 ### Notes on bricks
 - Karel places and picks up bricks **in front of himself**, not on his own tile.
@@ -126,14 +126,14 @@ end
 
 ## Conditions
 
-| Slovak | English | True when |
-|--------|---------|-----------|
-| `stena` | `wall` | There is a wall or room border in front of Karel |
-| `tehla` | `brick` | There is at least one brick (small or big) in front |
-| `volno` | `free` | No brick in front of Karel |
-| `znacka` / `značka` | `sign` | Karel is standing on a mark |
-| `pravda` | `true` | Always true |
-| `nepravda` | `false` | Always false |
+| Slovak | English | Pattis | True when |
+|--------|---------|--------|-----------|
+| `stena` | `wall` / `front_is_blocked` | `front_is_blocked` | There is a wall or room border in front of Karel |
+| `tehla` | `brick` | *(disabled)* | There is at least one brick (small or big) in front |
+| `volno` | `free` / `front_is_clear` | `front_is_clear` | No brick in front of Karel |
+| `znacka` / `značka` | `sign` / `next_to_a_beeper` | `next_to_a_beeper` | Karel is standing on a mark |
+| `pravda` | `true` | `true` | Always true |
+| `nepravda` | `false` | `false` | Always false |
 
 Conditions can be negated with `not`:
 
@@ -141,6 +141,31 @@ Conditions can be negated with `not`:
 while not wall do forward end
 if not sign then mark end
 ```
+
+---
+
+## English (Pattis) mode
+
+The **English (Pattis)** language variant follows the original 1981 Karel the Robot specification by Richard Pattis. It is intentionally more restricted than the standard Karel 2010 language.
+
+Key differences from standard English:
+
+| Concept | Standard English | Pattis |
+|---------|-----------------|--------|
+| Move forward | `forward` | `move` |
+| Turn left | `left` | `turnleft` |
+| Place mark | `mark` | `putbeeper` |
+| Remove mark | `clear` | `pickbeeper` |
+| Check for wall | `wall` | `front_is_blocked` |
+| Check for clear path | `free` | `front_is_clear` |
+| Check for mark | `sign` | `next_to_a_beeper` |
+| Turn right | `right` | **not available** |
+| Move backward | `back` | **not available** |
+| Bricks | `drop` / `pick` | **not available** |
+
+In Pattis mode, `putbeeper` and `pickbeeper` place/remove a **mark on the tile Karel is standing on** — not a brick in front of Karel. This matches the original Pattis semantics where Karel interacts with the current corner.
+
+The teacher selects Pattis mode in **World Settings → Language → Programming language = English (Pattis)**. The restricted commands are then hidden from the editor's command list and disabled in both the editor and direct control.
 
 ---
 

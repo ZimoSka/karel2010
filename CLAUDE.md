@@ -158,11 +158,13 @@ CondN(cond_type, negated)
 
 ### `ProgramPanel`
 - `tk.Text` editor so zvýrazňovaním syntaxe (`highlight()`)
-- `_disabled_cmds: set` — zakázané tokeny (červené pozadie v editore)
+- `_disabled_cmds: set` — zakázané CMD tokeny (z `world.settings.disabled_cmds`)
 - `set_prog_lang(lang)` → `_switch_prog_lang()` + `_refresh_cmds_list()` + `_build_filter_tree()`
 - `set_disabled_cmds(cmds)` → nastaví `_disabled_cmds` + `highlight()` + `_refresh_cmds_list()`
+- `_effective_disabled()` → `_disabled_cmds | _LANG_DISABLED[current_prog_lang]` — kompletná množina vrátane COND tokenov (napr. `BRICK` v Pattis móde, ktorý nemá checkbox)
 - `_cmds_list(disabled)` / `_cmds_conds(disabled)` — filtrujú zakázané tokeny zo zoznamu
-- `_on_filter()` — filter strom (pohyb/štruktúry/podmienky/vlastné)
+- `_refresh_cmds_list()` — znovu naplní Listbox cez `_effective_disabled()`
+- `_on_filter()` — filter strom (pohyb/štruktúry/podmienky/vlastné), používa `_effective_disabled()`
 
 ### `ControlPanel`
 - Priame ovládacie tlačidlá volajú `_do(cmd_key)`
@@ -171,9 +173,10 @@ CondN(cond_type, negated)
 
 ### `WorldSettingsDialog`
 - 6 záložiek: Jazyk, Svet, Zásoby, Príkazy, Podmienky, Pohľad
-- `_on_prog_lang_changed()` — live update názvov príkazov + skrytie/zobrazenie checkboxov podľa `_LANG_DISABLED`
-- `_cmd_vars: dict` — tok → BooleanVar (zaškrtávacie políčka zakázaných príkazov)
+- `_on_prog_lang_changed()` — live update názvov príkazov + skrytie/zobrazenie checkboxov podľa `_LANG_DISABLED`; skryje celú skupinu ak sú všetky tokeny zakázané
+- `_cmd_vars: dict` — tok → BooleanVar (iba CMD tokeny, nie COND tokeny ako BRICK)
 - `_cmd_cbs: dict` — tok → Checkbutton widget
+- COND tokeny (napr. BRICK) sa do `disabled_cmds` dostávajú iba cez `DISABLED` direktívu v `.lng` — nemajú checkbox v UI
 
 ---
 

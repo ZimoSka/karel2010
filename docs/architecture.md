@@ -102,10 +102,11 @@ def _height(self, x, y):
 
 ```python
 class WorldSettings:
+    prog_lang:         str   # 'sk' | 'en' | 'en_pattis' | 'de' | 'fr' | 'it'  (per-world)
     brick_limit:       int   # -1 = unlimited
     big_brick_limit:   int
     mark_limit:        int
-    disabled_cmds:     set   # token strings, e.g. {'FORWARD', 'DROP'}
+    disabled_cmds:     set   # token strings, e.g. {'BACK', 'DROP', 'BRICK'}
     disable_procedure: bool
     camera_locked:     bool
     camera_az:         float  # radians
@@ -249,8 +250,22 @@ The camera uses a spherical coordinate system. Mouse drag events modify `az`, `e
 
 - `tk.Text` editor with the `highlight()` function applied on every keystroke
 - Sidebar tree of command categories (click inserts a template)
-- `_disabled_cmds` and `_disable_procedure` state affects `highlight()`
+- `_disabled_cmds: set` — CMD tokens forbidden in this world (from `world.settings.disabled_cmds`)
+- `_disable_procedure: bool` — whether procedure definition is forbidden
 - `on_procs_update` callback fires whenever parsed procedures change
+
+Key methods:
+```python
+set_prog_lang(lang)          # _switch_prog_lang + _refresh_cmds_list + _build_filter_tree
+set_disabled_cmds(cmds, …)  # updates _disabled_cmds + highlight + _refresh_cmds_list
+_effective_disabled()        # returns _disabled_cmds | _LANG_DISABLED[current_prog_lang]
+                             # (includes COND tokens like BRICK that have no checkbox)
+_refresh_cmds_list()         # refills Listbox using _cmds_list(_effective_disabled())
+_on_filter(e)                # fills Listbox for selected filter category, uses _effective_disabled()
+```
+
+`_cmds_list(disabled)` and `_cmds_conds(disabled)` both accept an optional set of disabled tokens
+and filter them out of the returned list — used by both `_refresh_cmds_list()` and `_on_filter()`.
 
 The `highlight()` function:
 ```python
@@ -259,6 +274,16 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
     # 'disabled' tag = red background for forbidden commands
     # Uses _KW_REVERSE to find all word variants of each token
 ```
+
+### `WorldSettingsDialog`
+
+- 6 tabs: Language, World, Inventory, Commands, Conditions, Camera
+- Commands tab: checkboxes for each CMD token (`_cmd_vars`, `_cmd_cbs`)
+  - Only CMD tokens have checkboxes; COND tokens (like BRICK) are controlled via `DISABLED` directive only
+- `_on_prog_lang_changed()`: when prog_lang combobox changes —
+  1. Updates checkbox labels to primary word of new lang
+  2. If new lang has `_LANG_DISABLED` entry: auto-checks those tokens and hides their checkboxes (`grid_remove()`); hides entire group frame if all its tokens are disabled
+  3. Switching back to a normal lang restores all checkboxes (`grid()`)
 
 ### `ControlPanel`
 
@@ -342,13 +367,20 @@ The split is intentional:
 
 ```
 # Format: TOKEN = primary_word  alias1  alias2 ...
-FORWARD = dopredu
-DROP    = poloz  polož
+# Special directives (no TOKEN mapping, processed separately):
+NAME     = English (Pattis)       # display name in prog_lang dropdown
+DISABLED = BACK RIGHT DROP BRICK  # tokens auto-disabled when this lang is selected
+
+FORWARD  = move  forward  moveforward
+LEFT     = turnleft  left
+MARK     = putbeeper  put_beeper  mark
 ```
 
 - **All `.lng` files are loaded and merged** into the global `KW` dict at startup via `_load_all_interpreter_langs()`.
 - The interpreter therefore **accepts every language simultaneously** — a student can always type `forward` even in a Slovak-configured world.
 - `_LANG_PRIMARY[lang][TOKEN]` = canonical (first) word for that language.
+- `_LANG_DISABLED[lang]` = set of TOKEN names that are auto-disabled when this lang is selected (from `DISABLED` directive). May include both CMD tokens and COND tokens (e.g. `BRICK`).
+- `_LANG_NAME[lang]` = display name for the prog_lang dropdown (from `NAME` directive). If absent, the language code is used as fallback.
 - `_primary_kw(token, lang)` returns the canonical word with EN fallback.
 - **Adding a new language** (DE, FR, IT, …) = create `lang/interpreter/xx.lng` with the same TOKEN names and that language's keywords. No code changes needed.
 
@@ -359,6 +391,8 @@ To add e.g. German (`de`):
 1. Create `lang/interpreter/de.lng` with German keyword translations.
 2. Create `lang/de.ini` with a `[meta] name = Deutsch` section plus all other sections.
 3. Both dropdowns (GUI language in Global Settings, prog language in World Settings) will automatically include the new language on next startup — **no code changes needed**.
+
+> **Important:** Do NOT put `.ini` files for prog-only languages (like `en_pattis`) into `lang/` — `_available_ui_langs()` reads all `lang/*.ini` and would show them in the GUI language dropdown. Use the `NAME` directive in the `.lng` file instead.
 
 ### UI string files (`lang/sk.ini`, `lang/en.ini`, …)
 

@@ -133,10 +133,11 @@ All metadata elements are optional. HTML content should be wrapped in `<![CDATA[
 
 ```xml
 <settings>
+  <prog_lang>en_pattis</prog_lang>
   <brick_limit>5</brick_limit>
   <big_brick_limit>-1</big_brick_limit>
   <mark_limit>10</mark_limit>
-  <disabled_cmds>BACK,DROP_BIG</disabled_cmds>
+  <disabled_cmds>BACK,RIGHT,DROP,DROP_BIG,PICK,BRICK,SLOWLY,QUICKLY</disabled_cmds>
   <disable_procedure>true</disable_procedure>
   <camera_locked>true</camera_locked>
   <camera_az>3.9269908169872414</camera_az>
@@ -147,19 +148,22 @@ All metadata elements are optional. HTML content should be wrapped in `<![CDATA[
 
 | Element | Type | Default | Description |
 |---------|------|---------|-------------|
+| `prog_lang` | string | `sk` | Programming language for this world. Valid values: `sk`, `en`, `en_pattis`, `de`, `fr`, `it`. Determines which keywords are primary (shown on buttons, used in templates). |
 | `brick_limit` | int | -1 | Max small bricks Karel may place. `-1` = unlimited. |
 | `big_brick_limit` | int | -1 | Max big bricks. `-1` = unlimited. |
 | `mark_limit` | int | -1 | Max marks. `-1` = unlimited. |
-| `disabled_cmds` | CSV | (empty) | Comma-separated token names of forbidden commands. |
+| `disabled_cmds` | CSV | (empty) | Comma-separated token names of forbidden commands/conditions. |
 | `disable_procedure` | bool | false | If `true`, `prikaz … koniec` syntax is forbidden. |
 | `camera_locked` | bool | false | If `true`, the camera is locked. |
 | `camera_az` | float | 3.927 | Camera azimuth in radians (only used when locked). |
 | `camera_el` | float | 0.489 | Camera elevation in radians (only used when locked). |
 | `camera_dist` | float | 16.0 | Camera distance (only used when locked). |
 
-### Valid command token names for `disabled_cmds`
+### Valid token names for `disabled_cmds`
 
-`FORWARD`, `BACK`, `LEFT`, `RIGHT`, `DROP`, `PICK`, `DROP_BIG`, `MARK`, `CLEAR`, `SLOWLY`, `QUICKLY`
+Commands: `FORWARD`, `BACK`, `LEFT`, `RIGHT`, `DROP`, `PICK`, `DROP_BIG`, `MARK`, `CLEAR`, `SLOWLY`, `QUICKLY`
+
+Conditions: `BRICK` (disables brick-check condition — used e.g. in Pattis mode where bricks don't exist)
 
 ---
 
