@@ -314,30 +314,30 @@ class World:
 
     # Tehly/bricks: kladú/dvíhajú sa PRED Karelom; znacka je POD nim
     def drop_brick(self):
-        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť tehlu cez stenu!")
-        if self._bricks_left == 0: raise KarelError("Nemáš žiadne malé tehly!")
+        if self.is_wall_ahead(): return
+        if self._bricks_left == 0: return
         nx,ny=self._front(); self.bricks[ny][nx]+=1
         if self._bricks_left > 0: self._bricks_left -= 1
     def drop_big_brick(self):
         """Kvader (veľká tehla) — na políčku môže byť max 1 kvader."""
-        if self.is_wall_ahead(): raise KarelError("Nemôžem položiť kvader cez stenu!")
-        if self._big_bricks_left == 0: raise KarelError("Nemáš žiadny kvader!")
+        if self.is_wall_ahead(): return
+        if self._big_bricks_left == 0: return
         nx,ny=self._front()
-        if self.big_bricks[ny][nx] >= 1: raise KarelError("Na tomto políčku už je kvader!")
+        if self.big_bricks[ny][nx] >= 1: return
         self.big_bricks[ny][nx] = 1
         if self._big_bricks_left > 0: self._big_bricks_left -= 1
     def pick_brick(self):
-        if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť tehlu cez stenu!")
+        if self.is_wall_ahead(): return
         nx,ny=self._front()
-        if self.bricks[ny][nx]<=0: raise KarelError("Žiadna (malá) tehla na zdvihnutie!")
+        if self.bricks[ny][nx]<=0: return
         self.bricks[ny][nx]-=1
         if self._bricks_left >= 0: self._bricks_left += 1
 
     def pick_big_brick(self):
         """Zdvihne kvader spred Karela — len cez GUI, nie programovo."""
-        if self.is_wall_ahead(): raise KarelError("Nemôžem zdvihnúť kvader cez stenu!")
+        if self.is_wall_ahead(): return
         nx,ny=self._front()
-        if self.big_bricks[ny][nx]<=0: raise KarelError("Žiadny kvader na zdvihnutie!")
+        if self.big_bricks[ny][nx]<=0: return
         self.big_bricks[ny][nx]-=1
         if self._big_bricks_left >= 0: self._big_bricks_left += 1
 
@@ -348,11 +348,9 @@ class World:
             self.pick_brick()
         elif self.big_bricks[ny][nx] > 0:
             self.pick_big_brick()
-        else:
-            raise KarelError("Pred Karelom nie je žiadna tehla ani kvader!")
     def mark(self):
         if not self.marks[self.karel_y][self.karel_x]:
-            if self._marks_left == 0: raise KarelError("Nemáš žiadne značky!")
+            if self._marks_left == 0: return
             if self._marks_left > 0: self._marks_left -= 1
         self.marks[self.karel_y][self.karel_x]=True
     def clear(self):
