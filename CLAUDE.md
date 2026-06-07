@@ -38,8 +38,8 @@ karel2010.py
 ### `World`
 ```python
 world.width, world.height          # rozmer mriežky
-world.bricks[y][x]      : int      # malé tehly
-world.big_bricks[y][x]  : int      # veľké tehly (1 = BIG_BRICK_UNITS=5 malých)
+world.bricks[y][x]      : int      # malé tehly (zelené, stackujú sa na vrchu kvadera)
+world.big_bricks[y][x]  : int      # kvader/veľká tehla — max 1 per tile (hnedý, =5 malých výškou)
 world.marks[y][x]       : bool     # značka pod políčkom
 world.walls[y][x]       : set      # {'N','E','S','W'} — steny
 world.karel_x, world.karel_y, world.karel_dir  # pozícia a smer Karela
@@ -61,8 +61,12 @@ settings.max_climb        : int   # max výška skoku (default 1)
 
 ### Sémantika príkazov
 - `drop_brick()` / `pick_brick()` — operuje na políčku **PRED** Karelom (`_front()`)
+- `drop_big_brick()` — ukladá kvader pred Karelom; max 1 per tile; `check_wall()` vráti True pre kvader
+- `pick_big_brick()` / `pick_any_brick()` — len GUI (nie programové); `pick_any_brick` = malá tehla → kvader fallback
 - `mark()` / `clear()` — operuje na políčku **POD** Karelom (kde stojí)
 - `move_forward()` — skontroluje stenu aj výšku tehiel (`max_climb`)
+- `check_wall()` → True ak stena ALEBO kvader pred Karelom
+- Rendering: kvader vždy na z=0 (spodok), malé tehly na vrchu kvadera (base_z = big_bricks * BIG_H)
 
 ---
 

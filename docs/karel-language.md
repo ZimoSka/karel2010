@@ -42,17 +42,29 @@ end
 | `vpravo` | `right` / `turnright` | *(disabled)* | Turn 90° to the right |
 | `poloz` | `drop` | *(disabled)* | Place a small brick in front of Karel |
 | `zdvihni` / `zodvihni` | `pick` | *(disabled)* | Pick up a small brick in front of Karel |
-| `poloz_velku` / `poloz_v` | `drop_big` / `drop_b` | *(disabled)* | Place a big brick in front of Karel |
+| `kvader` | `drop_big` / `block` | *(disabled)* | Place a kvader (block) in front of Karel |
 | `oznac` | `mark` / `putbeeper` | `putbeeper` | Place a mark on the tile Karel stands on |
 | `odznac` | `clear` / `unmark` / `pickbeeper` | `pickbeeper` | Remove the mark from Karel's tile |
 | `pomaly` | `slowly` / `slow` | *(disabled)* | Slow Karel's speed down |
 | `rychlo` / `rýchlo` | `quickly` / `quick` | *(disabled)* | Speed Karel up |
 
-### Notes on bricks
-- Karel places and picks up bricks **in front of himself**, not on his own tile.
-- Karel can climb **at most 1 brick** higher than his current tile. Attempting to climb 2+ bricks raises an error.
-- A **big brick** counts as 5 small bricks in height. Karel cannot climb over big bricks.
-- Big bricks are typically used as **walls** inside a room.
+### Notes on bricks and the kvader (block)
+
+**Small bricks** (`poloz` / `drop`):
+- Placed and picked up **in front of** Karel, not on his own tile.
+- Multiple small bricks stack on top of each other.
+- Karel can climb **at most 1 brick** higher per step.
+- Rendered in **green**.
+
+**Kvader** (`kvader` / `drop_big` / `block`):
+- Placed **in front of** Karel — equivalent in height to 5 small bricks.
+- **Maximum one kvader per tile.**
+- Small bricks placed on the same tile stack **on top of** the kvader.
+- The `stena` / `wall` condition returns **true** when a kvader is directly in front.
+- The `tehla` / `brick` condition also returns **true** for a kvader.
+- Karel **cannot climb** over a kvader (too tall).
+- Picking up a kvader is only available via GUI (`zdvihni` button or command box) — not in Karel programs.
+- Rendered in **brown**, visually distinct from green small bricks.
 
 ---
 

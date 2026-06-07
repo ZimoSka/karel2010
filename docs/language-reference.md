@@ -54,9 +54,11 @@ in code templates.
 |-------|----|----|----|----|----|----|--------|
 | DROP | `poloz` | `drop` | `lege` | `pose` | `posa` | `pon` | *(disabled)* |
 | PICK | `zdvihni` | `pick` | `hebe` | `prends` | `prendi` | `toma` | *(disabled)* |
-| DROP_BIG | `poloz_velku` | `drop_big` | `lege_gross` | `pose_grande` | `posa_grande` | `pon_grande` | *(disabled)* |
+| DROP_BIG | `kvader` | `drop_big` | `quader` | `bloc` | `blocco` | `bloque` | *(disabled)* |
 
-**Aliases:** SK: `polož`, `zodvihni`, `poloz_v` · EN: `drop_b`, `dropb` · ES: `poner`, `coloca`, `tomar`, `recoge`
+**Aliases:** SK: `polož`, `zodvihni`, `poloz_v` · EN: `block`, `quader`, `drop_b`, `dropb` · DE: `lege_quader`, `lege_gross` · FR: `pose_bloc`, `pose_grande` · IT: `posa_blocco`, `posa_grande` · ES: `pon_bloque`, `pon_grande`
+
+> **Kvader / block:** One kvader equals 5 small bricks in height. Max one per tile. Small bricks placed on the same tile stack on top of the kvader. The `WALL` condition returns true when a kvader is directly ahead. Picking up a kvader is GUI-only (not available in Karel programs).
 
 ---
 
