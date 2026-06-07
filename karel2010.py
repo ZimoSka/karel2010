@@ -7,7 +7,7 @@ Spustenie:  python karel2010.py
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import threading, time, re, os, json, math, struct, configparser
+import threading, time, re, os, json, math, struct, configparser, html as _html_mod
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from enum import Enum
@@ -2048,11 +2048,13 @@ class MissionResultDialog(tk.Toplevel):
         self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
     @staticmethod
-    def _strip_html(html: str) -> str:
-        txt = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+    @staticmethod
+    def _strip_html(raw: str) -> str:
+        # Odstraň CDATA obal ak existuje
+        txt = re.sub(r'<!\[CDATA\[([\s\S]*?)\]\]>', r'\1', raw)
+        txt = re.sub(r'<br\s*/?>', '\n', txt, flags=re.IGNORECASE)
         txt = re.sub(r'<[^>]+>', '', txt)
-        for ent, ch in [('&lt;','<'),('&gt;','>'),('&amp;','&'),('&nbsp;',' ')]:
-            txt = txt.replace(ent, ch)
+        txt = _html_mod.unescape(txt)
         return txt.strip()
 
     def _build(self, success: bool, html_msg: str):
@@ -2093,14 +2095,16 @@ class IntroDialog(tk.Toplevel):
         self.geometry(f'{ww}x{wh}+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
 
     @staticmethod
-    def _strip_html(html: str) -> str:
-        txt = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+    @staticmethod
+    def _strip_html(raw: str) -> str:
+        # Odstraň CDATA obal ak existuje
+        txt = re.sub(r'<!\[CDATA\[([\s\S]*?)\]\]>', r'\1', raw)
+        txt = re.sub(r'<br\s*/?>', '\n', txt, flags=re.IGNORECASE)
         txt = re.sub(r'<h[1-6][^>]*>', '\n', txt, flags=re.IGNORECASE)
         txt = re.sub(r'</h[1-6]>', '\n', txt, flags=re.IGNORECASE)
         txt = re.sub(r'<p[^>]*>', '\n', txt, flags=re.IGNORECASE)
         txt = re.sub(r'<[^>]+>', '', txt)
-        for ent, ch in [('&lt;','<'),('&gt;','>'),('&amp;','&'),('&nbsp;',' ')]:
-            txt = txt.replace(ent, ch)
+        txt = _html_mod.unescape(txt)
         return re.sub(r'\n{3,}', '\n\n', txt).strip()
 
     def _build(self, title: str, html_msg: str):

@@ -87,9 +87,9 @@
   <bigbricks/>
   <marks/>
   <title>room2</title>
-  <intro>&lt;![CDATA[1]]&gt;</intro>
-  <success>&lt;![CDATA[2]]&gt;</success>
-  <failure>&lt;![CDATA[3]]&gt;</failure>
+  <intro>1</intro>
+  <success>2</success>
+  <failure>3</failure>
   <program>Začiatok
   opakuj 5 krat
     opakuj 20 krat dopredu koniec

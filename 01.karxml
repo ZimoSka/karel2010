@@ -76,21 +76,21 @@
   <bigbricks/>
   <marks/>
   <title>01</title>
-  <intro>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+  <intro>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Karel stojí na múriku,&lt;br&gt; napíšte program, aby prešiel celý múrik a nespadol!
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;]]&gt;</intro>
-  <success>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+&lt;/font&gt;</intro>
+  <success>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Výborne,&lt;br&gt; zvládol si to.
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;]]&gt;</success>
-  <failure>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+&lt;/font&gt;</success>
+  <failure>&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Aúúúúúú,&lt;br&gt; spadol si z múrika...
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;]]&gt;</failure>
+&lt;/font&gt;</failure>
   <program>Začiatok
  
 Koniec</program>

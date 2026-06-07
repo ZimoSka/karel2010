@@ -231,24 +231,24 @@
   <bigbricks/>
   <marks/>
   <title>1a1</title>
-  <intro>&lt;![CDATA[&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Ahoj 
+  <intro>&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Ahoj 
 Miško!&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;Po&amp;#269;ul som, že si sa dnes nau&amp;#269;il nie&amp;#269;o nové.&lt;br&gt;
 Vrabce &amp;#269;virikali, že si sa nau&amp;#269;il s&amp;#269;ítava&amp;#357; 1+1.&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;&amp;#268;o tak si to overi&amp;#357;... &lt;/font&gt;
 &lt;hr color=&quot;#99FF99&quot;&gt;
 &lt;img border=&quot;0&quot; src=&quot;Scitan1.gif&quot; align=&quot;right&quot;&gt;&lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, tovjou úlohou je vojs&amp;#357; s Karlom do&lt;br&gt;
-štvorca, ktorý je pri správnom výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;]]&gt;</intro>
-  <success>&lt;![CDATA[&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
+štvorca, ktorý je pri správnom výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;</intro>
+  <success>&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;
-&lt;img border=&quot;0&quot; dynsrc=&quot;Chick.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;]]&gt;</success>
-  <failure>&lt;![CDATA[&lt;p&gt;&lt;img src=&quot;http://teacherweb.com/images/aniPenguinSitting.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Gebulka, 
+&lt;img border=&quot;0&quot; dynsrc=&quot;Chick.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;</success>
+  <failure>&lt;p&gt;&lt;img src=&quot;http://teacherweb.com/images/aniPenguinSitting.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Gebulka, 
 zdá sa, ze máš v scítavaní ešte drobné medzery...&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;&amp;nbsp;&lt;/p&gt;
 &lt;p&gt;&amp;nbsp;&lt;/p&gt;
 &lt;hr color=&quot;#99FF99&quot;&gt;
 &lt;img border=&quot;0&quot; src=&quot;Scitan1.gif&quot; align=&quot;right&quot;&gt;&lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, tovjou úlohou je vojs&amp;#357; s Karlom do&lt;br&gt;
-štvorca, ktorý je &lt;b&gt;pri správnom &lt;/b&gt;výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;]]&gt;</failure>
+štvorca, ktorý je &lt;b&gt;pri správnom &lt;/b&gt;výsledku s&amp;#269;ítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;</failure>
   <program>Začiatok
  
 Koniec</program>

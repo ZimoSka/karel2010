@@ -211,15 +211,9 @@ def to_xml(d: dict) -> str:
             el.text = val
 
     _add('title',   d.get('title', ''))
-    if d.get('intro'):
-        el = ET.SubElement(root, 'intro')
-        el.text = f"<![CDATA[{d['intro']}]]>"
-    if d.get('success'):
-        el = ET.SubElement(root, 'success')
-        el.text = f"<![CDATA[{d['success']}]]>"
-    if d.get('failure'):
-        el = ET.SubElement(root, 'failure')
-        el.text = f"<![CDATA[{d['failure']}]]>"
+    _add('intro',   d.get('intro',   ''))
+    _add('success', d.get('success', ''))
+    _add('failure', d.get('failure', ''))
     _add('program', d.get('program', ''))
 
     raw = ET.tostring(root, encoding='unicode')

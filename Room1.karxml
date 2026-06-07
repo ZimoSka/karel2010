@@ -96,14 +96,14 @@
   <bigbricks/>
   <marks/>
   <title>Room1</title>
-  <intro>&lt;![CDATA[&lt;Center&gt;&lt;H1&gt;Prva Miesntonst!!!&lt;/H1&gt;&lt;/Center&gt;
+  <intro>&lt;Center&gt;&lt;H1&gt;Prva Miesntonst!!!&lt;/H1&gt;&lt;/Center&gt;
 &lt;br&gt;
 &lt;p align=left&gt;
 Toto je testovaci text.  Tymto textom chcem oskusat ako funguje HTML kod a HTML text.
 Skusil by som &lt;b&gt;tucny text&lt;/b&gt; a tiez trosku &lt;i&gt;sikmeho textu&lt;/i&gt;.&lt;br&gt;
 Toto je text &lt;b&gt;1&lt;/b&gt;
-&lt;/p&gt;]]&gt;</intro>
-  <success>&lt;![CDATA[&lt;Center&gt;&lt;H1&gt;Prva Miesntonst&lt;/H1&gt;&lt;/Center&gt;
+&lt;/p&gt;</intro>
+  <success>&lt;Center&gt;&lt;H1&gt;Prva Miesntonst&lt;/H1&gt;&lt;/Center&gt;
 &lt;br&gt;
 &lt;p align=left&gt;
 Toto je testovaci text.  Tymto textom chcem oskusat ako funguje HTML kod a HTML text.
@@ -111,8 +111,8 @@ Skusil by som &lt;b&gt;tucny text&lt;/b&gt; a tiez trosku &lt;i&gt;sikmeho textu
 &lt;br&gt;
  &lt;b&gt;Miestnost si uspesne ukoncil!&lt;/b&gt;
 
-&lt;/p&gt;]]&gt;</success>
-  <failure>&lt;![CDATA[&lt;Center&gt;&lt;H1&gt;Prva Miesntonst&lt;/H1&gt;&lt;/Center&gt;
+&lt;/p&gt;</success>
+  <failure>&lt;Center&gt;&lt;H1&gt;Prva Miesntonst&lt;/H1&gt;&lt;/Center&gt;
 &lt;br&gt;
 &lt;p align=left&gt;
 Toto je testovaci text.  Tymto textom chcem oskusat ako funguje HTML kod a HTML text.
@@ -120,7 +120,7 @@ Skusil by som &lt;b&gt;tucny text&lt;/b&gt; a tiez trosku &lt;i&gt;sikmeho textu
 &lt;br&gt;
  &lt;b&gt;Miestnost si ukonci, ale neuspesne!&lt;/b&gt;
 
-&lt;/p&gt;]]&gt;</failure>
+&lt;/p&gt;</failure>
   <program>zaciatok
 
 koniec</program>
