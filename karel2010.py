@@ -2806,12 +2806,37 @@ class WorldSettingsDialog(tk.Toplevel):
         w.mission_reset_on_failure = self._reset_on_failure_var.get()
         w.success_html            = self._msg_success_var.get().strip()
         w.failure_html            = self._msg_failure_var.get().strip()
-        # Aplikuj na app
+        # Aplikuj na app — bez resetovania Karela
         try:
-            self._app._base = w
-            self._app._reset_world()
-            # Ak sa zmenil názov sveta, aktualizuj titulok okna
-            self._app._world_title_var.set(w.title or "Karlov Svet")
+            app = self._app
+            app._base = w          # _base = základ pre Reset (štartová pozícia z nastavení)
+            cur = app._world       # aktuálny bežiaci svet — Karel zostane kde je
+            s = w.settings
+            # Skopíruj len polia ktoré WorldSettings mení; tehly/steny/značky netreba meniť
+            cur.settings               = deepcopy(s)
+            cur.goal_conditions        = list(w.goal_conditions)
+            cur.mission_reset_on_failure = w.mission_reset_on_failure
+            cur.success_html           = w.success_html
+            cur.failure_html           = w.failure_html
+            cur.title                  = w.title
+            cur.intro_html             = w.intro_html
+            # Resize ak sa zmenili rozmery
+            if cur.width != w.width or cur.height != w.height:
+                cur.resize(w.width, w.height)
+            # Kamera
+            if s.camera_locked:
+                app._canvas.cam.az   = s.camera_az
+                app._canvas.cam.el   = s.camera_el
+                app._canvas.cam.dist = s.camera_dist
+            app._canvas.render()
+            # UI aktualizácia
+            app._nav.update_inventory(cur)
+            app._nav.set_camera_locked(s.camera_locked)
+            app._ctrl.apply_restrictions(s)
+            app._ctrl.set_prog_lang(s.prog_lang)
+            app._prog.set_prog_lang(s.prog_lang)
+            app._prog.set_disabled_cmds(s.disabled_cmds, s.disable_procedure)
+            app._world_title_var.set(w.title or "Karlov Svet")
         except Exception as e:
             import traceback
             messagebox.showerror("Chyba pri aplikovaní nastavení", traceback.format_exc())
