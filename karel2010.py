@@ -2473,8 +2473,8 @@ class WorldSettingsDialog(tk.Toplevel):
                         ).grid(row=0,column=col*2+1,padx=(0,16))
         # Pozícia Karela — predvyplnená z AKTUÁLNEJ polohy (nie zo štartu)
         pf = self._frame(p, _T('world_settings.frame_pos')); pf.pack(fill='x', pady=(0,4))
-        self._kx_var = tk.IntVar(value=wcur.karel_x)
-        self._ky_var = tk.IntVar(value=wcur.karel_y)
+        self._kx_var = tk.IntVar(value=w.karel_x)
+        self._ky_var = tk.IntVar(value=w.karel_y)
         self._lbl(pf,'X:').grid(row=0,column=0,sticky='e',padx=(8,2),pady=6)
         ttk.Spinbox(pf,textvariable=self._kx_var,from_=0,to=w.width-1,
                     width=4,font=('Consolas',11)).grid(row=0,column=1,padx=(0,16))
@@ -2487,13 +2487,13 @@ class WorldSettingsDialog(tk.Toplevel):
         if wcur.karel_x != w.karel_x or wcur.karel_y != w.karel_y:
             self._hnote.config(
                 text=_T('world_settings.hnote_pos').format(
-                    x=wcur.karel_x, y=wcur.karel_y,
-                    sx=w.karel_x, sy=w.karel_y))
+                    x=w.karel_x, y=w.karel_y,
+                    sx=wcur.karel_x, sy=wcur.karel_y))
         self._kx_var.trace_add('write', lambda *a: self._upd_hnote())
         self._ky_var.trace_add('write', lambda *a: self._upd_hnote())
         # Smer
         sf = self._frame(p, _T('world_settings.frame_dir')); sf.pack(fill='x', pady=(0,8))
-        self._dir_var = tk.StringVar(value=wcur.karel_dir.to_str())
+        self._dir_var = tk.StringVar(value=w.karel_dir.to_str())
         for col,(txt,val) in enumerate([(_T('world_settings.dir_n'),'N'),(_T('world_settings.dir_e'),'E'),
                                          (_T('world_settings.dir_s'),'S'),(_T('world_settings.dir_w'),'W')]):
             tk.Radiobutton(sf,text=txt,variable=self._dir_var,value=val,
