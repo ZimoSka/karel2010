@@ -1616,7 +1616,7 @@ class ProgramPanel(tk.Frame):
         self._cmd_list_hdr.pack(fill='x')
         self._lb=tk.Listbox(mf,bg='#04040e',fg='#dcdcaa',font=('Consolas',11),
                              relief='flat',selectbackground='#2244aa',
-                             activestyle='dotbox',exportselection=False)
+                             activestyle='dotbox',exportselection=False,height=4)
         sc=ttk.Scrollbar(mf,command=self._lb.yview)
         self._lb.config(yscrollcommand=sc.set)
         sc.pack(side='right',fill='y'); self._lb.pack(fill='both',expand=True)
@@ -1629,10 +1629,16 @@ class ProgramPanel(tk.Frame):
         self._filter_hdr=tk.Label(rf,text=_T('program_panel.filter_hdr'),
                  bg='#0d1030',fg='#aaaacc',font=('Arial',9,'bold'),pady=2)
         self._filter_hdr.pack(fill='x')
-        style=ttk.Style(); style.configure('P.Treeview',background='#04040e',
-                           foreground='#ccccdd',fieldbackground='#04040e',font=('Arial',9))
+        style=ttk.Style()
+        style.configure('P.Treeview',background='#04040e',
+                        foreground='#ccccdd',fieldbackground='#04040e',font=('Arial',9))
+        style.map('P.Treeview',background=[('selected','#2244aa')],
+                               foreground=[('selected','#ffffff')])
+        tv_sc=ttk.Scrollbar(rf,command=lambda *a: self._tv.yview(*a))
         self._tv=ttk.Treeview(rf,show='tree',selectmode='browse',
-                               style='P.Treeview')
+                               style='P.Treeview',height=4,
+                               yscrollcommand=tv_sc.set)
+        tv_sc.pack(side='right',fill='y')
         self._tv.pack(fill='both',expand=True)
         self._build_filter_tree()
         self._tv.bind('<<TreeviewSelect>>',self._on_filter)
@@ -2854,6 +2860,19 @@ class App(tk.Tk):
         self.title("Karel 2010")
         self.geometry("1240x820")
         self.configure(bg='#060610')
+        # Tmavá ttk téma — clam umožňuje nastaviť fieldbackground na Treeview
+        _s = ttk.Style(self)
+        _s.theme_use('clam')
+        _s.configure('.',           background='#1a1a33', foreground='#ccccff')
+        _s.configure('TScrollbar',  background='#2a2a55', troughcolor='#0a0a1c',
+                                    arrowcolor='#8888bb', borderwidth=0)
+        _s.configure('TSpinbox',    fieldbackground='#04040e', foreground='#ccccff',
+                                    background='#1a1a33', arrowcolor='#8888bb')
+        _s.configure('TNotebook',   background='#0a0a1c', borderwidth=0)
+        _s.configure('TNotebook.Tab', background='#1a1a33', foreground='#aaaacc',
+                                      padding=(8,3))
+        _s.map('TNotebook.Tab',     background=[('selected','#2a2a55')],
+                                    foreground=[('selected','#ffffff')])
         self._role = _ini_read_role()            # úroveň z karel.ini
         self._base=World.from_json(BUILTIN_WORLD)
         self._world=self._base.copy()
