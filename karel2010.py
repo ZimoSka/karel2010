@@ -1445,10 +1445,16 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
     src=tw.get('1.0','end')
     for tag in ('kw','cmd','cond','comment','number','disabled'):
         tw.tag_remove(tag,'1.0','end')
-    for m in re.finditer(r'#[^\n]*',src):
+    # Komentáre: // jedno-riadkové, # jedno-riadkové, { } blokové
+    comment_spans = []
+    for m in re.finditer(r'//[^\n]*|#[^\n]*|\{[^}]*\}',src,re.DOTALL):
         tw.tag_add('comment',_hlidx(src,m.start()),_hlidx(src,m.end()))
+        comment_spans.append((m.start(),m.end()))
+    def _in_comment(pos):
+        return any(s<=pos<e for s,e in comment_spans)
     for m in re.finditer(r'\b\d+\b',src):
-        tw.tag_add('number',_hlidx(src,m.start()),_hlidx(src,m.end()))
+        if not _in_comment(m.start()):
+            tw.tag_add('number',_hlidx(src,m.start()),_hlidx(src,m.end()))
     CTRL={'begin','zaciatok','začiatok','end','koniec','procedure','prikaz','príkaz',
           'repeat','opakuj','times','krat','krát','*repeat','*opakuj',
           'while','kym','kým','do','rob','*while','*kym','*kým',
@@ -1467,6 +1473,7 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
     if disable_procedure:
         _dis_words.update(_KW_REVERSE.get('PROCEDURE', []))
     for m in re.finditer(r'\*?[\wÀ-ɏ]+',src,re.UNICODE):
+        if _in_comment(m.start()): continue   # slová v komentároch sa nefárbia
         wl=m.group(0).lower()
         if wl in _dis_words:
             tw.tag_add('disabled',_hlidx(src,m.start()),_hlidx(src,m.end()))
