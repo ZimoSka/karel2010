@@ -2674,8 +2674,8 @@ class WorldSettingsDialog(tk.Toplevel):
 
         # Inicializácia zo sveta
         self._goal_conditions: list = list(w.goal_conditions)
-        for c in self._goal_conditions:
-            self._cond_lb.insert('end', '  ' + c.describe())
+        for i, c in enumerate(self._goal_conditions):
+            self._cond_lb.insert('end', self._cond_label(i, c))
 
         self._cond_lb.bind('<Double-Button-1>', lambda e: self._edit_condition())
         bf2 = tk.Frame(cf2, bg=self._BG); bf2.pack(fill='x', padx=8, pady=(0,6))
@@ -2704,12 +2704,26 @@ class WorldSettingsDialog(tk.Toplevel):
                      ).grid(row=row2, column=1, sticky='ew', padx=(0,8), pady=3)
         mf.columnconfigure(1, weight=1)
 
+    def _cond_label(self, idx: int, cond) -> str:
+        if idx == 0:
+            prefix = '     '
+        else:
+            op = cond.op.upper()
+            prefix = f' {op} ' if op == 'OR' else f'{op} '
+        return prefix + cond.describe()
+
+    def _refresh_cond_lb(self):
+        """Znovu naplní celý listbox (po zmene poradia alebo op)."""
+        self._cond_lb.delete(0, 'end')
+        for i, c in enumerate(self._goal_conditions):
+            self._cond_lb.insert('end', self._cond_label(i, c))
+
     def _add_condition(self):
         dlg = GoalConditionDialog(self, self._cur_world)
         self.wait_window(dlg)
         if dlg.result:
             self._goal_conditions.append(dlg.result)
-            self._cond_lb.insert('end', '  ' + dlg.result.describe())
+            self._cond_lb.insert('end', self._cond_label(len(self._goal_conditions)-1, dlg.result))
 
     def _edit_condition(self):
         sel = self._cond_lb.curselection()
@@ -2719,8 +2733,7 @@ class WorldSettingsDialog(tk.Toplevel):
         self.wait_window(dlg)
         if dlg.result:
             self._goal_conditions[idx] = dlg.result
-            self._cond_lb.delete(idx)
-            self._cond_lb.insert(idx, '  ' + dlg.result.describe())
+            self._refresh_cond_lb()
             self._cond_lb.selection_set(idx)
 
     def _remove_condition(self):
