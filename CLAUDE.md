@@ -14,14 +14,22 @@ jazyka uložiť priamo do `.lng` súboru cez `NAME` direktívu.
 
 ---
 
+## ⚠️ Pravidlo: Vždy push hneď po commit
+
+```
+git add ... && git commit -m "..." && git push
+```
+
+---
+
 ## Celková architektúra
 
-**Jedna Python súbor:** `karel2010.py` (~3000 riadkov), tkinter GUI.
+**Jeden Python súbor:** `karel2010.py` (~3200 riadkov), tkinter GUI.
 
 ```
 karel2010.py
 ├── Dátový model         World, WorldSettings, Direction
-├── Goal podmienky       GoalKarelPos, GoalCellState, GoalSnapshot
+├── Goal podmienky       GoalCondition, evaluate_goals()
 ├── Jazykový systém      _load_all_interpreter_langs(), KW, _LANG_PRIMARY, _LANG_DISABLED, _LANG_NAME
 ├── Lexer/Parser/AST     tokenize(), Parser, ProgN/CmdN/RepN/WhileN/IfN/CondN
 ├── Interpreter          KarelInterpreter (beží na daemon threade)
@@ -44,8 +52,10 @@ world.marks[y][x]       : bool     # značka pod políčkom
 world.walls[y][x]       : set      # {'N','E','S','W'} — steny
 world.karel_x, world.karel_y, world.karel_dir  # pozícia a smer Karela
 world.settings          : WorldSettings
-world.goal_conditions   : list     # GoalKarelPos | GoalCellState | GoalSnapshot
-world.mission_eval      : str      # 'on_finish' | 'on_step'
+world.goal_conditions   : list[GoalCondition]
+world.mission_reset_on_failure : bool
+world.title, world.intro_html, world.success_html, world.failure_html : str
+world.program_text      : str      # uložený Karel kód v súbore
 ```
 **Súradnice:** x=0 vľavo, y=0 dole.
 
@@ -55,6 +65,7 @@ settings.brick_limit, big_brick_limit, mark_limit  : int  # -1 = neobmedzené
 settings.disabled_cmds    : set   # tokeny napr. {'BACK', 'RIGHT'}
 settings.disable_procedure: bool
 settings.camera_locked    : bool
+settings.camera_az, camera_el, camera_dist : float  # uložený pohľad kamery
 settings.prog_lang        : str   # 'sk', 'en', 'en_pattis', 'de', ...  — ukladá sa per-svet do .karxml
 settings.max_climb        : int   # max výška skoku (default 1)
 ```
@@ -66,6 +77,9 @@ settings.max_climb        : int   # max výška skoku (default 1)
 - `mark()` / `clear()` — operuje na políčku **POD** Karelom (kde stojí)
 - `move_forward()` — skontroluje stenu aj výšku tehiel (`max_climb`)
 - `check_wall()` → True ak stena ALEBO kvader pred Karelom
+- `check_sign()` → True ak značka pod Karelom
+- `check_brick()` → True ak aspoň jedna malá tehla pred Karelom
+- `_height(x,y)` → `bricks[y][x] + big_bricks[y][x] * 5` (výška v tehlovitých jednotkách)
 - Rendering: kvader vždy na z=0 (spodok), malé tehly na vrchu kvadera (base_z = big_bricks * BIG_H)
 
 ### Chybové správanie — tichý skip
@@ -77,6 +91,77 @@ settings.max_climb        : int   # max výška skoku (default 1)
 - `mark` — prázdne zásoby značiek
 
 Výnimky (stále hádžu `KarelError`): rekurzia > `MAX_D`, neznáma procedúra, zakázaný príkaz.
+
+---
+
+## Systém misií (GoalCondition)
+
+### `GoalCondition`
+Jedna podmienka misie. Flat objekt — žiadna hierarchia tried.
+
+```python
+GoalCondition(
+    check,          # 'karel_pos' | 'cell_state' | 'sign' | 'brick_ahead' | 'wall_ahead' | 'snapshot'
+    eval_,          # 'success' | 'failure'  — čo nastane pri splnení
+    when,           # 'on_step' | 'on_finish'  — kedy sa vyhodnocuje
+    op,             # 'or' | 'and'  — logický operátor voči predchádzajúcej podmienke
+    negate,         # bool — neguj výsledok (NOT)
+    x, y,           # súradnice (pre karel_pos, cell_state)
+    z,              # výška (pre karel_pos: _height(karel_x, karel_y))
+    cell_marks,     # bool | None  (pre cell_state)
+    cell_bricks,    # int | None   (pre cell_state)
+    cell_big_bricks,# int | None   (pre cell_state)
+    snap,           # dict         (pre snapshot)
+)
+```
+
+**Typy podmienok:**
+| `check` | Čo kontroluje | Extra polia |
+|---|---|---|
+| `karel_pos` | Pozícia/výška Karela | `x`, `y`, `z` (None = ľubovoľné) |
+| `cell_state` | Stav konkrétneho políčka | `x`, `y`, `cell_marks`, `cell_bricks`, `cell_big_bricks` |
+| `sign` | Značka pod Karelom | — |
+| `brick_ahead` | Tehla pred Karelom | — |
+| `wall_ahead` | Stena pred Karelom | — |
+| `snapshot` | Snímok celej miestnosti | `snap` dict |
+
+### `evaluate_goals(world, on_step) → None`
+- Vyhodnotí všetky podmienky s `when == on_step` (alebo `on_finish`)
+- Skupiny `failure` sa vyhodnotia ako prvé
+- Sekvenčné AND/OR v rámci skupiny
+- Ak podmienka trigeruje výsledok → `on_step(result)` callback → `MissionResultDialog`
+
+### Logické operátory v zozname
+- Prvá podmienka: prefix `'     '` (5 medzier)
+- Ďalšie: `' OR '` alebo `'AND '`
+- Zobrazuje `_cond_label(idx, cond)` v listboxe WorldSettingsDialog
+
+---
+
+## Stav sveta — _base vs _world
+
+```python
+app._base   # World — základ: stav pri nahratí súboru alebo poslednom Save
+             # Obsahuje pôvodnú štartovaciu pozíciu Karela
+             # Mení sa: pri otvorení súboru, pri Save (uložení), pri WorldSettings Apply
+app._world  # World — aktuálny bežiaci stav (Karel sa pohybuje, tehly sa kladú)
+```
+
+**Reset (`_reset_world`):**
+```python
+self._world = self._base.copy()   # deepcopy — Karel sa vráti na štartovaciu pozíciu z _base
+self._world.reset_inventory()     # obnoví zásoby podľa settings.brick_limit atď.
+```
+
+**WorldSettings Apply:**
+- **Nerobí** `_reset_world()` — Karel zostane kde je
+- Skopíruje len zmenené polia (`settings`, `goal_conditions`, `title`, `intro_html` atď.) priamo do `_world`
+- Aktualizuje `_base = w` (pracovná kópia s novými nastaveniami, pôvodnou štartovacou pozíciou)
+
+**WorldSettings — pozícia Karela:**
+- Spinbox zobrazuje štartovaciu pozíciu z `_base` (nie aktuálnu)
+- Ak Karel chodil od štartu, zobrazí sa: `ℹ  Štart: ({x},{y})  ×  Karel teraz: ({sx},{sy})`
+- Zmeniť štartovaciu pozíciu môže učiteľ manuálne v spinboxe → Apply
 
 ---
 
@@ -129,6 +214,21 @@ _T(key)                        # _ui_strings.get(key, key)  — preklad GUI text
 _switch_prog_lang(lang)        # nastaví _current_prog_lang
 ```
 
+### Sekcie v `.ini` súboroch (všetkých 6 jazykov)
+```
+[meta]           name = ...
+[menu]           menu položky
+[toolbar]        toolbar tlačidlá
+[nav]            NavigatorPanel
+[control]        ControlPanel
+[status]         stavový riadok
+[program_panel]  ProgramPanel (filter strom, zoznam príkazov)
+[action_labels]  texty na akčných tlačidlách (DROP, PICK, MARK, CLEAR, DROP_BIG)
+[world_settings] WorldSettingsDialog — všetky záložky vrátane misie
+[goal_condition] GoalConditionDialog
+[role_dialog]    RoleDialog
+```
+
 ### Pattis režim (`en_pattis`)
 - `putbeeper`/`pickbeeper` → **MARK/CLEAR** (kladie značku pod Karela, nie tehlu pred neho)
 - `next_to_a_beeper` → **SIGN** (je značka pod Karelom?)
@@ -153,8 +253,8 @@ COND_T = {'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
 ```python
 ProgN(procedures, main_stmts)
 CmdN(cmd, line)           # príkaz
-CallN(name, line)          # volanie procedúry
-RepN(count, body, line)    # opakuj N krat
+CallN(name, line)         # volanie procedúry
+RepN(count, body, line)   # opakuj N krat
 WhileN(cond, body, line)
 IfN(cond, then_body, else_body, line)
 CondN(cond_type, negated)
@@ -186,33 +286,80 @@ CondN(cond_type, negated)
 - `set_prog_lang(lang)` → prebuduje akčné tlačidlá (DROP, PICK, MARK...)
 
 ### `WorldSettingsDialog`
-- 6 záložiek: Jazyk, Svet, Zásoby, Príkazy, Podmienky, Pohľad
-- `_on_prog_lang_changed()` — live update názvov príkazov + skrytie/zobrazenie checkboxov podľa `_LANG_DISABLED`; skryje celú skupinu ak sú všetky tokeny zakázané
+- 6 záložiek: Popis, Miestnosť, Zásoby, Príkazy, Pohľad, Misia
+- `_work = app._base.copy()` — pracovná kópia; aplikuje sa až pri OK
+- `_on_prog_lang_changed()` — live update názvov príkazov + skrytie/zobrazenie checkboxov podľa `_LANG_DISABLED`
 - `_cmd_vars: dict` — tok → BooleanVar (iba CMD tokeny, nie COND tokeny ako BRICK)
 - `_cmd_cbs: dict` — tok → Checkbutton widget
-- COND tokeny (napr. BRICK) sa do `disabled_cmds` dostávajú iba cez `DISABLED` direktívu v `.lng` — nemajú checkbox v UI
+- COND tokeny (napr. BRICK) sa do `disabled_cmds` dostávajú iba cez `DISABLED` direktívu v `.lng`
+- **Apply** (`_apply()`): patchuje `_world` priamo (bez resetu Karela), uloží `_base = w`
+- Záložka Misia: listbox s podmienkami, tlačidlá Pridať/Upraviť/Odstrániť, double-click na úpravu
+
+### `GoalConditionDialog`
+- Otvorí sa pri Pridať alebo Upraviť podmienku
+- `edit_cond=None` → nová podmienka; `edit_cond=GoalCondition` → úprava existujúcej (predvyplní polia)
+- Typ podmienky: radio buttons (6 typov)
+  - `karel_pos` — spinboxy X, Y, výška (každý voliteľný)
+  - `cell_state` — súradnice + stav značky/tehál
+  - `sign` / `brick_ahead` / `wall_ahead` — bez parametrov, iba info text
+  - `snapshot` — zachytí aktuálny stav sveta
+- Spoločná sekcia: Výsledok (success/failure), Kedy (on_step/on_finish), Operátor (or/and), Negácia
 
 ---
 
 ## Súbor sveta `.karxml`
 
-XML formát. Kľúčové časti:
+Jediný podporovaný formát (`.karjson` sa stále načíta pre spätnu kompatibilitu, ale neukladá sa).
+
 ```xml
 <world width="..." height="...">
-  <bricks>...</bricks>
-  <bigbricks>...</bigbricks>
-  <marks>...</marks>
-  <walls>...</walls>
-  <karel x="..." y="..." dir="NORTH"/>
+  <karel x="..." y="..." dir="E"/>
+  <walls>
+    <wall x="0" y="0" side="S"/>
+    ...
+  </walls>
+  <bricks>
+    <brick x="3" y="1" count="2"/>
+    ...
+  </bricks>
+  <bigbricks>
+    <bigbrick x="2" y="3"/>
+    ...
+  </bigbricks>
+  <marks>
+    <mark x="1" y="1"/>
+    ...
+  </marks>
+  <title>Názov sveta</title>
+  <intro><![CDATA[<b>HTML zadanie</b>]]></intro>
+  <success>Správa pri úspechu</success>
+  <failure>Správa pri neúspechu</failure>
+  <program>Zacatok\n\nKoniec</program>
   <settings>
-    <prog_lang>en</prog_lang>
+    <prog_lang>sk</prog_lang>
     <disabled_cmds>BACK,RIGHT</disabled_cmds>
     <brick_limit>10</brick_limit>
-    ...
+    <big_brick_limit>-1</big_brick_limit>
+    <mark_limit>-1</mark_limit>
+    <max_climb>1</max_climb>
+    <disable_procedure>false</disable_procedure>
+    <camera_locked>false</camera_locked>
+    <camera_az>...</camera_az>
+    <camera_el>...</camera_el>
+    <camera_dist>...</camera_dist>
+    <mission_reset_on_failure>false</mission_reset_on_failure>
   </settings>
-  <goal_conditions>...</goal_conditions>
+  <mission>
+    <condition check="karel_pos" eval="failure" when="on_step" op="or" negate="false" z="1"/>
+    <condition check="sign"      eval="success" when="on_step" op="or"/>
+    <condition check="snapshot"  eval="success" when="on_finish" op="and"
+               karel_x="3" karel_y="1" karel_dir="E"
+               bricks="..." marks="..."/>
+  </mission>
 </world>
 ```
+
+**Dôležité:** tag je `<mission>`, nie `<goal_conditions>` — `from_xml()` hľadá `mission`.
 
 ---
 
@@ -235,7 +382,7 @@ lang = sk          ← GUI jazyk
 role = teacher     ← student | teacher | admin
 ```
 
-Rola `student` skryje menu položky: Uložiť svet, Uložiť ako XML, Nastavenia sveta.
+Rola `student` skryje menu položky: Uložiť svet, Nastavenia sveta.
 
 ---
 
@@ -250,6 +397,16 @@ Rola `student` skryje menu položky: Uložiť svet, Uložiť ako XML, Nastavenia
 
 ## Pridanie nového GUI jazyka
 
-1. Vytvoriť `lang/xx.ini` so sekciami: `[meta]`, `[menu]`, `[toolbar]`, `[nav]`, `[control]`, `[status]`, `[action_labels]`, `[world_settings]`, `[goal_condition]`, `[role_dialog]`
+1. Vytvoriť `lang/xx.ini` so sekciami: `[meta]`, `[menu]`, `[toolbar]`, `[nav]`, `[control]`, `[status]`, `[program_panel]`, `[action_labels]`, `[world_settings]`, `[goal_condition]`, `[role_dialog]`
 2. Vytvoriť `lang/interpreter/xx.lng` s Karel kľúčovými slovami
 3. Oba dropdown sa automaticky doplnia — **žiadna zmena kódu nie je potrebná**
+
+## Pridanie nového typu podmienky misie
+
+1. Implementovať logiku v `GoalCondition._check_raw(world)` — nový `elif self.check == 'xxx':`
+2. Pridať `describe()` vetvu pre zobrazenie v listboxe
+3. Pridať `from_xml()` a `to_xml()` vetvy (ak má extra parametre)
+4. V `GoalConditionDialog._build()`: pridať radio button (`type_xxx` kľúč do všetkých `.ini`)
+5. V `GoalConditionDialog._switch_type()`: pridať vetvu → `_build_simple_check(t)` alebo vlastná metóda
+6. V `GoalConditionDialog._ok()`: pridať vetvu pre vytvorenie `GoalCondition`
+7. Pridať `type_xxx` a `type_xxx_desc` do všetkých 6 `lang/*.ini`
