@@ -540,6 +540,7 @@ class World:
 
 KW: dict = {}            # word.lower() → TOKEN  (všetky jazyky naraz)
 _LANG_PRIMARY: dict = {} # lang_code → {TOKEN: primary_word}
+_LANG_DISABLED: dict = {} # lang_code → set of TOKEN names disabled by default
 _INTERP_LANG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 'lang', 'interpreter')
 
@@ -547,14 +548,15 @@ def _load_all_interpreter_langs() -> None:
     """Načíta všetky lang/interpreter/*.lng súbory.
     KW sa naplní všetkými kľúčovými slovami zo všetkých jazykov —
     interpreter tak akceptuje ľubovoľný jazyk súčasne.
-    _LANG_PRIMARY uloží primárne slovo (prvé) pre každý jazyk a token."""
-    global KW, _LANG_PRIMARY
-    KW.clear(); _LANG_PRIMARY.clear()
+    _LANG_PRIMARY uloží primárne slovo (prvé) pre každý jazyk a token.
+    _LANG_DISABLED uloží set tokenov, ktoré sú v danom jazyku štandardne zakázané."""
+    global KW, _LANG_PRIMARY, _LANG_DISABLED
+    KW.clear(); _LANG_PRIMARY.clear(); _LANG_DISABLED.clear()
     if not os.path.isdir(_INTERP_LANG_DIR):
         _fallback_bkw(); return
     for fname in sorted(os.listdir(_INTERP_LANG_DIR)):
         if not fname.endswith('.lng'): continue
-        lang = fname[:-4].lower()   # 'sk', 'en', 'de', …
+        lang = fname[:-4].lower()   # 'sk', 'en', 'de', 'en_pattis', …
         _LANG_PRIMARY[lang] = {}
         path = os.path.join(_INTERP_LANG_DIR, fname)
         try:
@@ -570,6 +572,10 @@ def _load_all_interpreter_langs() -> None:
             token = token.strip().upper()
             words = rest.split()
             if not words: continue
+            if token == 'DISABLED':
+                # Direktíva DISABLED — tieto tokeny sa pri výbere jazyka automaticky zakážu
+                _LANG_DISABLED[lang] = set(w.upper() for w in words)
+                continue
             _LANG_PRIMARY[lang][token] = words[0].lower()
             for w in words:
                 KW[w.lower()] = token
@@ -2280,10 +2286,16 @@ class WorldSettingsDialog(tk.Toplevel):
             return 'sk'
 
     def _on_prog_lang_changed(self):
-        """Zavolá sa pri zmene Comboboxu prog_lang — live update názvov príkazov."""
+        """Zavolá sa pri zmene Comboboxu prog_lang — live update názvov príkazov.
+        Ak vybraný jazyk obsahuje DISABLED direktívu, automaticky zaškrtne dané tokeny."""
         lang = self._get_prog_lang_code()
         for tok, cb in self._cmd_cbs.items():
             cb.configure(text=_primary_kw(tok, lang))
+        # Automaticky zakáž príkazy definované direktívou DISABLED v .lng súbore
+        if lang in _LANG_DISABLED:
+            for tok, var in self._cmd_vars.items():
+                if tok in _LANG_DISABLED[lang]:
+                    var.set(True)
 
     def _upd_hnote(self):
         try:

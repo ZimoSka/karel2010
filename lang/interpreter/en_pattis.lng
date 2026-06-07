@@ -1,0 +1,37 @@
+# Karel 2010 – English (Pattis) interpreter keywords
+# Primary keywords follow the original Pattis (1981) naming convention.
+# DISABLED directive causes WorldSettings to auto-check (disable) these tokens
+# when this language is selected — keeping the language set to Pattis original.
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+
+DISABLED   = BACK RIGHT DROP_BIG MARK CLEAR SLOWLY QUICKLY
+
+BEGIN      = begin
+END        = end
+PROCEDURE  = define  define_new_instruction
+REPEAT     = iterate  repeat
+TIMES      = times
+END_REPEAT = *iterate  *repeat
+WHILE      = while
+NOT        = not
+DO         = do
+END_WHILE  = *while
+IF         = if
+THEN       = then
+ELSE       = else
+END_IF     = *if
+FORWARD    = move  forward  moveforward  move_forward
+LEFT       = turnleft  left  turn_left
+DROP       = putbeeper  put_beeper  drop
+PICK       = pickbeeper  pick_beeper  pick
+DROP_BIG   = drop_big
+MARK       = mark
+CLEAR      = clear  unmark
+WALL       = front_is_blocked  frontisblocked  wall  is_wall
+BRICK      = next_to_a_beeper  nexttoabeeper  next_to_beeper  brick  is_brick
+FREE       = front_is_clear  frontisclear  free  is_free
+SIGN       = sign
+FALSE      = false
+TRUE       = true
+SLOWLY     = slowly
+QUICKLY    = quickly
