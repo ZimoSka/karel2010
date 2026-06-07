@@ -6,7 +6,7 @@ An educational programming simulator based on Karel the Robot — a Python port 
 
 ## Overview
 
-Karel is a robot that moves around a grid world. Students program it using a simple language (Slovak or English keywords), learning the fundamentals of algorithmic thinking.
+Karel is a robot that moves around a grid world. Students program it using a simple language, learning the fundamentals of algorithmic thinking. The language is available in **7 keyword sets**: Slovak, English, German, French, Italian, Spanish, and English (Pattis).
 
 Features:
 - **3D view** with Z-buffer rendering (perspective projection, mouse control)
@@ -34,36 +34,29 @@ Without numpy/Pillow the app falls back to a 2D painter mode.
 
 ## The Karel Language
 
-Programs can be written in Slovak or English:
+Programs can be written in any of the supported languages. The teacher sets the language per world; the interpreter accepts all keyword variants simultaneously.
 
 ```
-zaciatok          # begin
-  opakuj 4 krat   # repeat 4 times
-    dopredu       # forward
-    vlavo         # left
-  koniec          # end
-koniec
+zaciatok          ← Slovak     |  begin          ← English
+  opakuj 4 krat  ← Slovak     |    repeat 4 times
+    dopredu                    |      forward
+    vlavo                      |      left
+  koniec                       |    end
+koniec                         |  end
 ```
 
-**Basic commands:** `dopredu` / `forward`, `dozadu` / `back`, `vlavo` / `left`, `vpravo` / `right`, `poloz` / `drop`, `zdvihni` / `pick`, `poloz_velku` / `drop_big`, `oznac` / `mark`, `odznac` / `clear`
-
-**Conditions:** `stena` / `wall`, `tehla` / `brick`, `znacka` / `sign`, `volno` / `free`
-
-**Defining a custom command:**
 ```
-prikaz MyCommand     # procedure MyCommand
-zaciatok             # begin
-  dopredu
-  dopredu
-koniec               # end
+inicio            ← Spanish    |  Anfang         ← German
+  repite 4 veces               |    wiederhole 4 mal
+    adelante                   |      vorwärts
+    izquierda                  |      links
+  fin                          |    ende
+fin                            |  ende
 ```
 
-**Control structures:**
-```
-opakuj 5 krat ... koniec            # repeat 5 times
-kym stena rob ... koniec            # while wall do
-ak tehla potom ... inak ... koniec  # if brick then ... else
-```
+**Supported keyword languages:** Slovak (`sk`) · English (`en`) · German (`de`) · French (`fr`) · Italian (`it`) · Spanish (`es`) · English/Pattis (`en_pattis`)
+
+See **[docs/language-reference.md](docs/language-reference.md)** for the complete keyword table in all languages.
 
 ## World File Format (.karxml)
 
@@ -133,7 +126,7 @@ Two independent language settings:
 | **GUI language** | All menus, buttons, labels | Admin via **Settings → Global settings...** |
 | **Programming language** | Direct control button labels, command keywords | Teacher per world (Room tab in World Settings) |
 
-GUI language is stored in `karel.ini → [ui] lang = <code>`. Built-in translations: **Slovak** (`sk`), **English** (`en`), **German** (`de`), **French** (`fr`), **Italian** (`it`). Translation files are in `lang/<code>.ini`. Both dropdowns auto-populate from the files present — adding a new language requires only creating the INI file.
+GUI language is stored in `karel.ini → [ui] lang = <code>`. Built-in translations: **Slovak** (`sk`), **English** (`en`), **German** (`de`), **French** (`fr`), **Italian** (`it`), **Spanish** (`es`). Translation files are in `lang/<code>.ini`. Both dropdowns auto-populate from the files present — adding a new language requires only creating the INI file.
 
 Programming language is stored per world in `.karxml → <settings><prog_lang>en</prog_lang></settings>`. The interpreter always accepts keywords from all loaded languages simultaneously.
 
@@ -234,6 +227,7 @@ python kar_to_xml.py
 | [docs/user-guide.md](docs/user-guide.md) | Students | Interface walkthrough, language quick reference, troubleshooting |
 | [docs/teacher-guide.md](docs/teacher-guide.md) | Teachers | Creating worlds, designing missions, pedagogical progression |
 | [docs/karel-language.md](docs/karel-language.md) | Everyone | Complete language reference with examples |
+| [docs/language-reference.md](docs/language-reference.md) | Teachers / translators | All keywords in all 7 languages side by side |
 | [docs/karxml-format.md](docs/karxml-format.md) | World authors | Full `.karxml` file format specification |
 | [docs/architecture.md](docs/architecture.md) | Developers | Code architecture, data model, renderer, threading |
 
