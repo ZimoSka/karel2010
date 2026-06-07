@@ -126,9 +126,19 @@ Two independent language settings:
 | **GUI language** | All menus, buttons, labels | Admin via **Settings → Global settings...** |
 | **Programming language** | Direct control button labels, command keywords | Teacher per world (Room tab in World Settings) |
 
-GUI language is stored in `karel.ini → [ui] lang = <code>`. Built-in translations: **Slovak** (`sk`), **English** (`en`), **German** (`de`), **French** (`fr`), **Italian** (`it`), **Spanish** (`es`). Translation files are in `lang/<code>.ini`. Both dropdowns auto-populate from the files present — adding a new language requires only creating the INI file.
+### Supported languages
 
-Programming language is stored per world in `.karxml → <settings><prog_lang>en</prog_lang></settings>`. The interpreter always accepts keywords from all loaded languages simultaneously.
+| Code | GUI language | Programming language | Sample keywords |
+|------|-------------|---------------------|-----------------|
+| `sk` | Slovenčina ✓ | ✓ | `dopredu`, `vlavo`, `opakuj` |
+| `en` | English ✓ | ✓ | `forward`, `left`, `repeat` |
+| `de` | Deutsch ✓ | ✓ | `vorwärts`, `links`, `wiederhole` |
+| `fr` | Français ✓ | ✓ | `avance`, `gauche`, `répète` |
+| `it` | Italiano ✓ | ✓ | `avanza`, `sinistra`, `ripeti` |
+| `es` | Español ✓ | ✓ | `adelante`, `izquierda`, `repite` |
+| `en_pattis` | — | ✓ | `move`, `turnleft`, `iterate` |
+
+GUI language is stored in `karel.ini → [ui] lang = <code>`. Programming language is stored per world in `.karxml → <settings><prog_lang>sk</prog_lang></settings>`. The interpreter accepts keywords from all languages simultaneously — a student can always type `forward` even in a Slovak-configured world. Both dropdowns auto-populate from files present — adding a new language requires only creating the corresponding files.
 
 ---
 
