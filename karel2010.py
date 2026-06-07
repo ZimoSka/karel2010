@@ -2971,16 +2971,27 @@ class App(tk.Tk):
 
     # ---- UI Layout -------------------------------------------------------
     def _build_ui(self):
+        # Status a toolbar sa packujú pred hlavným panelom (inak by expand=True pohltil status)
+        self._stv=tk.StringVar(value="Pripravený / Ready")
+        self._stl=tk.Label(self,textvariable=self._stv,bg='#030308',fg='#88cc88',
+                            anchor='w',padx=10,pady=2,font=('Consolas',10))
+        self._stl.pack(fill='x',side='bottom')
+
         tb=tk.Frame(self,bg='#111130',pady=4); tb.pack(fill='x',side='top')
         self._build_toolbar(tb)
 
-        main=tk.Frame(self,bg='#060610'); main.pack(fill='both',expand=True)
-        main.columnconfigure(0,weight=3); main.columnconfigure(1,minsize=210,weight=0)
-        main.rowconfigure(0,weight=2); main.rowconfigure(1,weight=1,minsize=200)
+        # ---- PanedWindow štruktúra ----
+        # vpane: horný pás (3D + pravý panel) | dolný pás (program)
+        vpane=tk.PanedWindow(self,orient='vertical',bg='#060610',
+                             sashwidth=5,sashrelief='flat',sashpad=1)
+        vpane.pack(fill='both',expand=True)
 
-        # 3D svet (top-left)
-        wf=tk.Frame(main,bg='#000008',bd=1,relief='sunken')
-        wf.grid(row=0,column=0,sticky='nsew',padx=(4,2),pady=(4,2))
+        # horný pás: hpane — 3D svet | pravý panel (nav + ovládanie)
+        hpane=tk.PanedWindow(vpane,orient='horizontal',bg='#060610',
+                             sashwidth=5,sashrelief='flat',sashpad=1)
+
+        # 3D svet (ľavý panel)
+        wf=tk.Frame(hpane,bg='#000008',bd=1,relief='sunken')
         titlebar=tk.Frame(wf,bg='#000011')
         titlebar.pack(fill='x')
         tk.Label(titlebar,text="Izba1",bg='#000011',fg='#888888',
@@ -2991,34 +3002,31 @@ class App(tk.Tk):
                  font=('Arial',12,'bold')).pack(side='left',padx=20)
         self._canvas=World3D(wf,self._world)
         self._canvas.pack(fill='both',expand=True)
+        hpane.add(wf,stretch='always',minsize=180)
 
-        # Pravý panel: navigátor + ovládanie
-        rp=tk.Frame(main,bg='#0a0a1c')
-        rp.grid(row=0,column=1,sticky='nsew',padx=(2,4),pady=(4,2))
-        rp.rowconfigure(0,weight=1); rp.rowconfigure(1,weight=1); rp.columnconfigure(0,weight=1)
+        # Pravý panel: navigátor + ovládanie (vnútorný vertikálny pane)
+        rp=tk.PanedWindow(hpane,orient='vertical',bg='#0a0a1c',
+                          sashwidth=5,sashrelief='flat',sashpad=1)
         self._nav=NavigatorPanel(rp,self._canvas.cam,
                                   on_change=lambda:[self._canvas.render(),self._nav.render_axes()])
-        self._nav.grid(row=0,column=0,sticky='nsew',pady=(0,2))
         # Keď sa kamera zmení ťahaním myšou, aktualizuj aj navigator osi
         self._canvas.on_cam_change=self._nav.render_axes
+        rp.add(self._nav,stretch='always',minsize=120)
 
         self._ctrl=ControlPanel(rp,lambda:self._world,
                                  on_action=self._on_direct,
                                  get_procs=lambda:self._last_procs)
-        self._ctrl.grid(row=1,column=0,sticky='nsew')
+        rp.add(self._ctrl,stretch='always',minsize=120)
+        hpane.add(rp,stretch='never',minsize=210)
 
-        # Program panel (bottom)
-        pf=tk.Frame(main,bg='#050510',bd=1,relief='sunken')
-        pf.grid(row=1,column=0,columnspan=2,sticky='nsew',padx=4,pady=(2,4))
+        vpane.add(hpane,stretch='always',minsize=200)
+
+        # Program panel (dolný pás)
+        pf=tk.Frame(vpane,bg='#050510',bd=1,relief='sunken')
         self._prog=ProgramPanel(pf); self._prog.pack(fill='both',expand=True)
         # Keď sa zmení editor, _last_procs sa aktualizuje — Príkazovo má vždy aktuálne procedúry
         self._prog.on_procs_update=lambda p: setattr(self,'_last_procs',p)
-
-        # Status
-        self._stv=tk.StringVar(value="Pripravený / Ready")
-        self._stl=tk.Label(self,textvariable=self._stv,bg='#030308',fg='#88cc88',
-                            anchor='w',padx=10,pady=2,font=('Consolas',10))
-        self._stl.pack(fill='x',side='bottom')
+        vpane.add(pf,stretch='always',minsize=150)
 
     def _build_toolbar(self,bar):
         def btn(txt,cmd,bg='#2a5a9a'):
