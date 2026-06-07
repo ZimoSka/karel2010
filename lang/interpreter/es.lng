@@ -1,0 +1,37 @@
+# Karel 2010 – Spanish interpreter keywords / Palabras clave intérprete español
+# FORMAT:  TOKEN = primary_word  alias1  alias2 ...
+# First word is canonical (shown on buttons, used in code templates).
+# All words are accepted by the interpreter regardless of prog_lang setting.
+# Accent variants: with accent (primary), without accent (alias)
+
+BEGIN      = inicio  comienzo
+END        = fin
+PROCEDURE  = instruccion  instrucción  procedimiento
+REPEAT     = repite  repetir
+TIMES      = veces
+END_REPEAT = *repite  *repetir
+WHILE      = mientras
+NOT        = no
+DO         = haz  hacer
+END_WHILE  = *mientras
+IF         = si
+THEN       = entonces
+ELSE       = sino  si_no
+END_IF     = *si
+FORWARD    = adelante  avanza  avanzar
+BACK       = atras  atrás  retrocede  retroceder
+LEFT       = izquierda  gira_izquierda  girar_izquierda
+RIGHT      = derecha  gira_derecha  girar_derecha
+DROP       = pon  poner  coloca  colocar
+PICK       = toma  tomar  recoge  recoger
+DROP_BIG   = pon_grande  pon_g
+MARK       = marca  marcar
+CLEAR      = borra  borrar  desmarca  desmarcar
+WALL       = pared  hay_pared  es_pared
+BRICK      = ladrillo  hay_ladrillo  es_ladrillo
+FREE       = libre  hay_libre  es_libre
+SIGN       = senal  señal  hay_senal  hay_señal
+FALSE      = falso
+TRUE       = verdadero  cierto
+SLOWLY     = despacio  lento
+QUICKLY    = rapido  rápido  deprisa
