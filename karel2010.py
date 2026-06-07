@@ -3023,45 +3023,19 @@ class App(tk.Tk):
         self._canvas.pack(fill='both',expand=True)
         hpane.add(wf,stretch='always',minsize=180)
 
-        # Pravý panel: scrollovateľný kontajner — Navigator + Ovládanie sú vždy plne viditeľné
-        rp_outer=tk.Frame(hpane,bg='#0a0a1c')
-        rp_sb=ttk.Scrollbar(rp_outer,orient='vertical')
-        rp_sb.pack(side='right',fill='y')
-        rp_canvas=tk.Canvas(rp_outer,bg='#0a0a1c',highlightthickness=0,
-                            yscrollcommand=rp_sb.set)
-        rp_canvas.pack(side='left',fill='both',expand=True)
-        rp_sb.config(command=rp_canvas.yview)
-
-        rp=tk.Frame(rp_canvas,bg='#0a0a1c')
-        rp_win=rp_canvas.create_window((0,0),window=rp,anchor='nw')
-
-        def _rp_resize(e=None):
-            rp_canvas.configure(scrollregion=rp_canvas.bbox('all'))
-        def _rp_width(e):
-            rp_canvas.itemconfig(rp_win,width=e.width)
-        rp.bind('<Configure>',_rp_resize)
-        rp_canvas.bind('<Configure>',_rp_width)
-        # Scroll kolieskom myši — aktívne len keď je myš nad pravým panelom
-        def _rp_scroll(e):
-            rp_canvas.yview_scroll(int(-1*(e.delta/120)),'units')
-        def _rp_enter(e): rp_outer.bind_all('<MouseWheel>',_rp_scroll)
-        def _rp_leave(e): rp_outer.unbind_all('<MouseWheel>')
-        rp_outer.bind('<Enter>',_rp_enter)
-        rp_outer.bind('<Leave>',_rp_leave)
-
+        # Pravý panel: Navigator + Ovládanie fixne, vždy celé viditeľné
+        rp=tk.Frame(hpane,bg='#0a0a1c')
         self._nav=NavigatorPanel(rp,self._canvas.cam,
                                   on_change=lambda:[self._canvas.render(),self._nav.render_axes()])
         self._nav.pack(fill='x',side='top')
-        # Keď sa kamera zmení ťahaním myšou, aktualizuj aj navigator osi
         self._canvas.on_cam_change=self._nav.render_axes
-
         self._ctrl=ControlPanel(rp,lambda:self._world,
                                  on_action=self._on_direct,
                                  get_procs=lambda:self._last_procs)
         self._ctrl.pack(fill='x',side='top')
-        hpane.add(rp_outer,stretch='never',minsize=210)
+        hpane.add(rp,stretch='never',minsize=210)
 
-        vpane.add(hpane,stretch='always',minsize=200)
+        vpane.add(hpane,stretch='always',minsize=360)
 
         # Program panel (dolný pás)
         pf=tk.Frame(vpane,bg='#050510',bd=1,relief='sunken')
