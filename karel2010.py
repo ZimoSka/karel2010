@@ -2292,15 +2292,25 @@ class WorldSettingsDialog(tk.Toplevel):
 
     def _on_prog_lang_changed(self):
         """Zavolá sa pri zmene Comboboxu prog_lang — live update názvov príkazov.
-        Ak vybraný jazyk obsahuje DISABLED direktívu, automaticky zaškrtne dané tokeny."""
+        Ak vybraný jazyk obsahuje DISABLED direktívu, skryje a zaškrtne dané tokeny."""
         lang = self._get_prog_lang_code()
+        disabled = _LANG_DISABLED.get(lang, set())
         for tok, cb in self._cmd_cbs.items():
             cb.configure(text=_primary_kw(tok, lang))
-        # Automaticky zakáž príkazy definované direktívou DISABLED v .lng súbore
-        if lang in _LANG_DISABLED:
-            for tok, var in self._cmd_vars.items():
-                if tok in _LANG_DISABLED[lang]:
-                    var.set(True)
+            if tok in disabled:
+                var = self._cmd_vars[tok]
+                var.set(True)
+                cb.grid_remove()          # skryť checkbox
+            else:
+                cb.grid()                 # zobraziť checkbox (prípadne znova)
+        # Skryť celú skupinu ak sú všetky jej tokeny zakázané
+        for grp_key, toks in self._cmd_grp_keys:
+            frame = next((f for k,f in self._cmd_grp_frames if k==grp_key), None)
+            if frame is None: continue
+            if disabled and all(t in disabled for t in toks):
+                frame.pack_forget()
+            else:
+                frame.pack(fill='x', pady=(0,4))
 
     def _upd_hnote(self):
         try:
