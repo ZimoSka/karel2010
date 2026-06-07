@@ -8,6 +8,16 @@ Príkaz `/compact` nespúšťať automaticky. Vždy sa opýtať používateľa a
 
 ---
 
+## ⚠️ Pravidlo: Dôležité informácie ukladať okamžite do súborov
+
+Ak používateľ povie niečo čo si treba zapamätať (plán, rozhodnutie, pravidlo, architektúra):
+- **Okamžite** to zapísať do príslušného `.md` súboru
+- Plán vývoja → `PLAN.md`
+- Architektonické rozhodnutia / pravidlá → `CLAUDE.md`
+- Nikdy nespoliehať na pamäť konverzácie — compact/reset ju zmaže
+
+---
+
 ## ⚠️ Pravidlo: Pred vytvorením nového súboru
 
 Pred vytvorením akéhokoľvek nového súboru do existujúceho priečinka vždy najprv
