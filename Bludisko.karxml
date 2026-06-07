@@ -1,117 +1,286 @@
 <?xml version="1.0" ?>
-<world width="19" height="19">
-  <karel x="9" y="9" dir="N"/>
+<world width="20" height="20">
+  <karel x="19" y="0" dir="N"/>
   <walls>
     <wall x="0" y="0" side="S"/>
-    <wall x="0" y="18" side="N"/>
+    <wall x="0" y="19" side="N"/>
     <wall x="1" y="0" side="S"/>
-    <wall x="1" y="18" side="N"/>
+    <wall x="1" y="19" side="N"/>
     <wall x="2" y="0" side="S"/>
-    <wall x="2" y="18" side="N"/>
+    <wall x="2" y="19" side="N"/>
     <wall x="3" y="0" side="S"/>
-    <wall x="3" y="18" side="N"/>
+    <wall x="3" y="19" side="N"/>
     <wall x="4" y="0" side="S"/>
-    <wall x="4" y="18" side="N"/>
+    <wall x="4" y="19" side="N"/>
     <wall x="5" y="0" side="S"/>
-    <wall x="5" y="18" side="N"/>
+    <wall x="5" y="19" side="N"/>
     <wall x="6" y="0" side="S"/>
-    <wall x="6" y="18" side="N"/>
+    <wall x="6" y="19" side="N"/>
     <wall x="7" y="0" side="S"/>
-    <wall x="7" y="18" side="N"/>
+    <wall x="7" y="19" side="N"/>
     <wall x="8" y="0" side="S"/>
-    <wall x="8" y="18" side="N"/>
+    <wall x="8" y="19" side="N"/>
     <wall x="9" y="0" side="S"/>
-    <wall x="9" y="18" side="N"/>
+    <wall x="9" y="19" side="N"/>
     <wall x="10" y="0" side="S"/>
-    <wall x="10" y="18" side="N"/>
+    <wall x="10" y="19" side="N"/>
     <wall x="11" y="0" side="S"/>
-    <wall x="11" y="18" side="N"/>
+    <wall x="11" y="19" side="N"/>
     <wall x="12" y="0" side="S"/>
-    <wall x="12" y="18" side="N"/>
+    <wall x="12" y="19" side="N"/>
     <wall x="13" y="0" side="S"/>
-    <wall x="13" y="18" side="N"/>
+    <wall x="13" y="19" side="N"/>
     <wall x="14" y="0" side="S"/>
-    <wall x="14" y="18" side="N"/>
+    <wall x="14" y="19" side="N"/>
     <wall x="15" y="0" side="S"/>
-    <wall x="15" y="18" side="N"/>
+    <wall x="15" y="19" side="N"/>
     <wall x="16" y="0" side="S"/>
-    <wall x="16" y="18" side="N"/>
+    <wall x="16" y="19" side="N"/>
     <wall x="17" y="0" side="S"/>
-    <wall x="17" y="18" side="N"/>
+    <wall x="17" y="19" side="N"/>
     <wall x="18" y="0" side="S"/>
-    <wall x="18" y="18" side="N"/>
+    <wall x="18" y="19" side="N"/>
+    <wall x="19" y="0" side="S"/>
+    <wall x="19" y="19" side="N"/>
     <wall x="0" y="0" side="W"/>
-    <wall x="18" y="0" side="E"/>
+    <wall x="19" y="0" side="E"/>
     <wall x="0" y="1" side="W"/>
-    <wall x="18" y="1" side="E"/>
+    <wall x="19" y="1" side="E"/>
     <wall x="0" y="2" side="W"/>
-    <wall x="18" y="2" side="E"/>
+    <wall x="19" y="2" side="E"/>
     <wall x="0" y="3" side="W"/>
-    <wall x="18" y="3" side="E"/>
+    <wall x="19" y="3" side="E"/>
     <wall x="0" y="4" side="W"/>
-    <wall x="18" y="4" side="E"/>
+    <wall x="19" y="4" side="E"/>
     <wall x="0" y="5" side="W"/>
-    <wall x="18" y="5" side="E"/>
+    <wall x="19" y="5" side="E"/>
     <wall x="0" y="6" side="W"/>
-    <wall x="18" y="6" side="E"/>
+    <wall x="19" y="6" side="E"/>
     <wall x="0" y="7" side="W"/>
-    <wall x="18" y="7" side="E"/>
+    <wall x="19" y="7" side="E"/>
     <wall x="0" y="8" side="W"/>
-    <wall x="18" y="8" side="E"/>
+    <wall x="19" y="8" side="E"/>
     <wall x="0" y="9" side="W"/>
-    <wall x="18" y="9" side="E"/>
+    <wall x="19" y="9" side="E"/>
     <wall x="0" y="10" side="W"/>
-    <wall x="18" y="10" side="E"/>
+    <wall x="19" y="10" side="E"/>
     <wall x="0" y="11" side="W"/>
-    <wall x="18" y="11" side="E"/>
+    <wall x="19" y="11" side="E"/>
     <wall x="0" y="12" side="W"/>
-    <wall x="18" y="12" side="E"/>
+    <wall x="19" y="12" side="E"/>
     <wall x="0" y="13" side="W"/>
-    <wall x="18" y="13" side="E"/>
+    <wall x="19" y="13" side="E"/>
     <wall x="0" y="14" side="W"/>
-    <wall x="18" y="14" side="E"/>
+    <wall x="19" y="14" side="E"/>
     <wall x="0" y="15" side="W"/>
-    <wall x="18" y="15" side="E"/>
+    <wall x="19" y="15" side="E"/>
     <wall x="0" y="16" side="W"/>
-    <wall x="18" y="16" side="E"/>
+    <wall x="19" y="16" side="E"/>
     <wall x="0" y="17" side="W"/>
-    <wall x="18" y="17" side="E"/>
+    <wall x="19" y="17" side="E"/>
     <wall x="0" y="18" side="W"/>
-    <wall x="18" y="18" side="E"/>
+    <wall x="19" y="18" side="E"/>
+    <wall x="0" y="19" side="W"/>
+    <wall x="19" y="19" side="E"/>
   </walls>
-  <bricks/>
-  <bigbricks/>
-  <marks/>
+  <bricks>
+    <brick x="10" y="11" count="1"/>
+    <brick x="14" y="3" count="1"/>
+    <brick x="15" y="12" count="1"/>
+  </bricks>
+  <bigbricks>
+    <bigbrick x="0" y="3" count="1"/>
+    <bigbrick x="0" y="7" count="1"/>
+    <bigbrick x="0" y="9" count="1"/>
+    <bigbrick x="0" y="15" count="1"/>
+    <bigbrick x="0" y="18" count="1"/>
+    <bigbrick x="1" y="0" count="1"/>
+    <bigbrick x="1" y="1" count="1"/>
+    <bigbrick x="1" y="5" count="1"/>
+    <bigbrick x="1" y="7" count="1"/>
+    <bigbrick x="1" y="11" count="1"/>
+    <bigbrick x="1" y="12" count="1"/>
+    <bigbrick x="1" y="13" count="1"/>
+    <bigbrick x="1" y="15" count="1"/>
+    <bigbrick x="1" y="17" count="1"/>
+    <bigbrick x="1" y="18" count="1"/>
+    <bigbrick x="2" y="1" count="1"/>
+    <bigbrick x="2" y="2" count="1"/>
+    <bigbrick x="2" y="3" count="1"/>
+    <bigbrick x="2" y="4" count="1"/>
+    <bigbrick x="2" y="5" count="1"/>
+    <bigbrick x="2" y="7" count="1"/>
+    <bigbrick x="2" y="9" count="1"/>
+    <bigbrick x="2" y="10" count="1"/>
+    <bigbrick x="2" y="11" count="1"/>
+    <bigbrick x="2" y="13" count="1"/>
+    <bigbrick x="2" y="15" count="1"/>
+    <bigbrick x="3" y="3" count="1"/>
+    <bigbrick x="3" y="7" count="1"/>
+    <bigbrick x="3" y="10" count="1"/>
+    <bigbrick x="3" y="13" count="1"/>
+    <bigbrick x="3" y="15" count="1"/>
+    <bigbrick x="3" y="18" count="1"/>
+    <bigbrick x="3" y="19" count="1"/>
+    <bigbrick x="4" y="0" count="1"/>
+    <bigbrick x="4" y="1" count="1"/>
+    <bigbrick x="4" y="3" count="1"/>
+    <bigbrick x="4" y="5" count="1"/>
+    <bigbrick x="4" y="6" count="1"/>
+    <bigbrick x="4" y="7" count="1"/>
+    <bigbrick x="4" y="8" count="1"/>
+    <bigbrick x="4" y="10" count="1"/>
+    <bigbrick x="4" y="13" count="1"/>
+    <bigbrick x="4" y="15" count="1"/>
+    <bigbrick x="4" y="18" count="1"/>
+    <bigbrick x="5" y="0" count="1"/>
+    <bigbrick x="5" y="1" count="1"/>
+    <bigbrick x="5" y="3" count="1"/>
+    <bigbrick x="5" y="8" count="1"/>
+    <bigbrick x="5" y="13" count="1"/>
+    <bigbrick x="5" y="15" count="1"/>
+    <bigbrick x="5" y="18" count="1"/>
+    <bigbrick x="6" y="5" count="1"/>
+    <bigbrick x="6" y="6" count="1"/>
+    <bigbrick x="6" y="8" count="1"/>
+    <bigbrick x="6" y="10" count="1"/>
+    <bigbrick x="7" y="0" count="1"/>
+    <bigbrick x="7" y="1" count="1"/>
+    <bigbrick x="7" y="3" count="1"/>
+    <bigbrick x="7" y="6" count="1"/>
+    <bigbrick x="7" y="8" count="1"/>
+    <bigbrick x="7" y="10" count="1"/>
+    <bigbrick x="7" y="13" count="1"/>
+    <bigbrick x="7" y="15" count="1"/>
+    <bigbrick x="7" y="16" count="1"/>
+    <bigbrick x="7" y="18" count="1"/>
+    <bigbrick x="7" y="19" count="1"/>
+    <bigbrick x="8" y="1" count="1"/>
+    <bigbrick x="8" y="4" count="1"/>
+    <bigbrick x="8" y="5" count="1"/>
+    <bigbrick x="8" y="6" count="1"/>
+    <bigbrick x="8" y="10" count="1"/>
+    <bigbrick x="8" y="18" count="1"/>
+    <bigbrick x="9" y="1" count="1"/>
+    <bigbrick x="9" y="2" count="1"/>
+    <bigbrick x="9" y="3" count="1"/>
+    <bigbrick x="9" y="4" count="1"/>
+    <bigbrick x="9" y="6" count="1"/>
+    <bigbrick x="9" y="7" count="1"/>
+    <bigbrick x="9" y="8" count="1"/>
+    <bigbrick x="9" y="9" count="1"/>
+    <bigbrick x="9" y="10" count="1"/>
+    <bigbrick x="9" y="12" count="1"/>
+    <bigbrick x="9" y="14" count="1"/>
+    <bigbrick x="9" y="15" count="1"/>
+    <bigbrick x="9" y="16" count="1"/>
+    <bigbrick x="9" y="17" count="1"/>
+    <bigbrick x="9" y="18" count="1"/>
+    <bigbrick x="10" y="2" count="1"/>
+    <bigbrick x="10" y="10" count="1"/>
+    <bigbrick x="11" y="0" count="1"/>
+    <bigbrick x="11" y="2" count="1"/>
+    <bigbrick x="11" y="3" count="1"/>
+    <bigbrick x="11" y="5" count="1"/>
+    <bigbrick x="11" y="7" count="1"/>
+    <bigbrick x="11" y="8" count="1"/>
+    <bigbrick x="11" y="9" count="1"/>
+    <bigbrick x="11" y="10" count="1"/>
+    <bigbrick x="11" y="12" count="1"/>
+    <bigbrick x="11" y="13" count="1"/>
+    <bigbrick x="11" y="15" count="1"/>
+    <bigbrick x="11" y="16" count="1"/>
+    <bigbrick x="11" y="18" count="1"/>
+    <bigbrick x="11" y="19" count="1"/>
+    <bigbrick x="12" y="9" count="1"/>
+    <bigbrick x="12" y="10" count="1"/>
+    <bigbrick x="12" y="13" count="1"/>
+    <bigbrick x="12" y="16" count="1"/>
+    <bigbrick x="13" y="1" count="1"/>
+    <bigbrick x="13" y="2" count="1"/>
+    <bigbrick x="13" y="4" count="1"/>
+    <bigbrick x="13" y="6" count="1"/>
+    <bigbrick x="13" y="11" count="1"/>
+    <bigbrick x="13" y="12" count="1"/>
+    <bigbrick x="13" y="13" count="1"/>
+    <bigbrick x="13" y="16" count="1"/>
+    <bigbrick x="13" y="18" count="1"/>
+    <bigbrick x="13" y="19" count="1"/>
+    <bigbrick x="14" y="1" count="1"/>
+    <bigbrick x="14" y="4" count="1"/>
+    <bigbrick x="14" y="6" count="1"/>
+    <bigbrick x="14" y="9" count="1"/>
+    <bigbrick x="14" y="16" count="1"/>
+    <bigbrick x="14" y="19" count="1"/>
+    <bigbrick x="15" y="0" count="1"/>
+    <bigbrick x="15" y="1" count="1"/>
+    <bigbrick x="15" y="3" count="1"/>
+    <bigbrick x="15" y="4" count="1"/>
+    <bigbrick x="15" y="6" count="1"/>
+    <bigbrick x="15" y="7" count="1"/>
+    <bigbrick x="15" y="9" count="1"/>
+    <bigbrick x="15" y="11" count="1"/>
+    <bigbrick x="15" y="13" count="1"/>
+    <bigbrick x="15" y="14" count="1"/>
+    <bigbrick x="15" y="16" count="1"/>
+    <bigbrick x="15" y="17" count="1"/>
+    <bigbrick x="15" y="19" count="1"/>
+    <bigbrick x="16" y="9" count="1"/>
+    <bigbrick x="16" y="10" count="1"/>
+    <bigbrick x="16" y="11" count="1"/>
+    <bigbrick x="16" y="14" count="1"/>
+    <bigbrick x="16" y="17" count="1"/>
+    <bigbrick x="16" y="19" count="1"/>
+    <bigbrick x="17" y="1" count="1"/>
+    <bigbrick x="17" y="3" count="1"/>
+    <bigbrick x="17" y="5" count="1"/>
+    <bigbrick x="17" y="6" count="1"/>
+    <bigbrick x="17" y="7" count="1"/>
+    <bigbrick x="17" y="11" count="1"/>
+    <bigbrick x="17" y="12" count="1"/>
+    <bigbrick x="17" y="14" count="1"/>
+    <bigbrick x="17" y="15" count="1"/>
+    <bigbrick x="17" y="17" count="1"/>
+    <bigbrick x="18" y="0" count="1"/>
+    <bigbrick x="18" y="1" count="1"/>
+    <bigbrick x="18" y="3" count="1"/>
+    <bigbrick x="18" y="7" count="1"/>
+    <bigbrick x="18" y="9" count="1"/>
+    <bigbrick x="18" y="11" count="1"/>
+    <bigbrick x="18" y="15" count="1"/>
+    <bigbrick x="18" y="17" count="1"/>
+    <bigbrick x="18" y="18" count="1"/>
+    <bigbrick x="18" y="19" count="1"/>
+    <bigbrick x="19" y="3" count="1"/>
+    <bigbrick x="19" y="5" count="1"/>
+    <bigbrick x="19" y="9" count="1"/>
+    <bigbrick x="19" y="13" count="1"/>
+    <bigbrick x="19" y="15" count="1"/>
+    <bigbrick x="19" y="17" count="1"/>
+    <bigbrick x="19" y="18" count="1"/>
+    <bigbrick x="19" y="19" count="1"/>
+  </bigbricks>
+  <marks>
+    <mark x="0" y="0"/>
+  </marks>
   <title>Bludisko</title>
-  <intro>&lt;body bgcolor=&quot;#000000&quot;&gt;
-
-&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Miško,&lt;/font&gt;&lt;/p&gt;
+  <intro>&lt;![CDATA[&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Miško,&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;&lt;span lang=&quot;sk&quot;&gt;&amp;#270;alšou tvojou úlohou je 
 prejs&amp;#357; bludiskom&lt;br&gt;
 až po ozna&amp;#269;ené miesto.&lt;/span&gt;&lt;/font&gt;&lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;Ale 
 PozoR! V bludisku sa nachádzajú pasce! &lt;/font&gt;
 &lt;hr color=&quot;#99FF99&quot;&gt;
 &lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, pokia&amp;#318; stúpiš na tehli&amp;#269;ku,&lt;br&gt;
-stane sa ti nie&amp;#269;o nepríjemné.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;
-
-&lt;/body&gt;</intro>
-  <success>&lt;body bgcolor=&quot;#000000&quot;&gt;
-
-&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
+stane sa ti nie&amp;#269;o nepríjemné.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;]]&gt;</intro>
+  <success>&lt;![CDATA[&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;
-&lt;img border=&quot;0&quot; dynsrc=&quot;Chick2.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;
-
-&lt;/body&gt;</success>
-  <failure>&lt;body bgcolor=&quot;#000000&quot;&gt;
-
-&lt;p&gt;&lt;font size=&quot;3&quot;&gt;&lt;img src=&quot;hotbounce2.gif&quot;&gt;&lt;/font&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Aúúú, 
+&lt;img border=&quot;0&quot; dynsrc=&quot;Chick2.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;]]&gt;</success>
+  <failure>&lt;![CDATA[&lt;p&gt;&lt;font size=&quot;3&quot;&gt;&lt;img src=&quot;hotbounce2.gif&quot;&gt;&lt;/font&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Aúúú, 
 opálil si si predelku!&lt;/font&gt;&lt;font size=&quot;3&quot;&gt;&lt;img src=&quot;hotbounce.gif&quot;&gt;&lt;/font&gt;&lt;/p&gt;
 &lt;p&gt;&amp;nbsp;&lt;/p&gt;
 &lt;hr color=&quot;#99FF99&quot;&gt;
 &lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, musíš si dáva&amp;#357; pozor, aby si 
-nestúpil na tehli&amp;#269;ku!&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;
-
-&lt;/body&gt;</failure>
+nestúpil na tehli&amp;#269;ku!&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;]]&gt;</failure>
   <program>Začiatok
  
 Koniec</program>

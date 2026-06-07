@@ -1,72 +1,97 @@
 <?xml version="1.0" ?>
-<world width="9" height="9">
-  <karel x="0" y="3" dir="W"/>
+<world width="10" height="10">
+  <karel x="5" y="1" dir="E"/>
   <walls>
     <wall x="0" y="0" side="S"/>
-    <wall x="0" y="8" side="N"/>
+    <wall x="0" y="9" side="N"/>
     <wall x="1" y="0" side="S"/>
-    <wall x="1" y="8" side="N"/>
+    <wall x="1" y="9" side="N"/>
     <wall x="2" y="0" side="S"/>
-    <wall x="2" y="8" side="N"/>
+    <wall x="2" y="9" side="N"/>
     <wall x="3" y="0" side="S"/>
-    <wall x="3" y="8" side="N"/>
+    <wall x="3" y="9" side="N"/>
     <wall x="4" y="0" side="S"/>
-    <wall x="4" y="8" side="N"/>
+    <wall x="4" y="9" side="N"/>
     <wall x="5" y="0" side="S"/>
-    <wall x="5" y="8" side="N"/>
+    <wall x="5" y="9" side="N"/>
     <wall x="6" y="0" side="S"/>
-    <wall x="6" y="8" side="N"/>
+    <wall x="6" y="9" side="N"/>
     <wall x="7" y="0" side="S"/>
-    <wall x="7" y="8" side="N"/>
+    <wall x="7" y="9" side="N"/>
     <wall x="8" y="0" side="S"/>
-    <wall x="8" y="8" side="N"/>
+    <wall x="8" y="9" side="N"/>
+    <wall x="9" y="0" side="S"/>
+    <wall x="9" y="9" side="N"/>
     <wall x="0" y="0" side="W"/>
-    <wall x="8" y="0" side="E"/>
+    <wall x="9" y="0" side="E"/>
     <wall x="0" y="1" side="W"/>
-    <wall x="8" y="1" side="E"/>
+    <wall x="9" y="1" side="E"/>
     <wall x="0" y="2" side="W"/>
-    <wall x="8" y="2" side="E"/>
+    <wall x="9" y="2" side="E"/>
     <wall x="0" y="3" side="W"/>
-    <wall x="8" y="3" side="E"/>
+    <wall x="9" y="3" side="E"/>
     <wall x="0" y="4" side="W"/>
-    <wall x="8" y="4" side="E"/>
+    <wall x="9" y="4" side="E"/>
     <wall x="0" y="5" side="W"/>
-    <wall x="8" y="5" side="E"/>
+    <wall x="9" y="5" side="E"/>
     <wall x="0" y="6" side="W"/>
-    <wall x="8" y="6" side="E"/>
+    <wall x="9" y="6" side="E"/>
     <wall x="0" y="7" side="W"/>
-    <wall x="8" y="7" side="E"/>
+    <wall x="9" y="7" side="E"/>
     <wall x="0" y="8" side="W"/>
-    <wall x="8" y="8" side="E"/>
+    <wall x="9" y="8" side="E"/>
+    <wall x="0" y="9" side="W"/>
+    <wall x="9" y="9" side="E"/>
   </walls>
-  <bricks/>
+  <bricks>
+    <brick x="1" y="1" count="1"/>
+    <brick x="1" y="2" count="1"/>
+    <brick x="1" y="3" count="1"/>
+    <brick x="1" y="4" count="1"/>
+    <brick x="1" y="5" count="1"/>
+    <brick x="1" y="6" count="1"/>
+    <brick x="1" y="7" count="1"/>
+    <brick x="1" y="8" count="1"/>
+    <brick x="2" y="1" count="1"/>
+    <brick x="2" y="8" count="1"/>
+    <brick x="3" y="1" count="1"/>
+    <brick x="3" y="8" count="1"/>
+    <brick x="4" y="1" count="1"/>
+    <brick x="4" y="8" count="1"/>
+    <brick x="5" y="1" count="1"/>
+    <brick x="5" y="8" count="1"/>
+    <brick x="6" y="1" count="1"/>
+    <brick x="6" y="8" count="1"/>
+    <brick x="7" y="1" count="1"/>
+    <brick x="7" y="8" count="1"/>
+    <brick x="8" y="1" count="1"/>
+    <brick x="8" y="2" count="1"/>
+    <brick x="8" y="3" count="1"/>
+    <brick x="8" y="4" count="1"/>
+    <brick x="8" y="5" count="1"/>
+    <brick x="8" y="6" count="1"/>
+    <brick x="8" y="7" count="1"/>
+    <brick x="8" y="8" count="1"/>
+  </bricks>
   <bigbricks/>
   <marks/>
   <title>01</title>
-  <intro>&lt;body bgcolor=navy&gt;
-&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+  <intro>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Karel stojí na múriku,&lt;br&gt; napíšte program, aby prešiel celý múrik a nespadol!
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;
-&lt;/body&gt;</intro>
-  <success>&lt;body bgcolor=navy&gt;
-&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+&lt;/font&gt;]]&gt;</intro>
+  <success>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Výborne,&lt;br&gt; zvládol si to.
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;
-&lt;/body&gt;</success>
-  <failure>&lt;body bgcolor=navy&gt;
-&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
+&lt;/font&gt;]]&gt;</success>
+  <failure>&lt;![CDATA[&lt;font color=yellow size=6 face=&quot;Arial&quot;&gt;
 &lt;b&gt;&lt;center&gt;
 Aúúúúúú,&lt;br&gt; spadol si z múrika...
 &lt;/b&gt;&lt;/center
-&lt;/font&gt;
-&lt;/body&gt;</failure>
+&lt;/font&gt;]]&gt;</failure>
   <program>Začiatok
  
 Koniec</program>
-  <next_level>d:\didinfo\02.kar</next_level>
-  <prev_level>d:\didinfo\01.kar</prev_level>
 </world>
