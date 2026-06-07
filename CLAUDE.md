@@ -2,6 +2,12 @@
 
 ---
 
+## ⚠️ Pravidlo: /compact — nikdy bez povolenia
+
+Príkaz `/compact` nespúšťať automaticky. Vždy sa opýtať používateľa a počkať na jeho súhlas.
+
+---
+
 ## ⚠️ Pravidlo: Pred vytvorením nového súboru
 
 Pred vytvorením akéhokoľvek nového súboru do existujúceho priečinka vždy najprv
