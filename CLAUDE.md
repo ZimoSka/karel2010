@@ -68,6 +68,16 @@ settings.max_climb        : int   # max výška skoku (default 1)
 - `check_wall()` → True ak stena ALEBO kvader pred Karelom
 - Rendering: kvader vždy na z=0 (spodok), malé tehly na vrchu kvadera (base_z = big_bricks * BIG_H)
 
+### Chybové správanie — tichý skip
+**Žiadny World príkaz nevyhodí výnimku počas behu programu.** Pri nemožnosti vykonať príkaz sa jednoducho vráti (`return`) a interpreter pokračuje ďalším príkazom. Platí pre:
+- `move_forward` / `move_back` — stena alebo príliš vysoká tehla
+- `drop_brick` — stena pred Karelom alebo prázdne zásoby
+- `drop_big_brick` — stena / prázdne zásoby / políčko už má kvader
+- `pick_brick` / `pick_big_brick` — stena alebo žiadna tehla na zdvihnutie
+- `mark` — prázdne zásoby značiek
+
+Výnimky (stále hádžu `KarelError`): rekurzia > `MAX_D`, neznáma procedúra, zakázaný príkaz.
+
 ---
 
 ## Jazykový systém (KRITICKÉ)

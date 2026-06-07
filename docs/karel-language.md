@@ -156,6 +156,23 @@ if not sign then mark end
 
 ---
 
+## Command behavior at obstacles
+
+Karel **never crashes** — if a command cannot be executed, it is silently skipped and the program continues with the next command:
+
+| Situation | Behavior |
+|-----------|----------|
+| `forward` / `back` into a wall, border or kvader | Karel stays, program continues |
+| `forward` / `back` onto a tile too high to climb | Karel stays, program continues |
+| `drop` when no bricks in inventory | Skipped |
+| `drop_big` when no kvader in inventory or tile already has one | Skipped |
+| `pick` when no brick in front | Skipped |
+| `mark` when no marks in inventory | Skipped |
+
+This means Karel programs do not need defensive `if wall then` guards to avoid crashes — but the `wall`, `brick`, `free`, `sign` conditions are still useful for writing correct algorithms.
+
+---
+
 ## English (Pattis) mode
 
 The **English (Pattis)** language variant follows the original 1981 Karel the Robot specification by Richard Pattis. It is intentionally more restricted than the standard Karel 2010 language.
