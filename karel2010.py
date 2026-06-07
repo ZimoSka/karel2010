@@ -52,131 +52,199 @@ class KarelStop(Exception): pass   # tiché zastavenie (napr. narazenie do steny
 # PODMIENKY  MISIE  (goal conditions)
 # =========================================================================
 
-class GoalKarelPos:
-    """Podmienka: Karel sa nachádza na zadanej pozícii / výške."""
-    def __init__(self, x=None, y=None, height=None):
-        self.x = x; self.y = y; self.height = height
+class GoalCondition:
+    """Jedna podmienka misie v plochom zozname s AND/OR operátorom.
 
-    def check(self, world):
-        if self.x is not None and world.karel_x != self.x: return False
-        if self.y is not None and world.karel_y != self.y: return False
-        if self.height is not None and world._height(world.karel_x, world.karel_y) != self.height:
-            return False
-        return True
+    Atribúty:
+        check   – 'karel_pos' | 'sign' | 'brick_ahead' | 'wall_ahead' |
+                  'cell_state' | 'snapshot'
+        eval    – 'success' | 'failure'
+        when    – 'on_step' | 'on_finish'
+        op      – 'or' | 'and'   (operátor s predchádzajúcou podmienkou rovnakého eval)
+        negate  – True → výsledok check() sa neguje
+        x, y    – súradnice (pre karel_pos, cell_state)
+        z       – výška dlaždice kde Karel stojí (pre karel_pos; None = ignorovať)
+        cell_marks, cell_bricks, cell_big_bricks – pre cell_state
+        snap    – dict so snapshot dátami (pre snapshot)
+    """
+    def __init__(self, check, eval_='success', when='on_finish', op='or', negate=False,
+                 x=None, y=None, z=None,
+                 cell_marks=None, cell_bricks=None, cell_big_bricks=None,
+                 snap=None):
+        self.check  = check
+        self.eval   = eval_
+        self.when   = when
+        self.op     = op
+        self.negate = negate
+        self.x = x; self.y = y; self.z = z
+        self.cell_marks      = cell_marks
+        self.cell_bricks     = cell_bricks
+        self.cell_big_bricks = cell_big_bricks
+        self.snap = snap   # dict: bricks, big_bricks, marks, karel_x, karel_y, karel_dir
 
-    def describe(self):
-        p = []
-        if self.x is not None:      p.append(f"X={self.x}")
-        if self.y is not None:      p.append(f"Y={self.y}")
-        if self.height is not None: p.append(f"výška={self.height}")
-        return "Karel: " + (", ".join(p) if p else "kdekoľvek")
-
-    def to_xml_el(self):
-        el = ET.Element('condition', type='karel_pos')
-        if self.x is not None:      el.set('x',      str(self.x))
-        if self.y is not None:      el.set('y',      str(self.y))
-        if self.height is not None: el.set('height', str(self.height))
-        return el
-
+    # --- snapshot helper ---------------------------------------------------
     @staticmethod
-    def from_xml_el(el):
-        def _gi(a): return int(el.get(a)) if el.get(a) is not None else None
-        return GoalKarelPos(x=_gi('x'), y=_gi('y'), height=_gi('height'))
+    def snapshot_from_world(world, include_karel=False):
+        from copy import deepcopy
+        s = dict(bricks=deepcopy(world.bricks),
+                 big_bricks=deepcopy(world.big_bricks),
+                 marks=deepcopy(world.marks))
+        if include_karel:
+            s['karel_x'] = world.karel_x
+            s['karel_y'] = world.karel_y
+            s['karel_dir'] = world.karel_dir
+        return s
 
+    # --- raw check (bez negate) -------------------------------------------
+    def _check_raw(self, world):
+        if self.check == 'karel_pos':
+            if self.x is not None and world.karel_x != self.x: return False
+            if self.y is not None and world.karel_y != self.y: return False
+            if self.z is not None and world._height(world.karel_x, world.karel_y) != self.z:
+                return False
+            return True
+        if self.check == 'sign':
+            return bool(world.marks[world.karel_y][world.karel_x])
+        if self.check == 'brick_ahead':
+            nx, ny = world._front()
+            if not (0 <= nx < world.width and 0 <= ny < world.height): return False
+            return world.bricks[ny][nx] > 0 or world.big_bricks[ny][nx] > 0
+        if self.check == 'wall_ahead':
+            return world.check_wall()
+        if self.check == 'cell_state':
+            x, y = self.x, self.y
+            if not (0 <= x < world.width and 0 <= y < world.height): return False
+            if self.cell_marks is not None and world.marks[y][x] != self.cell_marks: return False
+            if self.cell_bricks is not None and world.bricks[y][x] != self.cell_bricks: return False
+            if self.cell_big_bricks is not None and world.big_bricks[y][x] != self.cell_big_bricks: return False
+            return True
+        if self.check == 'snapshot' and self.snap:
+            s = self.snap
+            if world.bricks != s.get('bricks'): return False
+            if world.big_bricks != s.get('big_bricks'): return False
+            if world.marks != s.get('marks'): return False
+            if s.get('karel_x') is not None and world.karel_x != s['karel_x']: return False
+            if s.get('karel_y') is not None and world.karel_y != s['karel_y']: return False
+            if s.get('karel_dir') is not None and world.karel_dir != s['karel_dir']: return False
+            return True
+        return False
 
-class GoalCellState:
-    """Podmienka: políčko (x,y) má zadaný stav (značka / tehly / veľké tehly)."""
-    def __init__(self, x, y, marks=None, bricks=None, big_bricks=None):
-        self.x=x; self.y=y
-        self.marks=marks; self.bricks=bricks; self.big_bricks=big_bricks
+    def check_val(self, world):
+        val = self._check_raw(world)
+        return (not val) if self.negate else val
 
-    def check(self, world):
-        x, y = self.x, self.y
-        if not (0 <= x < world.width and 0 <= y < world.height): return False
-        if self.marks is not None and world.marks[y][x] != self.marks: return False
-        if self.bricks is not None and world.bricks[y][x] != self.bricks: return False
-        if self.big_bricks is not None and world.big_bricks[y][x] != self.big_bricks: return False
-        return True
-
+    # --- popis pre GUI ----------------------------------------------------
     def describe(self):
-        p = []
-        if self.marks is not None:      p.append("značka" if self.marks else "bez značky")
-        if self.bricks is not None:     p.append(f"{self.bricks}× tehla")
-        if self.big_bricks is not None: p.append(f"{self.big_bricks}× vel.tehla")
-        return f"Políčko ({self.x},{self.y}): " + (", ".join(p) if p else "?")
+        neg = '¬' if self.negate else ''
+        ev  = '✓' if self.eval == 'success' else '✗'
+        wh  = '⚡' if self.when == 'on_step' else '🏁'
+        if self.check == 'karel_pos':
+            parts = []
+            if self.x is not None: parts.append(f"x={self.x}")
+            if self.y is not None: parts.append(f"y={self.y}")
+            if self.z is not None: parts.append(f"z={self.z}")
+            loc = ','.join(parts) if parts else '*'
+            return f"{ev}{wh} {neg}Karel@({loc})"
+        if self.check == 'sign':        return f"{ev}{wh} {neg}značka pod Karelom"
+        if self.check == 'brick_ahead': return f"{ev}{wh} {neg}tehla pred Karelom"
+        if self.check == 'wall_ahead':  return f"{ev}{wh} {neg}stena pred Karelom"
+        if self.check == 'cell_state':
+            p = []
+            if self.cell_marks is not None:      p.append('značka' if self.cell_marks else 'bez značky')
+            if self.cell_bricks is not None:     p.append(f"{self.cell_bricks}× tehla")
+            if self.cell_big_bricks is not None: p.append(f"{self.cell_big_bricks}× kvader")
+            return f"{ev}{wh} {neg}políčko({self.x},{self.y}): {', '.join(p)}"
+        if self.check == 'snapshot':    return f"{ev}{wh} {neg}snímok miestnosti"
+        return f"{ev}{wh} {neg}{self.check}"
 
+    # --- XML --------------------------------------------------------------
     def to_xml_el(self):
-        el = ET.Element('condition', type='cell_state', x=str(self.x), y=str(self.y))
-        if self.marks is not None:      el.set('marks',      'true' if self.marks else 'false')
-        if self.bricks is not None:     el.set('bricks',     str(self.bricks))
-        if self.big_bricks is not None: el.set('big_bricks', str(self.big_bricks))
+        attrs = dict(check=self.check, eval=self.eval, when=self.when, op=self.op)
+        if self.negate: attrs['negate'] = 'true'
+        if self.x is not None: attrs['x'] = str(self.x)
+        if self.y is not None: attrs['y'] = str(self.y)
+        if self.z is not None: attrs['z'] = str(self.z)
+        if self.cell_marks is not None:      attrs['cell_marks']      = 'true' if self.cell_marks else 'false'
+        if self.cell_bricks is not None:     attrs['cell_bricks']     = str(self.cell_bricks)
+        if self.cell_big_bricks is not None: attrs['cell_big_bricks'] = str(self.cell_big_bricks)
+        el = ET.Element('condition', **attrs)
+        if self.check == 'snapshot' and self.snap:
+            s = self.snap
+            br = ET.SubElement(el, 'bricks')
+            for row in s['bricks']:
+                ET.SubElement(br, 'row').text = ','.join(map(str, row))
+            bb = ET.SubElement(el, 'bigbricks')
+            for row in s['big_bricks']:
+                ET.SubElement(bb, 'row').text = ','.join(map(str, row))
+            mk = ET.SubElement(el, 'marks')
+            for row in s['marks']:
+                ET.SubElement(mk, 'row').text = ','.join('1' if v else '0' for v in row)
+            if s.get('karel_x') is not None:
+                el.set('karel_x', str(s['karel_x']))
+                el.set('karel_y', str(s['karel_y']))
+                el.set('karel_dir', s['karel_dir'].to_str())
         return el
 
     @staticmethod
     def from_xml_el(el):
         def _gi(a): return int(el.get(a)) if el.get(a) is not None else None
         def _gb(a): v = el.get(a); return (v.lower() == 'true') if v is not None else None
-        return GoalCellState(int(el.get('x')), int(el.get('y')),
-                             marks=_gb('marks'), bricks=_gi('bricks'),
-                             big_bricks=_gi('big_bricks'))
+        check  = el.get('check', el.get('type', 'karel_pos'))  # 'type' = starý formát
+        eval_  = el.get('eval', 'success')
+        when   = el.get('when', 'on_finish')
+        op     = el.get('op',   'or')
+        negate = el.get('negate', 'false').lower() == 'true'
+        c = GoalCondition(check=check, eval_=eval_, when=when, op=op, negate=negate,
+                          x=_gi('x'), y=_gi('y'), z=_gi('z'),
+                          cell_marks=_gb('cell_marks'),
+                          cell_bricks=_gi('cell_bricks'),
+                          cell_big_bricks=_gi('cell_big_bricks'))
+        # Starý formát kompatibilita
+        if check == 'karel_pos' and el.get('height') is not None:
+            c.z = int(el.get('height'))
+        if check == 'cell_state':
+            c.cell_marks      = _gb('marks') if c.cell_marks is None else c.cell_marks
+            c.cell_bricks     = _gi('bricks') if c.cell_bricks is None else c.cell_bricks
+            c.cell_big_bricks = _gi('big_bricks') if c.cell_big_bricks is None else c.cell_big_bricks
+        if check == 'snapshot':
+            def _rows(tag):
+                return [[int(v) for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
+            def _brows(tag):
+                return [[v == '1' for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
+            kx = _gi('karel_x'); ky = _gi('karel_y')
+            kd = Direction.from_str(el.get('karel_dir')) if el.get('karel_dir') else None
+            br = _rows('bricks'); bb = _rows('bigbricks'); mk = _brows('marks')
+            if br and bb and mk:
+                c.snap = dict(bricks=br, big_bricks=bb, marks=mk,
+                              karel_x=kx, karel_y=ky, karel_dir=kd)
+        return c
 
 
-class GoalSnapshot:
-    """Podmienka: celá miestnosť zodpovedá uloženému snímku stavu."""
-    def __init__(self, bricks, big_bricks, marks,
-                 karel_x=None, karel_y=None, karel_dir=None):
-        self.bricks=bricks; self.big_bricks=big_bricks; self.marks=marks
-        self.karel_x=karel_x; self.karel_y=karel_y; self.karel_dir=karel_dir
+def evaluate_goals(world, on_step=False):
+    """Vyhodnotí podmienky misie. Vracia 'success', 'failure' alebo None.
 
-    @staticmethod
-    def from_world(world, include_karel=False):
-        from copy import deepcopy
-        return GoalSnapshot(
-            bricks=deepcopy(world.bricks), big_bricks=deepcopy(world.big_bricks),
-            marks=deepcopy(world.marks),
-            karel_x=world.karel_x if include_karel else None,
-            karel_y=world.karel_y if include_karel else None,
-            karel_dir=world.karel_dir if include_karel else None)
-
-    def check(self, world):
-        if world.bricks != self.bricks: return False
-        if world.big_bricks != self.big_bricks: return False
-        if world.marks != self.marks: return False
-        if self.karel_x is not None and world.karel_x != self.karel_x: return False
-        if self.karel_y is not None and world.karel_y != self.karel_y: return False
-        if self.karel_dir is not None and world.karel_dir != self.karel_dir: return False
-        return True
-
-    def describe(self):
-        return "Snímok miestnosti" + (" + poloha Karela" if self.karel_x is not None else "")
-
-    def to_xml_el(self):
-        el = ET.Element('condition', type='snapshot')
-        if self.karel_x is not None:
-            el.set('karel_x', str(self.karel_x)); el.set('karel_y', str(self.karel_y))
-            el.set('karel_dir', self.karel_dir.to_str())
-        br = ET.SubElement(el, 'bricks')
-        for row in self.bricks:
-            ET.SubElement(br, 'row').text = ','.join(map(str, row))
-        bb = ET.SubElement(el, 'bigbricks')
-        for row in self.big_bricks:
-            ET.SubElement(bb, 'row').text = ','.join(map(str, row))
-        mk = ET.SubElement(el, 'marks')
-        for row in self.marks:
-            ET.SubElement(mk, 'row').text = ','.join('1' if v else '0' for v in row)
-        return el
-
-    @staticmethod
-    def from_xml_el(el):
-        def _kv(a): return int(el.get(a)) if el.get(a) is not None else None
-        kx = _kv('karel_x'); ky = _kv('karel_y')
-        kd = Direction.from_str(el.get('karel_dir')) if el.get('karel_dir') else None
-        def _rows(tag):
-            return [[int(v) for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
-        def _brows(tag):
-            return [[v == '1' for v in r.text.split(',')] for r in el.findall(f'{tag}/row')]
-        return GoalSnapshot(bricks=_rows('bricks'), big_bricks=_rows('bigbricks'),
-                            marks=_brows('marks'), karel_x=kx, karel_y=ky, karel_dir=kd)
+    Podmienky rovnakého eval sa kombinujú sekvenciálne (zľava doprava)
+    operátorom op každej podmienky (okrem prvej).
+    Failure sa vyhodnocuje pred success.
+    """
+    when = 'on_step' if on_step else 'on_finish'
+    for eval_type in ('failure', 'success'):
+        group = [c for c in world.goal_conditions
+                 if c.eval == eval_type and c.when == when]
+        if not group:
+            continue
+        result = None
+        for c in group:
+            val = c.check_val(world)
+            if result is None:
+                result = val
+            elif c.op == 'and':
+                result = result and val
+            else:
+                result = result or val
+        if result:
+            return eval_type
+    return None
 
 
 class WorldSettings:
@@ -225,9 +293,8 @@ class World:
         self.next_level   = ''
         self.prev_level   = ''
         # Misia — podmienky a režim vyhodnocovania
-        self.goal_conditions: list    = []
-        self.mission_eval: str        = 'on_finish'   # 'on_finish' | 'on_step'
-        self.mission_reset_on_failure: bool = False   # resetovať svet pri neúspechu
+        self.goal_conditions: list    = []   # list[GoalCondition]
+        self.mission_reset_on_failure: bool = False
         self._add_border_walls()
 
     def _add_border_walls(self):
@@ -459,8 +526,8 @@ class World:
                 ET.SubElement(st,'camera_el').text    = str(s.camera_el)
                 ET.SubElement(st,'camera_dist').text  = str(s.camera_dist)
         # misia — podmienky splnenia
-        if self.goal_conditions or self.mission_eval != 'on_finish' or self.mission_reset_on_failure:
-            miss = ET.SubElement(root, 'mission', eval=self.mission_eval)
+        if self.goal_conditions or self.mission_reset_on_failure:
+            miss = ET.SubElement(root, 'mission')
             if self.mission_reset_on_failure:
                 miss.set('reset_on_failure', 'true')
             for cond in self.goal_conditions:
@@ -539,13 +606,9 @@ class World:
         # misia
         miss_el = root.find('mission')
         if miss_el is not None:
-            w.mission_eval = miss_el.get('eval', 'on_finish')
             w.mission_reset_on_failure = (miss_el.get('reset_on_failure','') == 'true')
             for cel in miss_el.findall('condition'):
-                ct = cel.get('type', '')
-                if ct == 'karel_pos':   w.goal_conditions.append(GoalKarelPos.from_xml_el(cel))
-                elif ct == 'cell_state': w.goal_conditions.append(GoalCellState.from_xml_el(cel))
-                elif ct == 'snapshot':  w.goal_conditions.append(GoalSnapshot.from_xml_el(cel))
+                w.goal_conditions.append(GoalCondition.from_xml_el(cel))
         return w
 
     def copy(self): return deepcopy(self)
@@ -2006,7 +2069,7 @@ class GoalConditionDialog(tk.Toplevel):
                 if x is None and y is None and h is None:
                     messagebox.showwarning(_T('goal_condition.warn_title'),
                         _T('goal_condition.warn_no_cond'), parent=self); return
-                self.result = GoalKarelPos(x=x, y=y, height=h)
+                self.result = GoalCondition('karel_pos', x=x, y=y, z=h)
             elif t == 'cell_state':
                 x = int(self._cs_x.get()); y = int(self._cs_y.get())
                 marks      = self._cs_marks.get()  if self._cs_marks_en.get()  else None
@@ -2015,10 +2078,12 @@ class GoalConditionDialog(tk.Toplevel):
                 if marks is None and bricks is None and big_bricks is None:
                     messagebox.showwarning(_T('goal_condition.warn_title'),
                         _T('goal_condition.warn_no_cond'), parent=self); return
-                self.result = GoalCellState(x, y, marks=marks, bricks=bricks, big_bricks=big_bricks)
+                self.result = GoalCondition('cell_state', x=x, y=y,
+                                            cell_marks=marks, cell_bricks=bricks, cell_big_bricks=big_bricks)
             else:  # snapshot
-                self.result = GoalSnapshot.from_world(
-                    self._world, include_karel=self._snap_karel.get())
+                self.result = GoalCondition('snapshot',
+                    snap=GoalCondition.snapshot_from_world(
+                        self._world, include_karel=self._snap_karel.get()))
         except Exception as e:
             messagebox.showerror(_T('goal_condition.err_title'), str(e), parent=self); return
         self.destroy()
@@ -2511,31 +2576,18 @@ class WorldSettingsDialog(tk.Toplevel):
     # -- Tab: Misia -----------------------------------------------------------
     def _build_mission(self, p):
         w = self._work
-        # Režim vyhodnocovania
-        ef = self._frame(p, _T('world_settings.frame_eval')); ef.pack(fill='x', pady=(0,8))
-        self._eval_var = tk.StringVar(value=w.mission_eval)
-        for col,(val,lbl,note) in enumerate([
-            ('on_finish', _T('world_settings.eval_finish'), _T('world_settings.eval_finish_note')),
-            ('on_step',   _T('world_settings.eval_step'),   _T('world_settings.eval_step_note')),
-        ]):
-            cf = tk.Frame(ef, bg=self._BG); cf.grid(row=0, column=col, padx=8, pady=6, sticky='w')
-            tk.Radiobutton(cf, text=lbl, variable=self._eval_var, value=val,
-                           bg=self._BG, fg=self._FG, selectcolor='#1a1a44',
-                           activebackground=self._BG, font=('Arial',9,'bold'),
-                           command=self._upd_reset_cb
-                           ).pack(anchor='w')
-            tk.Label(cf, text=note, bg=self._BG, fg=self._FG2,
-                     font=('Arial',7,'italic')).pack(anchor='w', padx=(20,0))
+        tk.Label(p, text=_T('world_settings.mission_note'),
+                 bg=self._BG, fg=self._FG2, font=('Arial',8,'italic'),
+                 wraplength=360, justify='left').pack(anchor='w', pady=(0,6))
 
-        # Reset pri neúspechu — len pre on_finish
+        # Reset pri neúspechu
         self._reset_on_failure_var = tk.BooleanVar(value=w.mission_reset_on_failure)
-        self._reset_cb = tk.Checkbutton(ef,
+        tk.Checkbutton(p,
             text=_T('world_settings.reset_on_fail'),
             variable=self._reset_on_failure_var,
             bg=self._BG, fg='#ffcc66', selectcolor='#2a2000',
-            activebackground=self._BG, font=('Arial',9))
-        self._reset_cb.grid(row=1, column=0, columnspan=2, sticky='w', padx=8, pady=(0,4))
-        self._upd_reset_cb()   # nastav počiatočnú viditeľnosť
+            activebackground=self._BG, font=('Arial',9)
+        ).pack(anchor='w', pady=(0,8))
 
         # Zoznam podmienok
         cf2 = self._frame(p, _T('world_settings.frame_conds'))
@@ -2592,11 +2644,7 @@ class WorldSettingsDialog(tk.Toplevel):
         del self._goal_conditions[idx]
 
     def _upd_reset_cb(self):
-        """Checkbox 'reset pri neúspechu' je relevantný iba pre on_finish režim."""
-        if self._eval_var.get() == 'on_finish':
-            self._reset_cb.configure(state='normal', fg='#ffcc66')
-        else:
-            self._reset_cb.configure(state='disabled', fg='#555544')
+        pass   # eval je teraz per-podmienka, reset_cb je vždy aktívny
 
     # -- Apply ----------------------------------------------------------------
     def _apply(self):
@@ -2633,8 +2681,7 @@ class WorldSettingsDialog(tk.Toplevel):
         w.title      = self._title_var.get().strip()
         w.intro_html = self._intro_text.get('1.0', 'end').rstrip()
         # 7. Misia
-        w.goal_conditions         = list(self._goal_conditions)
-        w.mission_eval            = self._eval_var.get()
+        w.goal_conditions          = list(self._goal_conditions)
         w.mission_reset_on_failure = self._reset_on_failure_var.get()
         w.success_html            = self._msg_success_var.get().strip()
         w.failure_html            = self._msg_failure_var.get().strip()
@@ -2960,7 +3007,7 @@ class App(tk.Tk):
     def _on_step(self):
         self._canvas.after(0,self._canvas.render)
         self._canvas.after(0,lambda:self._nav.update_inventory(self._world))
-        if self._world.goal_conditions and self._world.mission_eval == 'on_step':
+        if self._world.goal_conditions:
             self._canvas.after(0, self._check_mission_step)
 
     def _on_err(self,m):
@@ -2984,30 +3031,40 @@ class App(tk.Tk):
         self._nav.update_inventory(self._world)
         if not ok and err:
             self._canvas.after(0,lambda:self._status(f"Chyba: {err}","#cc4444"))
-        elif ok and self._world.goal_conditions and self._world.mission_eval == 'on_step':
+        elif ok and self._world.goal_conditions:
             self._check_mission_step()
 
     def _check_mission(self):
-        """Vyhodnotí všetky podmienky misie — zobrazí úspech alebo neúspech."""
+        """Vyhodnotí on_finish podmienky misie — zobrazí výsledok."""
         w = self._world
         if not w.goal_conditions: return
-        success = all(c.check(w) for c in w.goal_conditions)
+        result = evaluate_goals(w, on_step=False)
+        if result is None: return
+        success = (result == 'success')
         if not success and w.mission_reset_on_failure:
-            # Reset sveta — program v editore zostane nedotknutý
             self._reset_world()
         MissionResultDialog(self, success,
                             w.success_html if success else w.failure_html)
 
     def _check_mission_step(self):
-        """Vyhodnotí misiu po kroku — zobrazí úspech a zastaví program (neúspech ticho)."""
+        """Vyhodnotí on_step podmienky po každom kroku."""
         w = self._world
         if not w.goal_conditions: return
-        if all(c.check(w) for c in w.goal_conditions):
+        result = evaluate_goals(w, on_step=True)
+        if result == 'success':
             if self._interp: self._interp.stop()
             self._running = False
             self._set_running_ui(False)
             self._status("Misia splnená! ✓", "#44cc44")
             MissionResultDialog(self, True, w.success_html)
+        elif result == 'failure':
+            if self._interp: self._interp.stop()
+            self._running = False
+            self._set_running_ui(False)
+            self._status("Misia nesplnená ✗", "#cc4444")
+            if w.mission_reset_on_failure:
+                self._reset_world()
+            MissionResultDialog(self, False, w.failure_html)
 
     # ---- Súbory ----------------------------------------------------------
     def _open_prg(self):
