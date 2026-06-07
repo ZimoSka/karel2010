@@ -2659,7 +2659,7 @@ class App(tk.Tk):
         self._menu_nast.entryconfigure(1, state='normal' if is_admin else 'disabled')
 
         # Titulok okna — zobrazuje rolu
-        lbl = _ROLE_LABEL.get(role, role)
+        lbl = _T(f'role_dialog.label_{role}')
         self.title(f"Karel 2010  [{lbl}]")
 
     def _retranslate_ui(self):
@@ -2696,7 +2696,7 @@ class App(tk.Tk):
             if _ini_write_role(dlg.result):
                 self._role = dlg.result
                 self._apply_role_to_ui()
-                lbl = _ROLE_LABEL.get(self._role, self._role)
+                lbl = _T(f'role_dialog.label_{self._role}')
                 self._status(f"Úroveň zmenená na: {lbl}", "#44aacc")
             else:
                 messagebox.showerror("Chyba", "Nepodarilo sa uložiť karel.ini.")
@@ -3022,7 +3022,6 @@ _INI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'karel.ini'
 
 # Poradie úrovní (vyšší index = vyššia úroveň)
 _ROLES      = ['student', 'teacher', 'admin']
-_ROLE_LABEL = {'student': 'Žiak',  'teacher': 'Učiteľ', 'admin': 'Admin'}
 
 # -------------------------------------------------------------------------
 # JAZYKOVÁ INFRAŠTRUKTÚRA  /  LANGUAGE INFRASTRUCTURE
@@ -3299,29 +3298,26 @@ class RoleDialog(tk.Toplevel):
     """Dialóg na zmenu úrovne používateľa."""
     def __init__(self, parent, current_role: str):
         super().__init__(parent)
-        self.title("Zmeniť úroveň používateľa")
+        self.title(_T('role_dialog.title'))
         self.configure(bg='#1a1a33')
         self.resizable(False, False)
         self.grab_set()
         self.result = None
 
-        tk.Label(self, text="Vyberte úroveň:", bg='#1a1a33', fg='#ccccff',
+        tk.Label(self, text=_T('role_dialog.select'), bg='#1a1a33', fg='#ccccff',
                  font=('Arial', 11)).pack(padx=20, pady=(16, 8))
 
         self._var = tk.StringVar(value=current_role)
         for r in _ROLES:
-            rb = tk.Radiobutton(self, text=_ROLE_LABEL[r], variable=self._var, value=r,
+            rb = tk.Radiobutton(self, text=_T(f'role_dialog.label_{r}'),
+                                variable=self._var, value=r,
                                 bg='#1a1a33', fg='#ccccff', selectcolor='#333366',
                                 activebackground='#1a1a33', activeforeground='#ffffff',
                                 font=('Arial', 10))
             rb.pack(anchor='w', padx=30, pady=2)
 
         # Popisy úrovní
-        descs = {
-            'student':  "Otváranie svetov, písanie a ukladanie programov.",
-            'teacher':  "Navyše: tvorba a ukladanie svetov, editor nastavení.",
-            'admin':    "Navyše: globálne nastavenia aplikácie.",
-        }
+        descs = {r: _T(f'role_dialog.desc_{r}') for r in _ROLES}
         self._desc_var = tk.StringVar()
         self._var.trace_add('write', lambda *_: self._upd_desc(descs))
         self._upd_desc(descs)
@@ -3331,10 +3327,10 @@ class RoleDialog(tk.Toplevel):
 
         bf = tk.Frame(self, bg='#1a1a33')
         bf.pack(pady=14)
-        tk.Button(bf, text="OK", width=10, command=self._ok,
+        tk.Button(bf, text=_T('role_dialog.btn_ok'), width=10, command=self._ok,
                   bg='#2a5a9a', fg='white', relief='flat',
                   activebackground='#4477bb').pack(side='left', padx=6)
-        tk.Button(bf, text="Zrušiť", width=10, command=self.destroy,
+        tk.Button(bf, text=_T('role_dialog.btn_cancel'), width=10, command=self.destroy,
                   bg='#3a3a55', fg='white', relief='flat',
                   activebackground='#555577').pack(side='left', padx=6)
         self.bind('<Return>', lambda _: self._ok())
