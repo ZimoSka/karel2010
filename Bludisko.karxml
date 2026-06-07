@@ -281,7 +281,11 @@ opálil si si predelku!&lt;/font&gt;&lt;font size=&quot;3&quot;&gt;&lt;img src=&
 &lt;hr color=&quot;#99FF99&quot;&gt;
 &lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, musíš si dáva&amp;#357; pozor, aby si 
 nestúpil na tehli&amp;#269;ku!&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;</failure>
+  <goal_conditions>
+    <condition check="karel_pos" z="1" eval="failure" when="on_step" op="or"/>
+    <condition check="sign" eval="success" when="on_step" op="or"/>
+  </goal_conditions>
   <program>Začiatok
- 
+
 Koniec</program>
 </world>

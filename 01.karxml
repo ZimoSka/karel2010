@@ -91,7 +91,11 @@ Výborne,&lt;br&gt; zvládol si to.
 Aúúúúúú,&lt;br&gt; spadol si z múrika...
 &lt;/b&gt;&lt;/center
 &lt;/font&gt;</failure>
+  <goal_conditions>
+    <condition check="karel_pos" z="1" negate="true" eval="failure" when="on_step" op="or"/>
+    <condition check="karel_pos" z="1" eval="success" when="on_finish" op="or"/>
+  </goal_conditions>
   <program>Začiatok
- 
+
 Koniec</program>
 </world>
