@@ -45,6 +45,7 @@ class Direction(Enum):
                 'EAST':Direction.EAST,'WEST':Direction.WEST}[s.upper()]
 
 class KarelError(Exception): pass
+class KarelStop(Exception): pass   # tiché zastavenie (napr. narazenie do steny)
 
 
 # =========================================================================
@@ -294,25 +295,23 @@ class World:
         return self.bricks[y][x] + self.big_bricks[y][x] * self.BIG_BRICK_UNITS
 
     def move_forward(self):
-        if self.is_wall_ahead(): raise KarelError("Karel narazil do steny!")
+        if self.is_wall_ahead(): raise KarelStop()
         nx,ny = self._front()
         dh = self._height(nx,ny) - self._height(self.karel_x,self.karel_y)
         mc = self.settings.max_climb
         if dh > mc:
-            raise KarelError(
-                f"Karel nevie vylesť na tehlu (príliš vysoké — max. {mc})!")
+            raise KarelStop()
         self.karel_x,self.karel_y = nx,ny
 
     def move_back(self):
         back=self.karel_dir.opposite()
         if back.to_str() in self.walls[self.karel_y][self.karel_x]:
-            raise KarelError("Karel narazil do steny (dozadu)!")
+            raise KarelStop()
         bx,by = self._step(self.karel_x,self.karel_y,back)
         dh = self._height(bx,by) - self._height(self.karel_x,self.karel_y)
         mc = self.settings.max_climb
         if dh > mc:
-            raise KarelError(
-                f"Karel nevie vylesť dozadu (príliš vysoké — max. {mc})!")
+            raise KarelStop()
         self.karel_x,self.karel_y = bx,by
 
     def turn_left(self):  self.karel_dir=self.karel_dir.left()
@@ -808,6 +807,8 @@ class KarelInterpreter:
             if self.on_finish: self.on_finish(None)
         except StopEx:
             if self.on_finish: self.on_finish("Zastavené.")
+        except KarelStop:
+            if self.on_finish: self.on_finish(None)   # tiché zastavenie pri stene
         except (KarelError,RecursionError) as e:
             m="Príliš hlboká rekurzia!" if isinstance(e,RecursionError) else str(e)
             if self.on_error: self.on_error(m)
