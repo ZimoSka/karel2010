@@ -1455,14 +1455,13 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
         if tag: tw.tag_add(tag,_hlidx(src,m.start()),_hlidx(src,m.end()))
 
 
-def _cmds_list() -> list:
-    """Zoznam základných príkazov v aktuálnom prog_lang (pre filter panel)."""
-    p = _primary_kw
-    L = _current_prog_lang
-    return [p('FORWARD',L), p('BACK',L), p('LEFT',L), p('RIGHT',L),
-            p('DROP',L), p('DROP_BIG',L), p('PICK',L),
-            p('MARK',L), p('CLEAR',L),
-            p('SLOWLY',L), p('QUICKLY',L)]
+def _cmds_list(disabled=None) -> list:
+    """Zoznam základných príkazov v aktuálnom prog_lang (pre filter panel).
+    Tokeny v množine disabled sú vynechané."""
+    p = _primary_kw; L = _current_prog_lang
+    toks = ['FORWARD','BACK','LEFT','RIGHT','DROP','DROP_BIG','PICK',
+            'MARK','CLEAR','SLOWLY','QUICKLY']
+    return [p(t,L) for t in toks if not (disabled and t in disabled)]
 
 def _cmds_structs() -> list:
     """Zoznam riadiacich štruktúr v aktuálnom prog_lang."""
@@ -1479,12 +1478,13 @@ def _cmds_structs() -> list:
         f'{prc} Meno\n{bgn}\n\n{end}',
     ]
 
-def _cmds_conds() -> list:
-    """Zoznam podmienok v aktuálnom prog_lang."""
+def _cmds_conds(disabled=None) -> list:
+    """Zoznam podmienok v aktuálnom prog_lang. Tokeny v množine disabled sú vynechané."""
     p = _primary_kw; L = _current_prog_lang; n = p('NOT',L)
-    return [p('WALL',L), p('BRICK',L), p('FREE',L), p('SIGN',L),
-            p('TRUE',L), p('FALSE',L),
-            f'{n} {p("WALL",L)}', f'{n} {p("BRICK",L)}']
+    d = disabled or set()
+    conds = [p(t,L) for t in ['WALL','BRICK','FREE','SIGN','TRUE','FALSE'] if t not in d]
+    conds += [f'{n} {p(t,L)}' for t in ['WALL','BRICK'] if t not in d]
+    return conds
 
 class ProgramPanel(tk.Frame):
     def __init__(self,parent,**kw):
@@ -1575,8 +1575,12 @@ class ProgramPanel(tk.Frame):
     def set_prog_lang(self, lang: str):
         """Aktualizuje zoznam príkazov a strom filtra pri zmene prog_lang sveta."""
         _switch_prog_lang(lang)   # sám nastaví _current_prog_lang (idempotentné)
-        self._fill_list(_cmds_list())
+        self._refresh_cmds_list()
         self._build_filter_tree()
+
+    def _refresh_cmds_list(self):
+        """Znovu naplní zoznam príkazov s ohľadom na aktuálne disabled_cmds."""
+        self._fill_list(_cmds_list(self._disabled_cmds))
 
     def _fill_list(self,items):
         self._lb.delete(0,'end')
@@ -1586,11 +1590,14 @@ class ProgramPanel(tk.Frame):
         sel=self._tv.selection()
         if not sel: return
         item=sel[0]
-        if item==self._tmov:   self._fill_list(_cmds_list()[:4])
+        d = self._disabled_cmds
+        if item==self._tmov:
+            p = _primary_kw; L = _current_prog_lang
+            self._fill_list([p(t,L) for t in ['FORWARD','BACK','LEFT','RIGHT'] if t not in d])
         elif item==self._tstr: self._fill_list(_cmds_structs())
-        elif item==self._tcnd: self._fill_list(_cmds_conds())
+        elif item==self._tcnd: self._fill_list(_cmds_conds(d))
         elif item==self._tusr: self._fill_list(self._user_procs)
-        else:                  self._fill_list(_cmds_list()+_cmds_conds())
+        else:                  self._fill_list(_cmds_list(d)+_cmds_conds(d))
 
     def _insert(self,e=None):
         sel=self._lb.curselection()
@@ -1599,10 +1606,11 @@ class ProgramPanel(tk.Frame):
         self.editor.insert('insert',txt+'\n')
 
     def set_disabled_cmds(self, cmds, disable_procedure=False):
-        """Nastaví zakázané príkazy a znovu zvýrazní editor."""
+        """Nastaví zakázané príkazy, znovu zvýrazní editor a refreshne zoznam príkazov."""
         self._disabled_cmds = set(cmds) if cmds else set()
         self._disable_procedure = disable_procedure
         highlight(self.editor, self._disabled_cmds, self._disable_procedure)
+        self._refresh_cmds_list()
 
     def _on_edit(self):
         """Volá sa pri každom stlačení klávesu — zvýrazni + zisti nové procedúry."""
