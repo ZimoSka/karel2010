@@ -4,26 +4,44 @@
 
 ## ✅ Dokončené
 
+### Dátový model a renderer
 - Kvader: monolitický renderer, zelené malé tehly na vrchu
 - Max 1 kvader per tile; `check_wall()` vracia True pre kvader
 - Viacjazyčné kľúčové slová: SK `kvader`, DE `quader`, FR `bloc`, IT `blocco`, ES `bloque`
 - GUI: `zdvihni` zdvihne malú tehlu, ak niet → zdvihne kvader (smart pick)
 - Pattis režim (`en_pattis`): `putbeeper/pickbeeper` = MARK/CLEAR, `next_to_a_beeper` = SIGN
+
+### Systém misií
 - **GoalCondition systém** — flat trieda s check typmi:
   - `karel_pos` — pozícia/výška Karela
   - `cell_state` — stav políčka (značky, tehly)
-  - `sign` — značka pod Karelom
-  - `brick_ahead` — tehla pred Karelom
-  - `wall_ahead` — stena pred Karelom
+  - `sign` — značka pod Karelom *(pridané táto session)*
+  - `brick_ahead` — tehla pred Karelom *(pridané táto session)*
+  - `wall_ahead` — stena pred Karelom *(pridané táto session)*
   - `snapshot` — snímok celej miestnosti
 - Per-podmienka: eval (success/failure), when (on_step/on_finish), op (and/or), negate
 - `evaluate_goals()` — failure skupina sa vyhodnotí prvá; sekvenčné AND/OR
-- `GoalConditionDialog` — editor podmienok s predvyplňovaním pri úprave
+- `GoalConditionDialog` — editor podmienok s predvyplňovaním pri úprave, double-click
 - AND/OR prefix viditeľný v listboxe podmienok
+- `sign`/`brick_ahead`/`wall_ahead` dostupné v UI dialógu s info popisom *(táto session)*
+
+### Súborový formát
 - Jednotný formát `.karxml` (JSON ukladanie odstránené, spätná kompatibilita zachovaná)
-- `WorldSettingsDialog` Apply — nepočkáva `_reset_world()`, Karel zostane kde je
-- Reset — Karel sa vráti na štartovaciu pozíciu z `_base` (nie na aktuálnu)
-- Preklady: 6 jazykov (sk/en/de/fr/it/es), 179 kľúčov, všetky zhodné
+
+### Správanie Reset / WorldSettings
+- `WorldSettingsDialog` Apply — nepúšťa `_reset_world()`, Karel zostane kde je *(táto session)*
+- Reset — Karel sa vráti na štartovaciu pozíciu z `_base`, nie na aktuálnu *(táto session)*
+- Štartovacia pozícia v dialógu predvyplnená z `_base` (nie z aktuálnej polohy) *(táto session)*
+- Hnote: `ℹ  Štart: (x,y)  ×  Karel teraz: (sx,sy)` *(táto session)*
+
+### Preklady
+- 6 jazykov (sk/en/de/fr/it/es), 179 kľúčov, všetky zhodné — overené skriptom *(táto session)*
+
+### Dokumentácia
+- `CLAUDE.md` — kompletná architektúra, pravidlá, GoalCondition, _base vs _world *(táto session)*
+- `PLAN.md` — tento súbor *(táto session)*
+- Pravidlo: `/compact` nikdy bez povolenia *(táto session)*
+- Pravidlo: dôležité info okamžite do `.md` súborov *(táto session)*
 
 ---
 
