@@ -67,7 +67,8 @@
 
 | # | Úloha |
 |---|-------|
-| 7 | **Live syntax validácia** — podčiarknutie chýb priebežne |
-| 8 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
-| 9 | **História príkazov** — šípky nahor/dole v command boxe |
-| 10 | **Gramatika do externého súboru** |
+| 5 | **Live syntax validácia** — podčiarknutie chýb priebežne |
+| 6 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
+| 7 | **História príkazov** — šípky nahor/dole v command boxe |
+| 8 | **Gramatika do externého súboru** |
+| 9 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
