@@ -1614,9 +1614,10 @@ class ProgramPanel(tk.Frame):
         self._cmd_list_hdr=tk.Label(mf,text=_T('program_panel.cmd_list_hdr'),
                  bg='#0d1030',fg='#aaaacc',font=('Arial',9,'bold'),pady=2)
         self._cmd_list_hdr.pack(fill='x')
-        self._lb=tk.Listbox(mf,bg='#04040e',fg='#dcdcaa',font=('Consolas',11),
+        self._lb=tk.Listbox(mf,bg='#04040e',fg='#dcdcaa',font=('Consolas',10),
                              relief='flat',selectbackground='#2244aa',
-                             activestyle='dotbox',exportselection=False,height=4)
+                             activestyle='dotbox',exportselection=False,
+                             height=4,width=8)
         sc=ttk.Scrollbar(mf,command=self._lb.yview)
         self._lb.config(yscrollcommand=sc.set)
         sc.pack(side='right',fill='y'); self._lb.pack(fill='both',expand=True)
@@ -1638,6 +1639,7 @@ class ProgramPanel(tk.Frame):
         self._tv=ttk.Treeview(rf,show='tree',selectmode='browse',
                                style='P.Treeview',height=4,
                                yscrollcommand=tv_sc.set)
+        self._tv.column('#0',width=80,minwidth=40,stretch=True)
         tv_sc.pack(side='right',fill='y')
         self._tv.pack(fill='both',expand=True)
         self._build_filter_tree()
@@ -3008,6 +3010,7 @@ class App(tk.Tk):
         # horný pás: hpane — 3D svet | pravý panel (nav + ovládanie)
         hpane=tk.PanedWindow(vpane,orient='horizontal',bg='#060610',
                              sashwidth=5,sashrelief='flat',sashpad=1)
+        self._hpane=hpane
 
         # 3D svet (ľavý panel)
         wf=tk.Frame(hpane,bg='#000008',bd=1,relief='sunken')
@@ -3043,6 +3046,21 @@ class App(tk.Tk):
         # Keď sa zmení editor, _last_procs sa aktualizuje — Príkazovo má vždy aktuálne procedúry
         self._prog.on_procs_update=lambda p: setattr(self,'_last_procs',p)
         vpane.add(pf,stretch='always',minsize=150)
+
+        # Po vykreslení: nastav delič tak, aby pravý panel bol úzky (~210px)
+        # a 3D svet dostal zvyšok. Užívateľ môže delič potom ťahať.
+        self.after(80, self._init_right_width)
+
+    def _init_right_width(self):
+        try:
+            total = self._hpane.winfo_width()
+            if total <= 1:
+                self.after(80, self._init_right_width); return
+            right = 210
+            x = max(180, total - right)
+            self._hpane.sash_place(0, x, 0)
+        except Exception:
+            pass
 
     def _build_toolbar(self,bar):
         def btn(txt,cmd,bg='#2a5a9a'):
