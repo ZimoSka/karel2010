@@ -2105,6 +2105,52 @@ class IntroDialog(tk.Toplevel):
         txt = _html_mod.unescape(txt)
         return re.sub(r'\n{3,}', '\n\n', txt).strip()
 
+    @staticmethod
+    def _html_insert(widget, raw: str):
+        """Vloží HTML text do tk.Text widgetu so zachovaním bold/italic formátovania."""
+        # Odstraň CDATA obal
+        html = re.sub(r'<!\[CDATA\[([\s\S]*?)\]\]>', r'\1', raw)
+        # Tokenizuj HTML na tagy a text
+        TOKEN = re.compile(r'(<[^>]+>|[^<]+)', re.DOTALL)
+        bold = italic = False
+        buf = []   # (text, bold, italic)
+        for m in TOKEN.finditer(html):
+            tok = m.group(0)
+            if tok.startswith('<'):
+                tag = tok.lower().strip('<>/ \t\n\r')
+                tag_name = tag.split()[0] if tag else ''
+                closing = tok.lstrip('<').startswith('/')
+                if tag_name in ('b', 'strong'):
+                    bold = not closing
+                elif tag_name in ('i', 'em'):
+                    italic = not closing
+                elif tag_name in ('br',):
+                    buf.append(('\n', False, False))
+                elif tag_name == 'p' and not closing:
+                    buf.append(('\n', False, False))
+                elif tag_name in ('h1','h2','h3','h4','h5','h6'):
+                    if not closing:
+                        buf.append(('\n', True, False))
+                    else:
+                        buf.append(('\n', False, False))
+            else:
+                text = _html_mod.unescape(tok)
+                if text:
+                    buf.append((text, bold, italic))
+
+        # Uprac nadbytočné newline na začiatku prvého segmentu
+        if buf and buf[0][0].startswith('\n'):
+            buf[0] = (buf[0][0].lstrip('\n'), buf[0][1], buf[0][2])
+        # Zapíš do widgetu
+        for text, b, i in buf:
+            if not text:
+                continue
+            tag = 'bi' if b and i else ('bold' if b else ('italic' if i else ''))
+            if tag:
+                widget.insert('end', text, tag)
+            else:
+                widget.insert('end', text)
+
     def _build(self, title: str, html_msg: str):
         # Hlavička s názvom sveta
         hf = tk.Frame(self, bg='#111135', pady=12, padx=20)
@@ -2134,9 +2180,16 @@ class IntroDialog(tk.Toplevel):
         txt_w.pack(fill='both', expand=True)
         sb.config(command=txt_w.yview)
 
-        # Vlož obsah
-        content = self._strip_html(html_msg) if html_msg else "(Žiadne zadanie)"
-        txt_w.insert('1.0', content)
+        # Fonty pre formátovanie
+        txt_w.tag_configure('bold',   font=('Arial', 11, 'bold'))
+        txt_w.tag_configure('italic', font=('Arial', 11, 'italic'))
+        txt_w.tag_configure('bi',     font=('Arial', 11, 'bold italic'))
+
+        # Vlož obsah s formátovaním
+        if html_msg:
+            self._html_insert(txt_w, html_msg)
+        else:
+            txt_w.insert('1.0', "(Žiadne zadanie)")
         txt_w.configure(state='disabled')   # len na čítanie
 
 
