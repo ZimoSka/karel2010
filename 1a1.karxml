@@ -231,19 +231,19 @@
   <bigbricks/>
   <marks/>
   <title>1a1</title>
-  <intro>&amp;lt;p&amp;gt;&amp;lt;img src=&amp;quot;aniDogToonDazed.gif&amp;quot; align=&amp;quot;left&amp;quot;&amp;gt;&amp;lt;font face=&amp;quot;Cooper Black&amp;quot; color=&amp;quot;#FFFF66&amp;quot;&amp;gt;Ahoj 
-Mi&amp;#353;ko!&amp;lt;/font&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;font face=&amp;quot;Arial&amp;quot; color=&amp;quot;#FFCC00&amp;quot;&amp;gt;Po&amp;#269;ul som, &amp;#382;e si sa dnes nau&amp;#269;il nie&amp;#269;o nov&amp;#233;.&amp;lt;br&amp;gt;
-Vrabce &amp;#269;virikali, &amp;#382;e si sa nau&amp;#269;il s&amp;#269;&amp;#237;tava&amp;#357; 1+1.&amp;lt;/font&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;font face=&amp;quot;Arial&amp;quot; color=&amp;quot;#FFCC00&amp;quot;&amp;gt;&amp;#268;o tak si to overi&amp;#357;... &amp;lt;/font&amp;gt;
-&amp;lt;hr color=&amp;quot;#99FF99&amp;quot;&amp;gt;
-&amp;lt;img border=&amp;quot;0&amp;quot; src=&amp;quot;Scitan1.gif&amp;quot; align=&amp;quot;right&amp;quot;&amp;gt;&amp;lt;i&amp;gt;&amp;lt;font face=&amp;quot;Arial&amp;quot; color=&amp;quot;#99FF99&amp;quot;&amp;gt;Mi&amp;#353;ko, tovjou &amp;#250;lohou je vojs&amp;#357; s Karlom do&amp;lt;br&amp;gt;
-&amp;#353;tvorca, ktor&amp;#253; je pri spr&amp;#225;vnom v&amp;#253;sledku s&amp;#269;&amp;#237;tania.&amp;lt;/font&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/p&amp;gt;</intro>
-  <success>&amp;lt;p&amp;gt;&amp;lt;font face=&amp;quot;Cooper Black&amp;quot; color=&amp;quot;#00FF00&amp;quot;&amp;gt;Juchach&amp;#225;, ty si to zvl&amp;#225;dol!&amp;lt;/font&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;
-&amp;lt;img border=&amp;quot;0&amp;quot; dynsrc=&amp;quot;Chick.avi&amp;quot; start=&amp;quot;fileopen&amp;quot; width=&amp;quot;320&amp;quot; height=&amp;quot;240&amp;quot;&amp;gt;&amp;lt;/p&amp;gt;</success>
-  <failure>&amp;lt;p&amp;gt;&amp;lt;img src=&amp;quot;http://teacherweb.com/images/aniPenguinSitting.gif&amp;quot; align=&amp;quot;left&amp;quot;&amp;gt;&amp;lt;font face=&amp;quot;Cooper Black&amp;quot; color=&amp;quot;#FF3300&amp;quot;&amp;gt;Gebulka, 
-zd&amp;#225; sa, ze m&amp;#225;&amp;#353; v sc&amp;#237;tavan&amp;#237; e&amp;#353;te drobn&amp;#233; medzery...&amp;lt;/font&amp;gt;&amp;lt;/p&amp;gt;</failure>
+  <intro>&lt;p&gt;&lt;img src=&quot;aniDogToonDazed.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FFFF66&quot;&gt;Ahoj 
+Miško!&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;Počul som, že si sa dnes naučil niečo nové.&lt;br&gt;
+Vrabce čvirikali, že si sa naučil sčítavať 1+1.&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;&lt;font face=&quot;Arial&quot; color=&quot;#FFCC00&quot;&gt;Čo tak si to overiť... &lt;/font&gt;
+&lt;hr color=&quot;#99FF99&quot;&gt;
+&lt;img border=&quot;0&quot; src=&quot;Scitan1.gif&quot; align=&quot;right&quot;&gt;&lt;i&gt;&lt;font face=&quot;Arial&quot; color=&quot;#99FF99&quot;&gt;Miško, tovjou úlohou je vojsť s Karlom do&lt;br&gt;
+štvorca, ktorý je pri správnom výsledku sčítania.&lt;/font&gt;&lt;/i&gt;&lt;/p&gt;</intro>
+  <success>&lt;p&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#00FF00&quot;&gt;Juchachá, ty si to zvládol!&lt;/font&gt;&lt;/p&gt;
+&lt;p&gt;
+&lt;img border=&quot;0&quot; dynsrc=&quot;Chick.avi&quot; start=&quot;fileopen&quot; width=&quot;320&quot; height=&quot;240&quot;&gt;&lt;/p&gt;</success>
+  <failure>&lt;p&gt;&lt;img src=&quot;http://teacherweb.com/images/aniPenguinSitting.gif&quot; align=&quot;left&quot;&gt;&lt;font face=&quot;Cooper Black&quot; color=&quot;#FF3300&quot;&gt;Gebulka, 
+zdá sa, ze máš v scítavaní ešte drobné medzery...&lt;/font&gt;&lt;/p&gt;</failure>
   <program>Začiatok
  
 Koniec</program>
