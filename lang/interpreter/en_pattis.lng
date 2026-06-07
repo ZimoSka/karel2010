@@ -1,11 +1,12 @@
 # Karel 2010 – English (Pattis) interpreter keywords
-# Primary keywords follow the original Pattis (1981) naming convention.
-# DISABLED directive causes WorldSettings to auto-check (disable) these tokens
-# when this language is selected — keeping the language set to Pattis original.
+# Follows original Pattis (1981) 2D Karel semantics:
+#   PUTBEEPER / PICKBEEPER  = place/remove mark at Karel's current position (= our MARK/CLEAR)
+#   NEXT-TO-A-BEEPER        = is there a mark at Karel's current position? (= our SIGN)
+#   No bricks, no BACK, no TURNRIGHT — disabled via DISABLED directive.
 # FORMAT:  TOKEN = primary_word  alias1  alias2 ...
 
 NAME       = English (Pattis)
-DISABLED   = BACK RIGHT DROP_BIG MARK CLEAR SLOWLY QUICKLY
+DISABLED   = BACK RIGHT DROP DROP_BIG PICK BRICK SLOWLY QUICKLY
 
 BEGIN      = begin
 END        = end
@@ -23,16 +24,10 @@ ELSE       = else
 END_IF     = *if
 FORWARD    = move  forward  moveforward  move_forward
 LEFT       = turnleft  left  turn_left
-DROP       = putbeeper  put_beeper  drop
-PICK       = pickbeeper  pick_beeper  pick
-DROP_BIG   = drop_big
-MARK       = mark
-CLEAR      = clear  unmark
+MARK       = putbeeper  put_beeper  mark
+CLEAR      = pickbeeper  pick_beeper  clear  unmark
 WALL       = front_is_blocked  frontisblocked  wall  is_wall
-BRICK      = next_to_a_beeper  nexttoabeeper  next_to_beeper  brick  is_brick
 FREE       = front_is_clear  frontisclear  free  is_free
-SIGN       = sign
+SIGN       = next_to_a_beeper  nexttoabeeper  next_to_beeper  sign
 FALSE      = false
 TRUE       = true
-SLOWLY     = slowly
-QUICKLY    = quickly
