@@ -1958,6 +1958,54 @@ class GoalConditionDialog(tk.Toplevel):
         self._content = tk.Frame(self, bg=self._BG, padx=12, pady=8)
         self._content.pack(fill='both', expand=True)
         tk.Frame(self, bg='#334466', height=1).pack(fill='x')
+
+        # --- Spoločné nastavenia: eval / when / op / negate ------------------
+        cf = tk.Frame(self, bg='#0d0d22', padx=12, pady=8); cf.pack(fill='x')
+
+        # riadok 1: výsledok + čas
+        r1 = tk.Frame(cf, bg='#0d0d22'); r1.pack(fill='x', pady=(0,4))
+        tk.Label(r1, text=_T('goal_condition.lbl_eval'), bg='#0d0d22', fg=self._FG2,
+                 font=('Arial',8), width=10, anchor='w').pack(side='left')
+        self._eval_var = tk.StringVar(value='success')
+        for val, lbl in [('success', _T('goal_condition.eval_success')),
+                         ('failure', _T('goal_condition.eval_failure'))]:
+            tk.Radiobutton(r1, text=lbl, variable=self._eval_var, value=val,
+                           bg='#0d0d22', fg='#88ee88' if val=='success' else '#ee6666',
+                           selectcolor='#1a1a44', activebackground='#0d0d22',
+                           font=('Arial',9)).pack(side='left', padx=6)
+
+        tk.Frame(r1, bg='#334466', width=1).pack(side='left', fill='y', padx=10)
+        tk.Label(r1, text=_T('goal_condition.lbl_when'), bg='#0d0d22', fg=self._FG2,
+                 font=('Arial',8), width=5, anchor='w').pack(side='left')
+        self._when_var = tk.StringVar(value='on_finish')
+        for val, lbl in [('on_finish', _T('goal_condition.when_finish')),
+                         ('on_step',   _T('goal_condition.when_step'))]:
+            tk.Radiobutton(r1, text=lbl, variable=self._when_var, value=val,
+                           bg='#0d0d22', fg=self._FG,
+                           selectcolor='#1a1a44', activebackground='#0d0d22',
+                           font=('Arial',9)).pack(side='left', padx=6)
+
+        # riadok 2: operátor + negate
+        r2 = tk.Frame(cf, bg='#0d0d22'); r2.pack(fill='x')
+        tk.Label(r2, text=_T('goal_condition.lbl_op'), bg='#0d0d22', fg=self._FG2,
+                 font=('Arial',8), width=10, anchor='w').pack(side='left')
+        self._op_var = tk.StringVar(value='or')
+        for val, lbl in [('or', 'OR'), ('and', 'AND')]:
+            tk.Radiobutton(r2, text=lbl, variable=self._op_var, value=val,
+                           bg='#0d0d22', fg='#aaaaff',
+                           selectcolor='#1a1a44', activebackground='#0d0d22',
+                           font=('Consolas',9,'bold')).pack(side='left', padx=6)
+        tk.Label(r2, text=_T('goal_condition.op_note'), bg='#0d0d22', fg='#556677',
+                 font=('Arial',8,'italic')).pack(side='left', padx=(4,20))
+
+        self._negate_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(r2, text=_T('goal_condition.lbl_negate'),
+                       variable=self._negate_var,
+                       bg='#0d0d22', fg='#ffaa44', selectcolor='#2a1a00',
+                       activebackground='#0d0d22', font=('Arial',9)).pack(side='left', padx=6)
+        # ---------------------------------------------------------------------
+
+        tk.Frame(self, bg='#334466', height=1).pack(fill='x')
         bf = tk.Frame(self, bg='#111130', pady=6); bf.pack(fill='x')
         tk.Button(bf, text=_T('goal_condition.btn_cancel'), command=self.destroy,
                   bg='#3a1a1a', fg='white', relief='flat', padx=12, pady=4,
@@ -2069,7 +2117,9 @@ class GoalConditionDialog(tk.Toplevel):
                 if x is None and y is None and h is None:
                     messagebox.showwarning(_T('goal_condition.warn_title'),
                         _T('goal_condition.warn_no_cond'), parent=self); return
-                self.result = GoalCondition('karel_pos', x=x, y=y, z=h)
+                self.result = GoalCondition('karel_pos', x=x, y=y, z=h,
+                    eval_=self._eval_var.get(), when=self._when_var.get(),
+                    op=self._op_var.get(), negate=self._negate_var.get())
             elif t == 'cell_state':
                 x = int(self._cs_x.get()); y = int(self._cs_y.get())
                 marks      = self._cs_marks.get()  if self._cs_marks_en.get()  else None
@@ -2079,11 +2129,15 @@ class GoalConditionDialog(tk.Toplevel):
                     messagebox.showwarning(_T('goal_condition.warn_title'),
                         _T('goal_condition.warn_no_cond'), parent=self); return
                 self.result = GoalCondition('cell_state', x=x, y=y,
-                                            cell_marks=marks, cell_bricks=bricks, cell_big_bricks=big_bricks)
+                    cell_marks=marks, cell_bricks=bricks, cell_big_bricks=big_bricks,
+                    eval_=self._eval_var.get(), when=self._when_var.get(),
+                    op=self._op_var.get(), negate=self._negate_var.get())
             else:  # snapshot
                 self.result = GoalCondition('snapshot',
                     snap=GoalCondition.snapshot_from_world(
-                        self._world, include_karel=self._snap_karel.get()))
+                        self._world, include_karel=self._snap_karel.get()),
+                    eval_=self._eval_var.get(), when=self._when_var.get(),
+                    op=self._op_var.get(), negate=self._negate_var.get())
         except Exception as e:
             messagebox.showerror(_T('goal_condition.err_title'), str(e), parent=self); return
         self.destroy()
