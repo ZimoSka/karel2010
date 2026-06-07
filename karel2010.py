@@ -541,6 +541,7 @@ class World:
 KW: dict = {}            # word.lower() → TOKEN  (všetky jazyky naraz)
 _LANG_PRIMARY: dict = {} # lang_code → {TOKEN: primary_word}
 _LANG_DISABLED: dict = {} # lang_code → set of TOKEN names disabled by default
+_LANG_NAME:     dict = {} # lang_code → display name (z NAME direktívy v .lng)
 _INTERP_LANG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 'lang', 'interpreter')
 
@@ -550,8 +551,8 @@ def _load_all_interpreter_langs() -> None:
     interpreter tak akceptuje ľubovoľný jazyk súčasne.
     _LANG_PRIMARY uloží primárne slovo (prvé) pre každý jazyk a token.
     _LANG_DISABLED uloží set tokenov, ktoré sú v danom jazyku štandardne zakázané."""
-    global KW, _LANG_PRIMARY, _LANG_DISABLED
-    KW.clear(); _LANG_PRIMARY.clear(); _LANG_DISABLED.clear()
+    global KW, _LANG_PRIMARY, _LANG_DISABLED, _LANG_NAME
+    KW.clear(); _LANG_PRIMARY.clear(); _LANG_DISABLED.clear(); _LANG_NAME.clear()
     if not os.path.isdir(_INTERP_LANG_DIR):
         _fallback_bkw(); return
     for fname in sorted(os.listdir(_INTERP_LANG_DIR)):
@@ -572,6 +573,10 @@ def _load_all_interpreter_langs() -> None:
             token = token.strip().upper()
             words = rest.split()
             if not words: continue
+            if token == 'NAME':
+                # Direktíva NAME — zobrazený názov jazyka v dropdowne
+                _LANG_NAME[lang] = rest.strip()
+                continue
             if token == 'DISABLED':
                 # Direktíva DISABLED — tieto tokeny sa pri výbere jazyka automaticky zakážu
                 _LANG_DISABLED[lang] = set(w.upper() for w in words)
@@ -3021,19 +3026,25 @@ def _available_ui_langs() -> list:
 
 def _available_prog_langs() -> list:
     """Vráti [(kód, zobrazené_meno), …] pre všetky dostupné programovacie jazyky
-    (lang/interpreter/*.lng).  Meno načíta z lang/{kód}.ini [meta] name, inak kód."""
+    (lang/interpreter/*.lng).  Meno načíta prednostne z _LANG_NAME (direktíva NAME
+    v .lng súbore), potom z lang/{kód}.ini [meta] name, inak kód."""
     langs = []
     if os.path.isdir(_INTERP_LANG_DIR):
         for fname in sorted(os.listdir(_INTERP_LANG_DIR)):
             if fname.endswith('.lng'):
-                code     = fname[:-4]
-                ini_path = os.path.join(_LANG_DIR, f'{code}.ini')
-                cfg      = configparser.ConfigParser(interpolation=None)
-                try:
-                    cfg.read(ini_path, encoding='utf-8')
-                    name = cfg.get('meta', 'name', fallback=code)
-                except Exception:
-                    name = code
+                code = fname[:-4]
+                # 1) NAME direktíva priamo v .lng súbore
+                if code in _LANG_NAME:
+                    name = _LANG_NAME[code]
+                else:
+                    # 2) lang/{kód}.ini [meta] name  (iba ak súbor existuje)
+                    ini_path = os.path.join(_LANG_DIR, f'{code}.ini')
+                    cfg      = configparser.ConfigParser(interpolation=None)
+                    try:
+                        cfg.read(ini_path, encoding='utf-8')
+                        name = cfg.get('meta', 'name', fallback=code)
+                    except Exception:
+                        name = code
                 langs.append((code, name))
     return langs or [('sk', 'Slovenčina'), ('en', 'English')]
 

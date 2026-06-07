@@ -4,6 +4,7 @@
 # when this language is selected — keeping the language set to Pattis original.
 # FORMAT:  TOKEN = primary_word  alias1  alias2 ...
 
+NAME       = English (Pattis)
 DISABLED   = BACK RIGHT DROP_BIG MARK CLEAR SLOWLY QUICKLY
 
 BEGIN      = begin
