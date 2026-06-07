@@ -1422,11 +1422,11 @@ class NavigatorPanel(tk.Frame):
         self._nav_title.pack(fill='x')
 
         # Inventár — hlavičky
-        ifr=tk.Frame(self,bg='#0a0a1c'); ifr.pack(fill='x',padx=4,pady=2)
+        ifr=tk.Frame(self,bg='#0a0a1c'); ifr.pack(fill='x',padx=2,pady=1)
         self._inv_hdr = []
         for c,(key,fg) in enumerate([('nav.col_item','#8888cc'),('nav.col_left','#88ffcc')]):
-            lbl=tk.Label(ifr,text=_T(key),bg='#141430',fg=fg,font=('Arial',8,'bold'),
-                     padx=4,relief='flat')
+            lbl=tk.Label(ifr,text=_T(key),bg='#141430',fg=fg,font=('Arial',7,'bold'),
+                     padx=2,relief='flat')
             lbl.grid(row=0,column=c,sticky='ew')
             self._inv_hdr.append((lbl,key))
         ifr.columnconfigure(1,weight=1)
@@ -1434,15 +1434,15 @@ class NavigatorPanel(tk.Frame):
         self._inv_row_lbls=[]
         for r,(key,var) in enumerate(zip(['nav.small_brick','nav.big_brick','nav.mark'],
                                           self._inv_vars),1):
-            lbl=tk.Label(ifr,text=_T(key),bg='#0a0a1c',fg='#ccccdd',font=('Arial',8),
-                         anchor='w',padx=4)
+            lbl=tk.Label(ifr,text=_T(key),bg='#0a0a1c',fg='#ccccdd',font=('Arial',7),
+                         anchor='w',padx=2)
             lbl.grid(row=r,column=0,sticky='ew')
             tk.Label(ifr,textvariable=var,bg='#0a0a1c',fg='#44ffaa',
-                     font=('Arial',9,'bold')).grid(row=r,column=1)
+                     font=('Arial',8,'bold')).grid(row=r,column=1)
             self._inv_row_lbls.append((lbl,key))
 
         # Preset tlačidlá pohľadu
-        bf=tk.Frame(self,bg='#0a0a1c'); bf.pack(fill='x',padx=4)
+        bf=tk.Frame(self,bg='#0a0a1c'); bf.pack(fill='x',padx=2,pady=(1,0))
         self._preset_btns=[]
         self._preset_btn_keys=[]
         for key,az,el in [('nav.view_def',225,28),('nav.view_front',180,20),
@@ -1454,7 +1454,7 @@ class NavigatorPanel(tk.Frame):
                     if self.on_change: self.on_change()
                 return f
             b=tk.Button(bf,text=_T(key),command=mk(az,el),bg='#1a1a44',fg='#aaaaff',
-                      relief='flat',font=('Arial',8),padx=3,pady=2,
+                      relief='flat',font=('Arial',7),padx=2,pady=1,
                       cursor='hand2',activebackground='#3333aa',
                       activeforeground='white')
             b.pack(side='left',expand=True,fill='x',padx=1)
@@ -1587,8 +1587,8 @@ class ProgramPanel(tk.Frame):
         self._hdr_lbl.pack(side='left')
 
         body=tk.Frame(self,bg='#080814'); body.pack(fill='both',expand=True)
-        body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=1)
-        body.columnconfigure(2,weight=1); body.rowconfigure(0,weight=1)
+        body.columnconfigure(0,weight=5); body.columnconfigure(1,weight=1,minsize=90)
+        body.columnconfigure(2,weight=1,minsize=90); body.rowconfigure(0,weight=1)
 
         # ---- Ľavý: editor ----
         ef=tk.Frame(body,bg='#080814')
@@ -1746,9 +1746,9 @@ class ControlPanel(tk.Frame):
 
     def _build(self):
         self._title_lbl=tk.Label(self,text=_T('control.title'),bg='#111130',fg='#aaaacc',
-                 font=('Arial',9,'bold'),pady=3)
+                 font=('Arial',9,'bold'),pady=1)
         self._title_lbl.pack(fill='x')
-        self._nb=ttk.Notebook(self); self._nb.pack(fill='both',expand=True,padx=3,pady=2)
+        self._nb=ttk.Notebook(self); self._nb.pack(fill='both',expand=True,padx=2,pady=1)
         self._t1=tk.Frame(self._nb,bg='#0a0a1c')
         self._t2=tk.Frame(self._nb,bg='#0a0a1c')
         self._nb.add(self._t1,text=_T('control.tab_graphic'))
@@ -1757,24 +1757,24 @@ class ControlPanel(tk.Frame):
 
     def _build_graphic(self,p):
         # ---- Pohybové šípky (ľavý stĺpec) + Akcie (pravý stĺpec) ----
-        main=tk.Frame(p,bg='#0a0a1c'); main.pack(fill='both',expand=True,padx=4,pady=4)
+        main=tk.Frame(p,bg='#0a0a1c'); main.pack(fill='both',expand=True,padx=2,pady=2)
         main.columnconfigure(0,weight=1); main.columnconfigure(1,weight=1)
         self._btn_refs: dict = {}   # cmd -> Button widget
         self._btn_bgs:  dict = {}   # cmd -> original bg
 
         # Pohybové šípky — ikony sú jasné, príkazy sú pevné (interpreter ich aj tak akceptuje obe)
-        af=tk.Frame(main,bg='#0a0a1c'); af.grid(row=0,column=0,sticky='n',padx=(0,4))
+        af=tk.Frame(main,bg='#0a0a1c'); af.grid(row=0,column=0,sticky='n',padx=(0,2))
         def ab(txt,r,c,cmd,bg='#1a2a44'):
             b=tk.Button(af,text=txt,command=lambda:self._do(cmd),
-                      bg=bg,fg='white',font=('Arial',14,'bold'),
-                      width=3,height=1,relief='flat',cursor='hand2',
+                      bg=bg,fg='white',font=('Arial',11,'bold'),
+                      width=2,height=1,relief='flat',cursor='hand2',
                       activebackground='#3355aa',bd=0)
-            b.grid(row=r,column=c,padx=2,pady=2)
+            b.grid(row=r,column=c,padx=1,pady=1)
             self._btn_refs[cmd]=b; self._btn_bgs[cmd]=bg
         ab('▲',0,1,'dopredu','#1a3a1a')
         ab('◀',1,0,'vlavo',  '#2a2a1a')
         self._dir_lbl=tk.Label(af,text='→',fg='#44cc88',bg='#0a0a1c',
-                                font=('Arial',16,'bold'),width=2)
+                                font=('Arial',12,'bold'),width=2)
         self._dir_lbl.grid(row=1,column=1)
         ab('▶',1,2,'vpravo', '#2a2a1a')
         ab('▼',2,1,'dozadu', '#3a1a1a')
@@ -1813,9 +1813,9 @@ class ControlPanel(tk.Frame):
             label, cmd = _prog_btn(action)
             b=tk.Button(self._act_frame, text=label, command=lambda c=cmd: self._do(c),
                       bg=bg, fg='white', font=('Arial',8,'bold'),
-                      relief='flat', cursor='hand2', pady=3,
-                      activebackground='#334466', bd=0, wraplength=80)
-            b.grid(row=row, column=col, sticky='ew', padx=2, pady=2)
+                      relief='flat', cursor='hand2', pady=1,
+                      activebackground='#334466', bd=0, wraplength=70)
+            b.grid(row=row, column=col, sticky='ew', padx=1, pady=1)
             self._btn_refs[cmd] = b; self._btn_bgs[cmd] = bg
             self._act_btns[action] = b
             self._act_btn_cmds.add(cmd)
@@ -3033,9 +3033,9 @@ class App(tk.Tk):
                                  on_action=self._on_direct,
                                  get_procs=lambda:self._last_procs)
         self._ctrl.pack(fill='x',side='top')
-        hpane.add(rp,stretch='never',minsize=210)
+        hpane.add(rp,stretch='never',minsize=160)
 
-        vpane.add(hpane,stretch='always',minsize=360)
+        vpane.add(hpane,stretch='always',minsize=280)
 
         # Program panel (dolný pás)
         pf=tk.Frame(vpane,bg='#050510',bd=1,relief='sunken')
