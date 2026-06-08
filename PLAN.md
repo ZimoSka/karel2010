@@ -70,22 +70,30 @@
 
 ---
 
+## 🔴 Vyššia priorita
+
+| # | Úloha |
+|---|-------|
+| 1 | **Ochrana proti nekonečnému cyklu** — `kym pravda rob …` teraz zasekne aplikáciu a žerie CPU (overené reálne — proces bolo treba zabiť). Tvrdý strop na celkový počet vykonaných príkazov (Stanford Karel = 10⁵) → zastav s hláškou. Beží na daemon threade, treba bezpečné prerušenie cez `_stop`/výnimku. |
+
 ## 🟡 Stredná priorita
 
 | # | Úloha |
 |---|-------|
 | 2 | **`GoalKarelNear`** — Karel musí byť v okolí ±1 dlaždice od cieľa |
-| 4 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
+| 3 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
+| 4 | **Limit tehál na políčko** (xKarel: max 10) — bránime nekonečnému stohovaniu na jednu dlaždicu |
+| 5 | **Počítadlo efektivity** (CodeHS) — v MissionResult zobraziť „vyriešené na N krokov, M otočení" |
 
 ## 🟢 Nižšia priorita
 
 | # | Úloha |
 |---|-------|
-| 5 | **Live syntax validácia** — podčiarknutie chýb priebežne |
-| 6 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
-| 7 | **História príkazov** — šípky nahor/dole v command boxe |
-| 8 | **Gramatika do externého súboru** |
-| 9 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
-| 10 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
-| 11 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
-| 12 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
+| 6 | **Live syntax validácia** — podčiarknutie chýb priebežne |
+| 7 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
+| 8 | **História príkazov** — šípky nahor/dole v command boxe |
+| 9 | **Gramatika do externého súboru** |
+| 10 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
+| 11 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
+| 12 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
+| 13 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
