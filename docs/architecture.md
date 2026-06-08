@@ -211,7 +211,19 @@ EN `and`/`or`, DE `und`/`oder`, FR `et`/`ou`, IT `e`/`o`, ES `y`/`o`.
 3. Calls `on_step()` callback.
 4. Sleeps `self.delay` seconds.
 
-Recursion limit: `MAX_D = 500`.
+### Safety limits
+
+- **Recursion** `MAX_D = 1000` levels → raises `KarelLimit('recursion')`. At module load
+  `sys.setrecursionlimit(12000)` and `threading.stack_size(64 MB)` make those 1000 levels
+  (≈3-4 Python frames each) actually reachable before Python's own limit. (Previously
+  `MAX_D=500`, but Python's ~1000-frame limit fired first, making the cap nondeterministic.)
+- **Infinite-loop guard** `MAX_OPS = 100 000` — `_tick()` counts executed statements (in
+  `_rs` plus inside `while`/`repeat` loops, so empty-body loops are caught too) →
+  raises `KarelLimit('loop')`.
+- Both → `on_limit(kind)` → `App._on_limit` stops the program and shows an OK-only dialog.
+  `run()` re-raises `KarelLimit` if `on_limit is None`, so the throwaway interpreter used
+  for typed direct-control commands propagates it to `ControlPanel._do`. Same pattern as
+  `KarelBudget`.
 
 ---
 

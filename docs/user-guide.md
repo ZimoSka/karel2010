@@ -272,5 +272,7 @@ If a menu item is greyed out it means you do not have the required role. Ask you
 | "Karel cannot climb" | Tried to climb 2+ bricks at once | Build stairs (1 brick at a time) or remove excess bricks |
 | "Command is forbidden" | Teacher disabled this command | Read the task — you must solve it without that command |
 | "No bricks left" | Brick inventory is empty | You have used all available bricks |
-| Program seems stuck | Infinite recursion or very slow | Click ⏹ Stop, check for infinite loops/recursion |
+| "Program stopped — infinite loop" | A `while` loop never ends (e.g. `while true`) | Use a condition that eventually becomes false (e.g. `while not wall`) |
+| "Recursion too deep" | A procedure calls itself with no end | Add a stopping condition (e.g. `if not wall then …`) |
+| Program seems stuck | Very slow or a long loop | Click ⏹ Stop; on an infinite loop it also stops itself |
 | Run button disabled | Program is still running | Wait for it to finish or click ⏹ Stop |

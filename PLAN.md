@@ -55,6 +55,12 @@
 - Priame ovládanie pri vyčerpaní rozpočtu: príkaz sa nevykoná + dialóg
 - Ukladá sa do `.karxml`; UI v záložke Pohyb; preklady v 6 jazykoch
 
+### Ochrana proti nekonečnu + rekurzia *(táto session)*
+- `MAX_OPS=100 000` — strop príkazov proti nekonečnému cyklu → `KarelLimit('loop')`
+- `MAX_D=1000` rekurzia (predtým 500, ale Python limit udieral skôr);
+  `sys.setrecursionlimit(12000)` + `threading.stack_size(64MB)` → reálne dosiahnuteľné
+- Oba → dialóg len s OK; `on_limit` callback (vzor ako `on_budget`)
+
 ### GUI layout
 - PanedWindow štruktúra — ťahateľné deliče medzi panelmi *(táto session)*
 - Navigator + Ovládanie fixné a vždy celé viditeľné *(táto session)*
@@ -70,30 +76,22 @@
 
 ---
 
-## 🔴 Vyššia priorita
-
-| # | Úloha |
-|---|-------|
-| 1 | **Ochrana proti nekonečnému cyklu** — `kym pravda rob …` teraz zasekne aplikáciu a žerie CPU (overené reálne — proces bolo treba zabiť). Tvrdý strop na celkový počet vykonaných príkazov (Stanford Karel = 10⁵) → zastav s hláškou. Beží na daemon threade, treba bezpečné prerušenie cez `_stop`/výnimku. |
-
 ## 🟡 Stredná priorita
 
 | # | Úloha |
 |---|-------|
-| 2 | **`GoalKarelNear`** — Karel musí byť v okolí ±1 dlaždice od cieľa |
-| 3 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
-| 4 | **Limit tehál na políčko** (xKarel: max 10) — bránime nekonečnému stohovaniu na jednu dlaždicu |
-| 5 | **Počítadlo efektivity** (CodeHS) — v MissionResult zobraziť „vyriešené na N krokov, M otočení" |
+| 1 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
+| 2 | **Počítadlo efektivity** (CodeHS) — v MissionResult zobraziť „vyriešené na N krokov, M otočení" |
 
 ## 🟢 Nižšia priorita
 
 | # | Úloha |
 |---|-------|
-| 6 | **Live syntax validácia** — podčiarknutie chýb priebežne |
-| 7 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
-| 8 | **História príkazov** — šípky nahor/dole v command boxe |
-| 9 | **Gramatika do externého súboru** |
-| 10 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
-| 11 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
-| 12 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
-| 13 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
+| 3 | **Live syntax validácia** — podčiarknutie chýb priebežne |
+| 4 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
+| 5 | **História príkazov** — šípky nahor/dole v command boxe |
+| 6 | **Gramatika do externého súboru** |
+| 7 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
+| 8 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
+| 9 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
+| 10 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |

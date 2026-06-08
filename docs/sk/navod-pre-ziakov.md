@@ -276,5 +276,7 @@ Ak je nejaká položka menu sivá, nemáš potrebnú úroveň prístupu. Požiad
 | „Karel nevie vylesť" | Pokus o výstup na 2+ tehly naraz | Stav schody (po 1 tehle) alebo odober prebytočné tehly |
 | „Príkaz je zakázaný" | Učiteľ zakázal tento príkaz | Prečítaj zadanie — musíš úlohu vyriešiť bez tohto príkazu |
 | „Nemáš žiadne tehly" | Inventár tehál je prázdny | Spotreboval si všetky dostupné tehly |
-| Program akoby zamrzol | Nekonečná rekurzia alebo veľmi pomalý chod | Klikni ⏹ Stop, skontroluj nekonečné slučky/rekurziu |
+| „Program zastavený — nekonečný cyklus" | `kym` slučka sa nikdy neskončí (napr. `kym pravda`) | Sprav podmienku, ktorá raz prestane platiť (napr. `kym nie stena`) |
+| „Príliš hlboká rekurzia" | Procedúra volá samú seba bez konca | Pridaj podmienku ukončenia (napr. `ak nie stena potom …`) |
+| Program akoby zamrzol | Veľmi pomalý chod alebo dlhá slučka | Klikni ⏹ Stop; program sa pri nekonečnom cykle aj sám zastaví |
 | Tlačidlo Spustiť je sivé | Program stále beží | Počkaj na dokončenie alebo klikni ⏹ Stop |

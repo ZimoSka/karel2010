@@ -124,8 +124,9 @@ settings.max_brick_height : int   # max výška stohu na kladenie tehiel; kvader
 - `pick_brick` / `pick_big_brick` — stena alebo žiadna tehla na zdvihnutie
 - `mark` — prázdne zásoby značiek
 
-Výnimky (stále hádžu `KarelError`): rekurzia > `MAX_D`, neznáma procedúra, zakázaný príkaz.
+Výnimky (stále hádžu `KarelError`): neznáma procedúra, zakázaný príkaz.
 Výnimka `KarelBudget('steps'|'turns')`: vyčerpaný rozpočet pohybu — zastaví program a zobrazí `BudgetDialog` (OK/Reset). Pozri „Pohybové obmedzenia".
+Výnimka `KarelLimit('loop'|'recursion')`: nekonečný cyklus (`MAX_OPS`) alebo hlboká rekurzia (`MAX_D`) — zastaví program a zobrazí dialóg (len OK). Pozri „Interpreter".
 
 ---
 
@@ -314,9 +315,17 @@ ak (stena alebo tehla) a nie znacka potom ...
 
 ### Interpreter
 - Beží na **daemon thread** (`threading.Thread(..., daemon=True)`)
-- Callbacky (`on_step`, `on_finish`, `on_error`) sa spúšťajú cez `canvas.after(0, ...)` — nutné pre tkinter na Windows
+- Callbacky (`on_step`, `on_finish`, `on_error`, `on_budget`, `on_limit`) sa spúšťajú cez `canvas.after(0, ...)` — nutné pre tkinter na Windows
 - `KarelInterpreter._cmd(node)` → skontroluje `disabled_cmds` → zavolá `World` metódu → `on_step()` → `sleep(delay)`
-- `MAX_D = 500` — limit rekurzie
+- **Rekurzia** `MAX_D = 1000` úrovní → pri prekročení `KarelLimit('recursion')`.
+  Modul pri štarte robí `sys.setrecursionlimit(12000)` + `threading.stack_size(64MB)`,
+  aby tých 1000 úrovní (≈3-4 Python rámce/úroveň) bolo reálne dosiahnuteľných pred Python limitom.
+- **Ochrana proti nekonečnému cyklu** `MAX_OPS = 100 000` — `_tick()` počíta vykonané
+  príkazy (v `_rs` + v `kym`/`opakuj` slučkách, takže aj prázdne telo slučky sa zachytí);
+  pri prekročení `KarelLimit('loop')`.
+- `KarelLimit` (kind `'loop'|'recursion'`) → `on_limit` → `App._on_limit` zastaví program
+  a zobrazí dialóg (len OK). `run()` re-raisuje ak `on_limit is None` (priame ovládanie
+  zachytí v `ControlPanel._do`). Rovnaký vzor ako `KarelBudget`.
 
 ---
 
