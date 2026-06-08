@@ -41,6 +41,11 @@
 - Zvýraznenie komentárov — `//`, `#`, `{ }` v editore
 - `zdvihni_kvader` ako programový príkaz
 
+### Jazyk — logické spojky *(táto session)*
+- `AND`/`OR`/`NOT` + zátvorky `( )` v podmienkach `ak`/`kym`
+- Priorita NOT > AND > OR; rekurzívny parser + `_ev`
+- Kľúčové slová vo všetkých 7 jazykoch (SK `a`/`alebo` …)
+
 ### GUI layout
 - PanedWindow štruktúra — ťahateľné deliče medzi panelmi *(táto session)*
 - Navigator + Ovládanie fixné a vždy celé viditeľné *(táto session)*
@@ -55,12 +60,6 @@
 - Pravidlo: dôležité info okamžite do `.md` súborov *(táto session)*
 
 ---
-
-## 🔴 Vyššia priorita
-
-| # | Úloha |
-|---|-------|
-| 1 | **Logické spojky v jazyku** — `a` / `alebo` (AND/OR) v podmienkach Karel programu |
 
 ## 🟡 Stredná priorita
 

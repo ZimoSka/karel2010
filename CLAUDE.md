@@ -268,6 +268,7 @@ zdrojový text → tokenize() → list[Tok] → Parser.parse() → AST → Karel
 ```python
 CMD_T  = {'FORWARD','BACK','LEFT','RIGHT','DROP','PICK','DROP_BIG','MARK','CLEAR','SLOWLY','QUICKLY'}
 COND_T = {'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
+# Logické: NOT, AND, OR + LPAREN '(' / RPAREN ')'
 ```
 
 ### AST uzly
@@ -278,8 +279,24 @@ CallN(name, line)         # volanie procedúry
 RepN(count, body, line)   # opakuj N krat
 WhileN(cond, body, line)
 IfN(cond, then_body, else_body, line)
-CondN(cond_type, negated)
+CondN(cond_type, negated) # atóm podmienky
+NotN(child)               # nie <expr>
+AndN(left, right)         # left a right
+OrN(left, right)          # left alebo right
 ```
+
+### Podmienky — logické spojky
+Podmienky v `ak`/`kym` sú výrazy s prioritou **NOT > AND > OR**, zátvorky `( )` ju menia.
+```
+ak stena alebo znacka potom ...
+kym nie stena a nie tehla rob ...
+ak (stena alebo tehla) a nie znacka potom ...
+```
+- Parser: rekurzívny zostup `_or_expr → _and_expr → _not_expr → _atom`
+- `_ev(node)` rekurzívne; short-circuit cez Python `and`/`or` (atómy nemajú vedľajšie účinky)
+- Kľúčové slová: SK `a`/`alebo`, EN `and`/`or`, DE `und`/`oder`, FR `et`/`ou`, IT `e`/`o`, ES `y`/`o`
+- POZOR: `check_free` (volno) a `check_wall` (stena) NIE sú opačné na okraji mriežky —
+  `volno` ignoruje okraj, `stena` ho deteguje. Na chôdzu k stene použiť `kym nie stena`.
 
 ### Interpreter
 - Beží na **daemon thread** (`threading.Thread(..., daemon=True)`)
