@@ -7,11 +7,19 @@ Spustenie:  python karel2010.py
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import threading, time, re, os, json, math, struct, configparser, html as _html_mod
+import sys, threading, time, re, os, json, math, struct, configparser, html as _html_mod
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from enum import Enum
 from copy import deepcopy
+
+# Rekurzia: MAX_D=1000 úrovní Karel rekurzie. Interpreter má ~3-4 Python rámce
+# na úroveň, preto zdvíhame Python limit aj veľkosť stacku vlákna interpretera.
+sys.setrecursionlimit(12000)
+try:
+    threading.stack_size(64 * 1024 * 1024)   # 64 MB stack pre hlboké rekurzie
+except (ValueError, RuntimeError):
+    pass   # niektoré platformy nepovoľujú — ostane default
 
 # Z-buffer renderer — vyžaduje numpy + Pillow (pip install pillow numpy)
 try:
@@ -48,6 +56,8 @@ class KarelError(Exception): pass
 class KarelStop(Exception): pass   # tiché zastavenie (napr. narazenie do steny)
 class KarelBudget(Exception):      # vyčerpaný rozpočet pohybu (kroky/otočenia)
     def __init__(self, kind): self.kind = kind   # 'steps' | 'turns'
+class KarelLimit(Exception):       # bezpečnostný strop: nekonečný cyklus / hlboká rekurzia
+    def __init__(self, kind): self.kind = kind   # 'loop' | 'recursion'
 
 
 # =========================================================================
@@ -940,14 +950,19 @@ def parse(src): return Parser(tokenize(src)).parse()
 class StopEx(Exception): pass
 
 class KarelInterpreter:
-    MAX_D=500
+    MAX_D=1000          # max hĺbka rekurzie (úrovní volania procedúr)
+    MAX_OPS=100_000     # bezpečnostný strop proti nekonečnému cyklu
     def __init__(self,world):
         self.world=world; self.delay=0.25
-        self._stop=False; self._d=0; self.procedures={}
-        self.on_step=self.on_error=self.on_finish=self.on_budget=None
+        self._stop=False; self._d=0; self._ops=0; self.procedures={}
+        self.on_step=self.on_error=self.on_finish=self.on_budget=self.on_limit=None
     def stop(self): self._stop=True
+    def _tick(self):
+        """Počíta vykonané kroky interpretera; chráni pred nekonečným cyklom."""
+        self._ops += 1
+        if self._ops > self.MAX_OPS: raise KarelLimit('loop')
     def run(self,prog):
-        self._stop=False; self._d=0; self.procedures=prog.procedures
+        self._stop=False; self._d=0; self._ops=0; self.procedures=prog.procedures
         try:
             self._ex(prog.main_stmts)
             if self.on_finish: self.on_finish(None)
@@ -958,9 +973,15 @@ class KarelInterpreter:
         except KarelBudget as e:
             if self.on_budget: self.on_budget(e.kind)
             else: raise                                # priame ovládanie zachytí samo
-        except (KarelError,RecursionError) as e:
-            m="Príliš hlboká rekurzia!" if isinstance(e,RecursionError) else str(e)
-            if self.on_error: self.on_error(m)
+        except KarelLimit as e:
+            if self.on_limit: self.on_limit(e.kind)
+            else: raise                                # priame ovládanie zachytí samo
+        except RecursionError:
+            # poistka ak by Python limit udrel skôr ako MAX_D
+            if self.on_limit: self.on_limit('recursion')
+            elif self.on_error: self.on_error("Príliš hlboká rekurzia!")
+        except KarelError as e:
+            if self.on_error: self.on_error(str(e))
         except Exception as e:
             if self.on_error: self.on_error(f"Chyba: {e}")
     def _ex(self,stmts):
@@ -968,21 +989,24 @@ class KarelInterpreter:
             if self._stop: raise StopEx()
             self._rs(s)
     def _rs(self,s):
+        self._tick()
         if isinstance(s,CmdN): self._cmd(s)
         elif isinstance(s,CallN): self._call(s.name)
         elif isinstance(s,RepN):
             for _ in range(s.count):
                 if self._stop: raise StopEx()
+                self._tick()
                 self._ex(s.body)
         elif isinstance(s,WhileN):
             while self._ev(s.cond):
                 if self._stop: raise StopEx()
+                self._tick()
                 self._ex(s.body)
         elif isinstance(s,IfN):
             self._ex(s.then_body if self._ev(s.cond) else s.else_body)
     def _call(self,name):
         self._d+=1
-        if self._d>self.MAX_D: raise KarelError("Príliš hlboká rekurzia!")
+        if self._d>self.MAX_D: raise KarelLimit('recursion')
         try:
             nl=name.lower()
             if nl not in self.procedures: raise KarelError(f"Neznámy príkaz '{name}'")
@@ -1846,11 +1870,12 @@ class ProgramPanel(tk.Frame):
 # =========================================================================
 
 class ControlPanel(tk.Frame):
-    def __init__(self,parent,get_world,on_action=None,get_procs=None,on_budget=None,**kw):
+    def __init__(self,parent,get_world,on_action=None,get_procs=None,on_budget=None,on_limit=None,**kw):
         super().__init__(parent,bg='#0a0a1c',**kw)
         self.get_world=get_world; self.on_action=on_action
         self.get_procs=get_procs   # vracia dict procedúr z editora
         self.on_budget=on_budget   # callback(kind) pri vyčerpaní rozpočtu
+        self.on_limit=on_limit     # callback(kind) pri nekonečnom cykle / hlbokej rekurzii
         self._build()
 
     def _build(self):
@@ -1997,6 +2022,8 @@ class ControlPanel(tk.Frame):
             if self.on_action: self.on_action(True, None)
         except KarelBudget as e:
             if self.on_budget: self.on_budget(e.kind)
+        except KarelLimit as e:
+            if self.on_limit: self.on_limit(e.kind)
         except (KarelError, Exception) as e:
             if self.on_action: self.on_action(False, str(e))
 
@@ -3196,7 +3223,8 @@ class App(tk.Tk):
         self._ctrl=ControlPanel(rp,lambda:self._world,
                                  on_action=self._on_direct,
                                  get_procs=lambda:self._last_procs,
-                                 on_budget=self._on_budget)
+                                 on_budget=self._on_budget,
+                                 on_limit=self._on_limit)
         self._ctrl.pack(fill='x',side='top')
         hpane.add(rp,stretch='never',minsize=130)
 
@@ -3310,6 +3338,7 @@ class App(tk.Tk):
         it.on_error=_safe(self._on_err)
         it.on_finish=_safe(self._on_fin)
         it.on_budget=_safe(self._on_budget)
+        it.on_limit=_safe(self._on_limit)
         self._interp=it
         threading.Thread(target=it.run,args=(prog,),daemon=True).start()
 
@@ -3385,6 +3414,16 @@ class App(tk.Tk):
         msg = msg.replace('\\n', '\n')
         self._status(_T('budget.header'), "#cc8844")
         BudgetDialog(self, msg, on_reset=self._reset)
+
+    def _on_limit(self, kind):
+        """Bezpečnostný strop — nekonečný cyklus alebo hlboká rekurzia. Dialóg len OK."""
+        self._running = False
+        if self._interp: self._interp.stop()
+        self._set_running_ui(False)
+        self._canvas.render()
+        msg = _T('limit.msg_loop') if kind == 'loop' else _T('limit.msg_recursion')
+        self._status(_T('limit.header'), "#cc4444")
+        messagebox.showwarning(_T('limit.title'), msg.replace('\\n', '\n'))
 
     def _on_direct(self,ok,err=None):
         self._canvas.after(0,self._canvas.render)
