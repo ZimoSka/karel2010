@@ -697,7 +697,8 @@ def _fallback_bkw() -> None:
         for v in vs: KW[v] = t
     _LANG_PRIMARY['sk'] = {
         'BEGIN':'zaciatok','END':'koniec','PROCEDURE':'prikaz','REPEAT':'opakuj',
-        'TIMES':'krat','END_REPEAT':'*opakuj','WHILE':'kym','NOT':'nie','DO':'rob',
+        'TIMES':'krat','END_REPEAT':'*opakuj','WHILE':'kym','NOT':'nie',
+        'AND':'a','OR':'alebo','DO':'rob',
         'END_WHILE':'*kym','IF':'ak','THEN':'potom','ELSE':'inak','END_IF':'*ak',
         'FORWARD':'dopredu','BACK':'dozadu','LEFT':'vlavo','RIGHT':'vpravo',
         'DROP':'poloz','PICK':'zdvihni','DROP_BIG':'poloz_velku',
@@ -707,7 +708,8 @@ def _fallback_bkw() -> None:
     }
     _LANG_PRIMARY['en'] = {
         'BEGIN':'begin','END':'end','PROCEDURE':'procedure','REPEAT':'repeat',
-        'TIMES':'times','END_REPEAT':'*repeat','WHILE':'while','NOT':'not','DO':'do',
+        'TIMES':'times','END_REPEAT':'*repeat','WHILE':'while','NOT':'not',
+        'AND':'and','OR':'or','DO':'do',
         'END_WHILE':'*while','IF':'if','THEN':'then','ELSE':'else','END_IF':'*if',
         'FORWARD':'forward','BACK':'back','LEFT':'left','RIGHT':'right',
         'DROP':'drop','PICK':'pick','DROP_BIG':'drop_big',
@@ -746,6 +748,8 @@ def tokenize(src):
         c=src[i]
         if c=='\n': ln+=1;i+=1;continue
         if c.isspace(): i+=1;continue
+        if c=='(': toks.append(Tok('LPAREN','(',ln)); i+=1; continue
+        if c==')': toks.append(Tok('RPAREN',')',ln)); i+=1; continue
         if c=='*':
             j=i+1
             while j<n and (src[j].isalpha() or src[j]=='_' or ord(src[j])>127): j+=1
@@ -776,6 +780,12 @@ class IfN(AN):
     def __init__(self,c,t,e,ln=0): self.cond=c;self.then_body=t;self.else_body=e;self.line=ln
 class CondN(AN):
     def __init__(self,ct,neg=False): self.cond_type=ct;self.negated=neg
+class NotN(AN):
+    def __init__(self,child): self.child=child
+class AndN(AN):
+    def __init__(self,l,r): self.left=l;self.right=r
+class OrN(AN):
+    def __init__(self,l,r): self.left=l;self.right=r
 
 class ParseErr(Exception):
     def __init__(self,m,ln=0): super().__init__(f"Riadok {ln}: {m}");self.line=ln
@@ -839,10 +849,30 @@ class Parser:
         if self.pk().t in CLOSE_T: self.eat()
         return IfN(c,tb,eb,t.ln)
     def _cond(self):
-        neg=False
-        if self.pk().t=='NOT': self.eat(); neg=True
+        # Rekurzívny zostup: priorita NOT > AND > OR
+        return self._or_expr()
+    def _or_expr(self):
+        left=self._and_expr()
+        while self.pk().t=='OR':
+            self.eat(); right=self._and_expr(); left=OrN(left,right)
+        return left
+    def _and_expr(self):
+        left=self._not_expr()
+        while self.pk().t=='AND':
+            self.eat(); right=self._not_expr(); left=AndN(left,right)
+        return left
+    def _not_expr(self):
+        if self.pk().t=='NOT':
+            self.eat(); return NotN(self._not_expr())
+        return self._atom()
+    def _atom(self):
         t=self.pk()
-        if t.t in COND_T: self.eat(); return CondN(t.t,neg)
+        if t.t=='LPAREN':
+            self.eat(); e=self._or_expr()
+            if self.pk().t=='RPAREN': self.eat()
+            else: raise ParseErr("Chýba pravá zátvorka ')'",self.pk().ln)
+            return e
+        if t.t in COND_T: self.eat(); return CondN(t.t)
         raise ParseErr(f"Podmienka očakávaná, dostal '{t.v}'",t.ln)
 
 def parse(src): return Parser(tokenize(src)).parse()
@@ -912,12 +942,16 @@ class KarelInterpreter:
         elif c=='QUICKLY':  self.delay=max(self.delay/2,0.02)
         if self.on_step: self.on_step()
         if self.delay>0: time.sleep(self.delay)
-    def _ev(self,cond):
-        w=self.world; ct=cond.cond_type
+    def _ev(self,node):
+        if isinstance(node,NotN): return not self._ev(node.child)
+        if isinstance(node,AndN): return self._ev(node.left) and self._ev(node.right)
+        if isinstance(node,OrN):  return self._ev(node.left) or  self._ev(node.right)
+        # CondN — atóm
+        w=self.world; ct=node.cond_type
         r=(w.check_wall() if ct=='WALL' else w.check_brick() if ct=='BRICK'
            else w.check_free() if ct=='FREE' else w.check_sign() if ct=='SIGN'
            else True if ct=='TRUE' else False)
-        return (not r) if cond.negated else r
+        return (not r) if node.negated else r
 
 
 # =========================================================================
@@ -1515,7 +1549,10 @@ def highlight(tw, disabled_cmds=None, disable_procedure=False):
     CTRL={'begin','zaciatok','začiatok','end','koniec','procedure','prikaz','príkaz',
           'repeat','opakuj','times','krat','krát','*repeat','*opakuj',
           'while','kym','kým','do','rob','*while','*kym','*kým',
-          'if','ak','then','tak','potom','else','inak','*if','*ak','not','nie'}
+          'if','ak','then','tak','potom','else','inak','*if','*ak','not','nie',
+          'and','a','aj','und','et','y','or','alebo','oder','ou',
+          # POZN.: 'e'/'o' (IT/ES and/or) sa nezvýrazňujú — kolízia s bežnými písmenami
+          }
     CMDS={'forward','dopredu','back','dozadu','vzad','left','vlavo','dolava',
           'vľavo','doľava','right','vpravo','doprava','drop','poloz','pick',
           'zdvihni','zodvihni','drop_big','poloz_velku','mark','oznac','clear',
@@ -1565,10 +1602,16 @@ def _cmds_structs() -> list:
 
 def _cmds_conds(disabled=None) -> list:
     """Zoznam podmienok v aktuálnom prog_lang. Tokeny v množine disabled sú vynechané."""
-    p = _primary_kw; L = _current_prog_lang; n = p('NOT',L)
+    p = _primary_kw; L = _current_prog_lang
+    n = p('NOT',L); a = p('AND',L); o = p('OR',L)
     d = disabled or set()
     conds = [p(t,L) for t in ['WALL','BRICK','FREE','SIGN','TRUE','FALSE'] if t not in d]
     conds += [f'{n} {p(t,L)}' for t in ['WALL','BRICK'] if t not in d]
+    # Príklady logických spojok
+    if 'WALL' not in d and 'SIGN' not in d:
+        conds.append(f'{p("WALL",L)} {o} {p("SIGN",L)}')
+    if 'FREE' not in d and 'BRICK' not in d:
+        conds.append(f'{p("FREE",L)} {a} {n} {p("BRICK",L)}')
     return conds
 
 class ProgramPanel(tk.Frame):
