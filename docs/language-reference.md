@@ -90,7 +90,8 @@ in code templates.
 
 ## Conditions
 
-Conditions are used inside `while`, `if`, and can be negated with `not`.
+Conditions are used inside `while` and `if`. Atomic conditions can be negated with
+`not` and combined with the logical connectives `and` / `or` and parentheses `( )`.
 
 | Token | SK | EN | DE | FR | IT | ES | Pattis | True when… |
 |-------|----|----|----|----|----|----|--------|-----------|
@@ -106,6 +107,28 @@ Conditions are used inside `while`, `if`, and can be negated with `not`.
 - BRICK: SK: `je_tehla` · EN: `is_brick`, `there_is_brick` · ES: `hay_ladrillo`, `es_ladrillo`
 - FREE: EN: `is_free`, `front_is_clear`, `frontisclear` · ES: `hay_libre`, `es_libre`
 - SIGN: SK: `značka`, `je_znacka` · EN: `is_sign`, `next_to_a_beeper`, `nexttoabeeper` · ES: `señal`, `hay_senal`, `hay_señal`
+
+### Logical connectives
+
+| Token | SK | EN | DE | FR | IT | ES |
+|-------|----|----|----|----|----|----|
+| NOT | `nie` | `not` | `nicht` | `pas` | `non` | `no` |
+| AND | `a` | `and` | `und` | `et` | `e` | `y` |
+| OR | `alebo` | `or` | `oder` | `ou` | `o` | `o` |
+
+**Alias:** AND SK: `aj`
+
+**Precedence:** `NOT` > `AND` > `OR`. Use parentheses `( )` to override.
+
+```
+if  wall or sign  then  left  end
+while  not wall and not brick  do  forward  end
+if  (wall or brick) and not sign  then  back  end
+```
+
+> **Note:** `free` (no brick ahead) and `wall` (wall/border/kvader ahead) are **not**
+> exact opposites at the grid border — `free` ignores the border, `wall` detects it.
+> To walk up to a wall use `while not wall`, not `while free`.
 
 ---
 
@@ -172,10 +195,11 @@ end                    ← END
 
 **Syntax:**
 ```
-while  not wall  do    ← WHILE + [NOT] + condition + DO
+while  not wall  do    ← WHILE + condition + DO
   forward
 end                    ← END
 ```
+The condition may be a logical expression: `while not wall and not brick do …`
 
 ---
 
@@ -198,6 +222,7 @@ else                   ← ELSE (optional)
   forward
 end                    ← END
 ```
+The condition may be a logical expression: `if wall or sign then … end`
 
 ---
 

@@ -25,9 +25,21 @@ Karel is intended as a bridge — it is **not** a replacement for Logo or Pascal
 | 4 | Counted repetition | `repeat N times` |
 | 5 | Condition-based repetition | `while condition do` |
 | 6 | Branching | `if condition then … else` |
-| 7 | Recursion | Tail recursion, counting with bricks |
+| 7 | Compound conditions | `not`, `and`, `or`, parentheses `( )` |
+| 8 | Recursion | Tail recursion, counting with bricks |
 
 A key pedagogical insight from classroom experiments: **`while` is conceptually harder than `repeat`** for younger students. Plan extra time for it.
+
+**Logical connectives (stage 7):** students can combine conditions:
+```
+if wall or sign then left end
+while not wall and not brick do forward end
+if (wall or brick) and not sign then back end
+```
+Precedence is **`not` > `and` > `or`** (like "times before plus"); parentheses
+override it. Connectives work in every language (DE `und`/`oder`, FR `et`/`ou`, …) —
+see `docs/language-reference.md`. Introduce only after simple conditions are solid,
+otherwise students confuse `and`/`or`.
 
 ---
 

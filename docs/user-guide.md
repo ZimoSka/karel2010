@@ -201,7 +201,14 @@ end
 | `free` | No brick in front |
 | `sign` | Mark on Karel's tile |
 
-All conditions can be negated: `not wall`, `not brick`, etc.
+Conditions can be negated with `not` and combined with `and` / `or` (parentheses
+allowed). Precedence: **not** > **and** > **or**.
+
+```
+if wall or sign then left end
+while not wall and not brick do forward end
+if (wall or brick) and not sign then back end
+```
 
 ---
 

@@ -12,7 +12,7 @@ Vlastnosti:
 - **3D pohľad** s Z-buffer renderovaním (perspektívna projekcia, ovládanie myšou)
 - **Editor programov** so zvýrazňovaním syntaxe a filtrom príkazov
 - **Priame ovládanie** Karla tlačidlami aj písanými príkazmi
-- **Plnohodnotný interpreter** jazyka Karel (procedúry, cykly, podmienky)
+- **Plnohodnotný interpreter** jazyka Karel (procedúry, cykly, podmienky s `nie`/`a`/`alebo` + zátvorky)
 - **XML formát svetov** na ukladanie a načítavanie (`.karxml`)
 - **Editor nastavení sveta** — zakázané príkazy, zámok kamery, limity inventára
 - **Systém misií** — definuj cieľové podmienky, vyhodnoť úspech/neúspech po skončení programu

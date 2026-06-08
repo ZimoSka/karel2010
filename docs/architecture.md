@@ -141,7 +141,8 @@ World methods are called directly (move_forward, drop_brick, etc.)
 CMD_T   = {'FORWARD','BACK','LEFT','RIGHT','DROP','PICK','DROP_BIG','MARK','CLEAR','SLOWLY','QUICKLY'}
 COND_T  = {'WALL','BRICK','FREE','SIGN','TRUE','FALSE'}
 CLOSE_T = {'END','END_REPEAT','END_WHILE','END_IF'}
-# Plus: BEGIN, PROCEDURE, REPEAT, TIMES, WHILE, NOT, DO, IF, THEN, ELSE, NUM, ID
+# Plus: BEGIN, PROCEDURE, REPEAT, TIMES, WHILE, NOT, AND, OR, DO, IF, THEN, ELSE,
+#       LPAREN '(' , RPAREN ')' , NUM, ID
 ```
 
 The `KW` dict maps every keyword variant to its token type:
@@ -160,8 +161,28 @@ CallN(name, line)        # user procedure call
 RepN(count, body, line)  # repeat N times
 WhileN(cond, body, line)
 IfN(cond, then_body, else_body, line)
-CondN(cond_type, negated)
+CondN(cond_type, negated)  # atomic condition
+NotN(child)                # not <expr>
+AndN(left, right)          # <expr> and <expr>
+OrN(left, right)           # <expr> or <expr>
 ```
+
+### Condition expressions (logical connectives)
+
+Conditions in `if`/`while` are expressions with precedence **NOT > AND > OR**;
+parentheses `( )` override it. The parser uses recursive descent:
+
+```
+cond     := or_expr
+or_expr  := and_expr (OR and_expr)*
+and_expr := not_expr (AND not_expr)*
+not_expr := NOT not_expr | atom
+atom     := '(' or_expr ')' | COND_T
+```
+
+`KarelInterpreter._ev(node)` evaluates recursively, short-circuiting via Python
+`and`/`or` (atoms have no side effects). Keywords per language: SK `a`/`alebo`,
+EN `and`/`or`, DE `und`/`oder`, FR `et`/`ou`, IT `e`/`o`, ES `y`/`o`.
 
 ### Interpreter
 

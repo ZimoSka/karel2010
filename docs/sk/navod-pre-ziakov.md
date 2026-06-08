@@ -197,7 +197,22 @@ koniec
 | `volno` | Pred Karlom nie je tehla |
 | `znacka` | Na políčku Karla je značka |
 
-Všetky podmienky sa dajú negovať: `nie stena`, `nie tehla`, atď.
+### Spájanie podmienok (`nie`, `a`, `alebo`)
+
+Podmienku môžeš **negovať** slovom `nie` a viac podmienok **spojiť** spojkami
+`a` (musia platiť obe) a `alebo` (stačí jedna). Na zoskupenie použi zátvorky `( )`.
+
+```
+ak stena alebo znacka potom vlavo koniec
+kym nie stena a nie tehla rob dopredu koniec
+ak (stena alebo tehla) a nie znacka potom dozadu koniec
+```
+
+Najskôr platí `nie`, potom `a`, nakoniec `alebo` — ako v matematike „krát pred plus".
+Zátvorkami toto poradie zmeníš.
+
+> **Tip:** Na chôdzu až k stene použi `kym nie stena` (nie `kym volno`) —
+> `volno` totiž nereaguje na okraj miestnosti.
 
 ---
 

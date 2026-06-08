@@ -134,12 +134,28 @@ koniec
 | `pravda` | `true` | Vždy pravda |
 | `nepravda` | `false` | Vždy nepravda |
 
-Podmienky sa dajú negovať pomocou `nie`:
+### Logické spojky
+
+Podmienky sa dajú negovať pomocou `nie` a spájať spojkami `a` / `alebo`.
+Na zoskupenie slúžia zátvorky `( )`. Priorita: **nie > a > alebo**.
+
+| Slovensky | Anglicky | Nemecky | Francúzsky | Taliansky | Španielsky |
+|-----------|----------|---------|------------|-----------|------------|
+| `nie` | `not` | `nicht` | `pas` | `non` | `no` |
+| `a` (`aj`) | `and` | `und` | `et` | `e` | `y` |
+| `alebo` | `or` | `oder` | `ou` | `o` | `o` |
 
 ```
 kym nie stena rob dopredu koniec
 ak nie znacka potom oznac koniec
+ak stena alebo znacka potom vlavo koniec
+kym nie stena a nie tehla rob dopredu koniec
+ak (stena alebo tehla) a nie znacka potom dozadu koniec
 ```
+
+> **Pozor:** `volno` a `stena` nie sú presné opaky na okraji miestnosti —
+> `volno` okraj ignoruje, `stena` ho deteguje. Na chôdzu k stene použi
+> `kym nie stena`, nie `kym volno`.
 
 ---
 

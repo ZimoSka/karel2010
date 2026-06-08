@@ -26,7 +26,7 @@ See [docs/language-reference.md](docs/language-reference.md) for the full keywor
 - **3D view** with Z-buffer rendering (perspective projection, mouse control)
 - **Program editor** with syntax highlighting and command filter
 - **Direct control** of Karel via buttons and typed commands
-- **Full interpreter** for the Karel language (procedures, loops, conditionals)
+- **Full interpreter** for the Karel language (procedures, loops, conditionals with `not`/`and`/`or` + parentheses)
 - **XML world format** for saving and loading worlds (`.karxml`)
 - **World settings editor** — restrict commands, lock camera, limit brick inventory
 - **Mission system** — define goal conditions, evaluate success/failure after the program runs

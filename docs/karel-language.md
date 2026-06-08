@@ -147,12 +147,28 @@ end
 | `pravda` | `true` | `true` | Always true |
 | `nepravda` | `false` | `false` | Always false |
 
-Conditions can be negated with `not`:
+### Logical connectives
+
+Atomic conditions can be negated with `not` and combined with `and` / `or`.
+Use parentheses `( )` to group. Precedence: **NOT > AND > OR**.
+
+| Slovak | English | German | French | Italian | Spanish |
+|--------|---------|--------|--------|---------|---------|
+| `nie` | `not` | `nicht` | `pas` | `non` | `no` |
+| `a` (`aj`) | `and` | `und` | `et` | `e` | `y` |
+| `alebo` | `or` | `oder` | `ou` | `o` | `o` |
 
 ```
 while not wall do forward end
 if not sign then mark end
+if wall or sign then left end
+while not wall and not brick do forward end
+if (wall or brick) and not sign then back end
 ```
+
+> **Note:** `free` and `wall` are not exact opposites at the grid border —
+> `free` ignores the border while `wall` detects it. To walk up to a wall use
+> `while not wall`, not `while free`.
 
 ---
 

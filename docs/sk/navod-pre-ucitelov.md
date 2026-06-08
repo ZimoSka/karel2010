@@ -25,9 +25,21 @@ Karel je **premostenie** — nie náhrada za Logo ani Pascal. Jeho cieľom je na
 | 4 | Počítané opakovanie | `opakuj N krat` |
 | 5 | Podmienené opakovanie | `kym podmienka rob` |
 | 6 | Vetvenie | `ak podmienka potom … inak` |
-| 7 | Rekurzia | Chvostová rekurzia, počítadlo z tehál |
+| 7 | Zložené podmienky | `nie`, `a`, `alebo`, zátvorky `( )` |
+| 8 | Rekurzia | Chvostová rekurzia, počítadlo z tehál |
 
 Kľúčový pedagogický poznaток z triednych experimentov: **`kym` je pre mladších žiakov konceptuálne ťažší ako `opakuj`**. Vyhraď mu extra čas.
+
+**Logické spojky (stupeň 7):** žiaci môžu kombinovať podmienky:
+```
+ak stena alebo znacka potom vlavo koniec
+kym nie stena a nie tehla rob dopredu koniec
+ak (stena alebo tehla) a nie znacka potom dozadu koniec
+```
+Priorita je **`nie` > `a` > `alebo`** (analógia „krát pred plus"); zátvorky ju menia.
+Spojky fungujú vo všetkých jazykoch (EN `and`/`or`, DE `und`/`oder`, …) — viď
+`docs/sk/jazyk-karla.md`. Odporúčanie: zaveď až po istom zvládnutí jednoduchých
+podmienok, inak žiaci miešajú `a`/`alebo`.
 
 ---
 
