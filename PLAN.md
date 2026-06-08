@@ -41,6 +41,13 @@
 - Zvýraznenie komentárov — `//`, `#`, `{ }` v editore
 - `zdvihni_kvader` ako programový príkaz
 
+### GUI layout
+- PanedWindow štruktúra — ťahateľné deliče medzi panelmi *(táto session)*
+- Navigator + Ovládanie fixné a vždy celé viditeľné *(táto session)*
+- Príkazy + Filter zúžené, scrollovateľné *(táto session)*
+- Pravý panel zúžený (~210px), 3D svet dostane väčšinu šírky *(táto session)*
+- Tmavá ttk téma (clam) — bez bielych plôch *(táto session)*
+
 ### Dokumentácia
 - `CLAUDE.md` — kompletná architektúra, pravidlá, GoalCondition, _base vs _world *(táto session)*
 - `PLAN.md` — tento súbor *(táto session)*
@@ -59,9 +66,9 @@
 
 | # | Úloha |
 |---|-------|
-| 4 | **`GoalKarelNear`** — Karel musí byť v okolí ±1 dlaždice od cieľa |
-| 5 | **Pohybové obmedzenia** — max krokov/otočení atď. |
-| 6 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
+| 2 | **`GoalKarelNear`** — Karel musí byť v okolí ±1 dlaždice od cieľa |
+| 3 | **Pohybové obmedzenia** — max krokov/otočení atď. |
+| 4 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
 
 ## 🟢 Nižšia priorita
 
@@ -75,4 +82,3 @@
 | 10 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
 | 11 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
 | 12 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
-| 13 | **Úprava GUI layoutu** — okná sa neprekrývajú; fixný layout alebo docking panelov |
