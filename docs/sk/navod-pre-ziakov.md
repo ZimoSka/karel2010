@@ -115,6 +115,13 @@ Značky sú ploché symboly, ktoré Karel kladie **na políčko kde stojí** (`o
 
 Ak učiteľ nastavil obmedzenie, Karel začína s daným počtom tehál alebo značiek. Aktuálny inventár je zobrazený v paneli **Navigátor**. Keď počet klesne na nulu, daný príkaz skončí chybou.
 
+### Rozpočet krokov a otočení
+
+Učiteľ môže obmedziť **počet krokov** alebo **otočení**, ktoré máš k dispozícii
+(počíta sa od posledného **Resetu**). Keď ich minieš, program sa zastaví a objaví sa
+okno s tlačidlami **OK** a **Reset**. Vtedy treba úlohu vyriešiť **úspornejšie** —
+menej krokov, šikovnejšia cesta. To isté platí pri ovládaní tlačidlami.
+
 ---
 
 ## Jazyk Karel — rýchla referencia

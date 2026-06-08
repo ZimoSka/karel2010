@@ -119,6 +119,13 @@ Marks are flat symbols placed **on Karel's current tile** (`mark`). Karel can re
 
 If the teacher has set a limit, Karel starts with a fixed number of bricks or marks. The current inventory is shown in the **Navigator panel**. When the count reaches zero, the corresponding command will fail with an error.
 
+### Step and turn budget
+
+The teacher can limit the **number of steps** or **turns** you have available (counted
+from the last **Reset**). When you run out, the program stops and a dialog appears with
+**OK** and **Reset** buttons — solve the task more efficiently (fewer steps, a smarter
+path). The same applies to the direct-control buttons.
+
 ---
 
 ## The Karel language — quick reference

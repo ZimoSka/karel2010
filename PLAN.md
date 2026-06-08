@@ -46,6 +46,15 @@
 - Priorita NOT > AND > OR; rekurzívny parser + `_ev`
 - Kľúčové slová vo všetkých 7 jazykoch (SK `a`/`alebo` …)
 
+### Pohybové obmedzenia *(táto session)*
+- `max_steps` / `max_turns` — rozpočet krokov/otočení od resetu;
+  pri vyčerpaní zastavenie programu + `BudgetDialog` (OK/Reset)
+- `max_drop` — max zoskok nadol (-1 = ∞)
+- `max_brick_height` — max výška stohu na kladenie tehiel (kvader = 5)
+- `max_climb` (už existoval, default 1)
+- Priame ovládanie pri vyčerpaní rozpočtu: príkaz sa nevykoná + dialóg
+- Ukladá sa do `.karxml`; UI v záložke Pohyb; preklady v 6 jazykoch
+
 ### GUI layout
 - PanedWindow štruktúra — ťahateľné deliče medzi panelmi *(táto session)*
 - Navigator + Ovládanie fixné a vždy celé viditeľné *(táto session)*
@@ -66,7 +75,6 @@
 | # | Úloha |
 |---|-------|
 | 2 | **`GoalKarelNear`** — Karel musí byť v okolí ±1 dlaždice od cieľa |
-| 3 | **Pohybové obmedzenia** — max krokov/otočení atď. |
 | 4 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
 
 ## 🟢 Nižšia priorita

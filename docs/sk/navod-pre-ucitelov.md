@@ -82,6 +82,25 @@ Zadanie úlohy sa žiakovi zobrazí dvoma spôsobmi:
 
 > **Tip:** Rozmiestnenia tehál, značiek a Karla nastav v 3D pohľade, potom otvor Nastavenia a klikni **Použiť** — aktuálna poloha Karla sa stane novou štartovacou polohou.
 
+#### Pohybové obmedzenia
+
+| Pole | Efekt | Default |
+|------|-------|---------|
+| **Max. výška výstupu** | O koľko tehál vyššie môže Karel vyskočiť pri kroku. 0 = nevylezie nikam. | 1 |
+| **Max. zoskok** | O koľko tehál nižšie môže Karel zoskočiť. -1 = bez obmedzenia. | -1 |
+| **Max. krokov** | Rozpočet krokov (dopredu/dozadu) **od posledného resetu**. -1 = bez obmedzenia. | -1 |
+| **Max. otočení** | Rozpočet otočení (vľavo/vpravo) od posledného resetu. -1 = bez obmedzenia. | -1 |
+| **Max. výška tehál** | Do akej výšky stohu môže Karel klásť tehly. **Kvader sa počíta ako 5.** -1 = bez obmedzenia. | -1 |
+
+**Správanie pri vyčerpaní rozpočtu krokov/otočení:** program sa zastaví a zobrazí
+sa dialóg s tlačidlami **OK** (nechá Karla na mieste) a **Reset** (vráti svet na
+začiatok). To isté platí pri priamom ovládaní — tlačidlo sa nevykoná a objaví sa
+dialóg. Limity výstupu/zoskoku/výšky tehál sú „fyzické" — príkaz sa potichu nevykoná
+(ako pri náraze do steny), bez dialógu.
+
+> **Pedagogický tip:** Limit krokov/otočení je výborný na výzvy typu *„vyrieš
+> bludisko na najviac 20 krokov"* — núti žiakov hľadať efektívnejšie riešenie.
+
 ---
 
 ### Záložka 3 — Zásoby

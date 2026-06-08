@@ -112,7 +112,26 @@ class WorldSettings:
     camera_az:         float  # radians
     camera_el:         float
     camera_dist:       float
+    max_climb:         int   # max upward step (default 1)
+    max_drop:          int   # max downward step (-1 = unlimited)
+    max_steps:         int   # forward/back budget from reset (-1 = unlimited)
+    max_turns:         int   # turn budget from reset (-1 = unlimited)
+    max_brick_height:  int   # max stack height to add bricks (kvader=5; -1 = unlimited)
 ```
+
+### Movement budget
+
+`World._steps_used` / `_turns_used` increment on each successful move/turn and reset
+in `reset_inventory()` (called by `_reset_world`). When `max_steps`/`max_turns` are
+exceeded, `World` raises `KarelBudget('steps'|'turns')`:
+- During a program run → `interpreter.on_budget` → `App._on_budget` stops the program
+  and shows `BudgetDialog` (OK / Reset).
+- Direct control (buttons + typed) → caught in `ControlPanel._do` → same dialog.
+- `run()` re-raises `KarelBudget` if `on_budget is None`, so the throwaway interpreter
+  used for typed commands propagates it out to `_do`.
+
+`max_climb` / `max_drop` / `max_brick_height` are physical limits — the command is
+silently skipped (no dialog), consistent with hitting a wall or empty inventory.
 
 ---
 

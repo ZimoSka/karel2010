@@ -139,6 +139,11 @@ All metadata elements are optional. HTML content should be wrapped in `<![CDATA[
   <mark_limit>10</mark_limit>
   <disabled_cmds>BACK,RIGHT,DROP,DROP_BIG,PICK,BRICK,SLOWLY,QUICKLY</disabled_cmds>
   <disable_procedure>true</disable_procedure>
+  <max_climb>1</max_climb>
+  <max_drop>2</max_drop>
+  <max_steps>20</max_steps>
+  <max_turns>10</max_turns>
+  <max_brick_height>6</max_brick_height>
   <camera_locked>true</camera_locked>
   <camera_az>3.9269908169872414</camera_az>
   <camera_el>0.48869219055841229</camera_el>
@@ -153,6 +158,11 @@ All metadata elements are optional. HTML content should be wrapped in `<![CDATA[
 | `big_brick_limit` | int | -1 | Max big bricks. `-1` = unlimited. |
 | `mark_limit` | int | -1 | Max marks. `-1` = unlimited. |
 | `disabled_cmds` | CSV | (empty) | Comma-separated token names of forbidden commands/conditions. |
+| `max_climb` | int | 1 | Max upward height step Karel can climb. `0` = cannot climb. |
+| `max_drop` | int | -1 | Max downward height step Karel can drop. `-1` = unlimited. (Element omitted when -1.) |
+| `max_steps` | int | -1 | Budget of forward/back moves counted from last reset. `-1` = unlimited. Exhaustion stops the program with an OK/Reset dialog. (Omitted when -1.) |
+| `max_turns` | int | -1 | Budget of left/right turns counted from last reset. `-1` = unlimited. (Omitted when -1.) |
+| `max_brick_height` | int | -1 | Max stack height (in small-brick units) to which bricks can be added; a kvader counts as 5. `-1` = unlimited. (Omitted when -1.) |
 | `disable_procedure` | bool | false | If `true`, `prikaz … koniec` syntax is forbidden. |
 | `camera_locked` | bool | false | If `true`, the camera is locked. |
 | `camera_az` | float | 3.927 | Camera azimuth in radians (only used when locked). |

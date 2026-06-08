@@ -88,8 +88,21 @@ settings.disable_procedure: bool
 settings.camera_locked    : bool
 settings.camera_az, camera_el, camera_dist : float  # uložený pohľad kamery
 settings.prog_lang        : str   # 'sk', 'en', 'en_pattis', 'de', ...  — ukladá sa per-svet do .karxml
-settings.max_climb        : int   # max výška skoku (default 1)
+settings.max_climb        : int   # max výška výstupu nahor (default 1)
+settings.max_drop         : int   # max zoskok nadol (-1 = ∞)
+settings.max_steps        : int   # rozpočet krokov od resetu (-1 = ∞)
+settings.max_turns        : int   # rozpočet otočení od resetu (-1 = ∞)
+settings.max_brick_height : int   # max výška stohu na kladenie tehiel; kvader=5 (-1 = ∞)
 ```
+
+### Pohybové obmedzenia (rozpočet)
+- **Počítadlá** `world._steps_used` / `world._turns_used` — rastú pri úspešnom kroku/otočení, resetujú sa v `reset_inventory()` (volá `_reset_world`)
+- **`max_steps`/`max_turns`** — pri vyčerpaní `World` vyhodí `KarelBudget('steps'|'turns')`:
+  - počas behu → `interpreter.on_budget` → `App._on_budget` zastaví program + `BudgetDialog` (OK/Reset)
+  - priame ovládanie (tlačidlá aj písané) → `ControlPanel._do` zachytí → ten istý dialóg, príkaz sa nevykoná
+  - interpreter `run()` re-raisuje `KarelBudget` ak `on_budget is None` (throwaway interpreter v `_do` ho tak prepustí von)
+- **`max_climb`/`max_drop`/`max_brick_height`** — fyzické limity, **tichý skip** (ako stena/prázdny inventár), žiadny dialóg
+- `_can_step_height(dh)` rieši výstup aj zoskok; `_height_limit_ok(nx,ny,units)` rieši max výšku stohu (kvader = `BIG_BRICK_UNITS`)
 
 ### Sémantika príkazov
 - `drop_brick()` / `pick_brick()` — operuje na políčku **PRED** Karelom (`_front()`)
@@ -112,6 +125,7 @@ settings.max_climb        : int   # max výška skoku (default 1)
 - `mark` — prázdne zásoby značiek
 
 Výnimky (stále hádžu `KarelError`): rekurzia > `MAX_D`, neznáma procedúra, zakázaný príkaz.
+Výnimka `KarelBudget('steps'|'turns')`: vyčerpaný rozpočet pohybu — zastaví program a zobrazí `BudgetDialog` (OK/Reset). Pozri „Pohybové obmedzenia".
 
 ---
 
@@ -380,6 +394,10 @@ Jediný podporovaný formát (`.karjson` sa stále načíta pre spätnu kompatib
     <big_brick_limit>-1</big_brick_limit>
     <mark_limit>-1</mark_limit>
     <max_climb>1</max_climb>
+    <max_drop>-1</max_drop>             <!-- vynechané ak -1 -->
+    <max_steps>-1</max_steps>           <!-- vynechané ak -1 -->
+    <max_turns>-1</max_turns>           <!-- vynechané ak -1 -->
+    <max_brick_height>-1</max_brick_height>  <!-- vynechané ak -1 -->
     <disable_procedure>false</disable_procedure>
     <camera_locked>false</camera_locked>
     <camera_az>...</camera_az>

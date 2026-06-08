@@ -84,6 +84,24 @@ The task description is shown to the student in two ways:
 
 > **Tip:** Arrange bricks, marks and Karel in the 3D view first, then open Settings and click **Apply** — Karel's current position becomes the new starting position.
 
+#### Movement restrictions
+
+| Field | Effect | Default |
+|-------|--------|---------|
+| **Max. climb height** | How many bricks higher Karel may step up. 0 = can't climb. | 1 |
+| **Max. drop** | How many bricks lower Karel may drop in one step. -1 = unlimited. | -1 |
+| **Max. steps** | Budget of forward/back moves **counted from the last reset**. -1 = unlimited. | -1 |
+| **Max. turns** | Budget of left/right turns counted from the last reset. -1 = unlimited. | -1 |
+| **Max. brick height** | Up to what stack height Karel may add bricks. **A kvader counts as 5.** -1 = unlimited. | -1 |
+
+**When the step/turn budget runs out:** the program stops and a dialog appears with
+**OK** (leave Karel in place) and **Reset** (return the world to start). Direct control
+behaves the same — the button does nothing and the dialog appears. Climb/drop/brick-height
+limits are "physical": the command is silently skipped (like hitting a wall), no dialog.
+
+> **Pedagogical tip:** A step/turn budget is great for challenges like *"solve the maze
+> in at most 20 steps"* — it pushes students toward more efficient solutions.
+
 ---
 
 ### Tab 3 — Inventory (Zásoby)
