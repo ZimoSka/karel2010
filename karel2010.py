@@ -46,6 +46,8 @@ class Direction(Enum):
 
 class KarelError(Exception): pass
 class KarelStop(Exception): pass   # tiché zastavenie (napr. narazenie do steny)
+class KarelBudget(Exception):      # vyčerpaný rozpočet pohybu (kroky/otočenia)
+    def __init__(self, kind): self.kind = kind   # 'steps' | 'turns'
 
 
 # =========================================================================
@@ -259,6 +261,14 @@ class WorldSettings:
         self.disable_procedure = False
         # Max. výška výstupu — o koľko tehiel môže Karel vyskočiť naraz (default 1)
         self.max_climb        = 1
+        # Max. zoskok nadol — o koľko tehiel môže Karel zoskočiť naraz (-1 = ∞)
+        self.max_drop         = -1
+        # Rozpočet pohybu — počítané od posledného resetu (-1 = ∞)
+        self.max_steps        = -1    # max počet krokov (dopredu/dozadu)
+        self.max_turns        = -1    # max počet otočení (vlavo/vpravo)
+        # Max. výška stohu tehiel, do ktorej môže Karel klásť tehly (-1 = ∞)
+        # Počíta sa v jednotkách malých tehiel; kvader = 5 jednotiek
+        self.max_brick_height = -1
         # Jazyk programovania pre tento svet ('sk' alebo 'en')
         self.prog_lang        = 'sk'
         # Zamknúť pohľad kamery
@@ -284,6 +294,9 @@ class World:
         self._bricks_left     = -1
         self._big_bricks_left = -1
         self._marks_left      = -1
+        # Rozpočet pohybu — počítadlá od posledného resetu
+        self._steps_used      = 0
+        self._turns_used      = 0
         # Metadáta sveta
         self.title        = ''
         self.intro_html   = ''
@@ -308,6 +321,8 @@ class World:
         self._bricks_left     = self.settings.brick_limit
         self._big_bricks_left = self.settings.big_brick_limit
         self._marks_left      = self.settings.mark_limit
+        self._steps_used      = 0
+        self._turns_used      = 0
 
     def inventory_str(self):
         """Vráti (malé, veľké, značky) ako zobraziteľné reťazce."""
@@ -361,11 +376,25 @@ class World:
         """Celková výška bunky v jednotkách malých tehál."""
         return self.bricks[y][x] + self.big_bricks[y][x] * self.BIG_BRICK_UNITS
 
+    def _can_step_height(self, dh):
+        """True ak Karel zvládne výškový rozdiel dh (výstup/zoskok)."""
+        if dh > self.settings.max_climb: return False          # príliš vysoký výstup
+        md = self.settings.max_drop
+        if md >= 0 and -dh > md: return False                  # príliš hlboký zoskok
+        return True
+
+    def _consume_step(self):
+        """Skontroluje rozpočet krokov; vyhodí KarelBudget ak je vyčerpaný."""
+        ms = self.settings.max_steps
+        if ms >= 0 and self._steps_used >= ms: raise KarelBudget('steps')
+        self._steps_used += 1
+
     def move_forward(self):
         if self.is_wall_ahead(): return
         nx,ny = self._front()
         dh = self._height(nx,ny) - self._height(self.karel_x,self.karel_y)
-        if dh > self.settings.max_climb: return
+        if not self._can_step_height(dh): return
+        self._consume_step()
         self.karel_x,self.karel_y = nx,ny
 
     def move_back(self):
@@ -373,17 +402,33 @@ class World:
         if back.to_str() in self.walls[self.karel_y][self.karel_x]: return
         bx,by = self._step(self.karel_x,self.karel_y,back)
         dh = self._height(bx,by) - self._height(self.karel_x,self.karel_y)
-        if dh > self.settings.max_climb: return
+        if not self._can_step_height(dh): return
+        self._consume_step()
         self.karel_x,self.karel_y = bx,by
 
-    def turn_left(self):  self.karel_dir=self.karel_dir.left()
-    def turn_right(self): self.karel_dir=self.karel_dir.right()
+    def _consume_turn(self):
+        """Skontroluje rozpočet otočení; vyhodí KarelBudget ak je vyčerpaný."""
+        mt = self.settings.max_turns
+        if mt >= 0 and self._turns_used >= mt: raise KarelBudget('turns')
+        self._turns_used += 1
+
+    def turn_left(self):  self._consume_turn(); self.karel_dir=self.karel_dir.left()
+    def turn_right(self): self._consume_turn(); self.karel_dir=self.karel_dir.right()
 
     # Tehly/bricks: kladú/dvíhajú sa PRED Karelom; znacka je POD nim
+    def _height_limit_ok(self, nx, ny, added_units):
+        """True ak po pridaní added_units jednotiek neprekročíme max_brick_height.
+        Kvader = BIG_BRICK_UNITS (5) jednotiek; _height to už zohľadňuje."""
+        mh = self.settings.max_brick_height
+        if mh < 0: return True
+        return self._height(nx, ny) + added_units <= mh
+
     def drop_brick(self):
         if self.is_wall_ahead(): return
         if self._bricks_left == 0: return
-        nx,ny=self._front(); self.bricks[ny][nx]+=1
+        nx,ny=self._front()
+        if not self._height_limit_ok(nx, ny, 1): return
+        self.bricks[ny][nx]+=1
         if self._bricks_left > 0: self._bricks_left -= 1
     def drop_big_brick(self):
         """Kvader (veľká tehla) — na políčku môže byť max 1 kvader."""
@@ -391,6 +436,7 @@ class World:
         if self._big_bricks_left == 0: return
         nx,ny=self._front()
         if self.big_bricks[ny][nx] >= 1: return
+        if not self._height_limit_ok(nx, ny, self.BIG_BRICK_UNITS): return
         self.big_bricks[ny][nx] = 1
         if self._big_bricks_left > 0: self._big_bricks_left -= 1
     def pick_brick(self):
@@ -507,10 +553,20 @@ class World:
         s = self.settings
         has_settings = (s.brick_limit!=-1 or s.big_brick_limit!=-1 or s.mark_limit!=-1
                         or s.disabled_cmds or s.disable_procedure or s.camera_locked
-                        or s.max_climb != 1 or s.prog_lang != 'sk')
+                        or s.max_climb != 1 or s.prog_lang != 'sk'
+                        or s.max_drop != -1 or s.max_steps != -1 or s.max_turns != -1
+                        or s.max_brick_height != -1)
         if has_settings:
             st = ET.SubElement(root, 'settings')
             ET.SubElement(st,'max_climb').text        = str(s.max_climb)
+            if s.max_drop != -1:
+                ET.SubElement(st,'max_drop').text         = str(s.max_drop)
+            if s.max_steps != -1:
+                ET.SubElement(st,'max_steps').text        = str(s.max_steps)
+            if s.max_turns != -1:
+                ET.SubElement(st,'max_turns').text        = str(s.max_turns)
+            if s.max_brick_height != -1:
+                ET.SubElement(st,'max_brick_height').text = str(s.max_brick_height)
             if s.prog_lang != 'sk':
                 ET.SubElement(st,'prog_lang').text    = s.prog_lang
             ET.SubElement(st,'brick_limit').text     = str(s.brick_limit)
@@ -584,7 +640,11 @@ class World:
                 el=st.find(tag); return el is not None and (el.text or '').strip().lower()=='true'
             def _gf(tag,d):
                 el=st.find(tag); return float(el.text) if el is not None and el.text else d
-            w.settings.max_climb       = _gi('max_climb', 1)
+            w.settings.max_climb        = _gi('max_climb', 1)
+            w.settings.max_drop         = _gi('max_drop', -1)
+            w.settings.max_steps        = _gi('max_steps', -1)
+            w.settings.max_turns        = _gi('max_turns', -1)
+            w.settings.max_brick_height = _gi('max_brick_height', -1)
             pl_el = st.find('prog_lang')
             w.settings.prog_lang = (pl_el.text.strip().lower()
                                     if pl_el is not None and pl_el.text else 'sk')
@@ -884,7 +944,7 @@ class KarelInterpreter:
     def __init__(self,world):
         self.world=world; self.delay=0.25
         self._stop=False; self._d=0; self.procedures={}
-        self.on_step=self.on_error=self.on_finish=None
+        self.on_step=self.on_error=self.on_finish=self.on_budget=None
     def stop(self): self._stop=True
     def run(self,prog):
         self._stop=False; self._d=0; self.procedures=prog.procedures
@@ -895,6 +955,9 @@ class KarelInterpreter:
             if self.on_finish: self.on_finish("Zastavené.")
         except KarelStop:
             if self.on_finish: self.on_finish(None)   # tiché zastavenie pri stene
+        except KarelBudget as e:
+            if self.on_budget: self.on_budget(e.kind)
+            else: raise                                # priame ovládanie zachytí samo
         except (KarelError,RecursionError) as e:
             m="Príliš hlboká rekurzia!" if isinstance(e,RecursionError) else str(e)
             if self.on_error: self.on_error(m)
@@ -1783,10 +1846,11 @@ class ProgramPanel(tk.Frame):
 # =========================================================================
 
 class ControlPanel(tk.Frame):
-    def __init__(self,parent,get_world,on_action=None,get_procs=None,**kw):
+    def __init__(self,parent,get_world,on_action=None,get_procs=None,on_budget=None,**kw):
         super().__init__(parent,bg='#0a0a1c',**kw)
         self.get_world=get_world; self.on_action=on_action
         self.get_procs=get_procs   # vracia dict procedúr z editora
+        self.on_budget=on_budget   # callback(kind) pri vyčerpaní rozpočtu
         self._build()
 
     def _build(self):
@@ -1931,6 +1995,8 @@ class ControlPanel(tk.Frame):
                 it = KarelInterpreter(w); it.delay = 0; it.run(prog)
             self._update_dir_label()
             if self.on_action: self.on_action(True, None)
+        except KarelBudget as e:
+            if self.on_budget: self.on_budget(e.kind)
         except (KarelError, Exception) as e:
             if self.on_action: self.on_action(False, str(e))
 
@@ -2276,6 +2342,42 @@ class MissionResultDialog(tk.Toplevel):
                   font=('Arial',10,'bold'), cursor='hand2').pack(side='right', padx=12)
 
 
+class BudgetDialog(tk.Toplevel):
+    """Hlásenie o vyčerpaní rozpočtu pohybu (kroky/otočenia) — tlačidlá OK a Reset."""
+    _BG='#0a0a1c'; _FG='#ccccee'
+
+    def __init__(self, app, message: str, on_reset=None):
+        super().__init__(app)
+        self.title(_T('budget.title'))
+        self.configure(bg=self._BG)
+        self.resizable(False, False)
+        self.grab_set(); self.transient(app)
+        self._on_reset = on_reset
+        col='#5a4a1a'; fg='#ffcc44'
+        hf = tk.Frame(self, bg=col, pady=16, padx=24); hf.pack(fill='x')
+        tk.Label(hf, text='⛔  '+_T('budget.header'), bg=col, fg=fg,
+                 font=('Arial',15,'bold')).pack()
+        tf = tk.Frame(self, bg=self._BG, padx=24, pady=14); tf.pack(fill='both', expand=True)
+        tk.Label(tf, text=message, bg=self._BG, fg=self._FG,
+                 font=('Arial',10), wraplength=360, justify='left').pack(anchor='w')
+        bf = tk.Frame(self, bg='#111130', pady=8); bf.pack(fill='x')
+        tk.Button(bf, text='OK', command=self.destroy,
+                  bg='#2a5a9a', fg='white', relief='flat', padx=24, pady=5,
+                  font=('Arial',10,'bold'), cursor='hand2').pack(side='right', padx=12)
+        tk.Button(bf, text='↺ '+_T('budget.reset'), command=self._do_reset,
+                  bg='#4a4a1a', fg='white', relief='flat', padx=18, pady=5,
+                  font=('Arial',10,'bold'), cursor='hand2').pack(side='right')
+        self.update_idletasks()
+        pw,ph = app.winfo_width(), app.winfo_height()
+        px,py = app.winfo_rootx(), app.winfo_rooty()
+        ww,wh = self.winfo_width(), self.winfo_height()
+        self.geometry(f'+{px+(pw-ww)//2}+{py+(ph-wh)//2}')
+
+    def _do_reset(self):
+        if self._on_reset: self._on_reset()
+        self.destroy()
+
+
 class IntroDialog(tk.Toplevel):
     """Zobrazí úvodné zadanie úlohy (intro_html) pre aktuálny svet."""
     _BG = '#0a0a1c'; _FG = '#ccccee'
@@ -2551,15 +2653,24 @@ class WorldSettingsDialog(tk.Toplevel):
                            bg=self._BG,fg=self._FG,selectcolor='#1a1a44',
                            activebackground=self._BG,font=('Arial',9)
                            ).grid(row=0,column=col,padx=8,pady=6)
-        # Max. výška výstupu
+        # Pohybové obmedzenia
         cf = self._frame(p, _T('world_settings.frame_move')); cf.pack(fill='x')
         self._max_climb_var = tk.IntVar(value=w.settings.max_climb)
-        self._lbl(cf, _T('world_settings.lbl_max_climb')).grid(row=0,column=0,sticky='e',padx=(8,4),pady=6)
-        ttk.Spinbox(cf, textvariable=self._max_climb_var, from_=0, to=20,
-                    width=4, font=('Consolas',11)).grid(row=0,column=1,sticky='w')
-        tk.Label(cf, text=_T('world_settings.lbl_max_climb_note'),
-                 bg=self._BG, fg=self._FG2, font=('Arial',8,'italic')
-                 ).grid(row=0,column=2,sticky='w',padx=(6,8))
+        self._max_drop_var  = tk.IntVar(value=w.settings.max_drop)
+        self._max_steps_var = tk.IntVar(value=w.settings.max_steps)
+        self._max_turns_var = tk.IntVar(value=w.settings.max_turns)
+        self._max_bh_var    = tk.IntVar(value=w.settings.max_brick_height)
+        def _row(r, lbl_key, var, lo, note_key):
+            self._lbl(cf, _T(lbl_key)).grid(row=r,column=0,sticky='e',padx=(8,4),pady=4)
+            ttk.Spinbox(cf, textvariable=var, from_=lo, to=9999,
+                        width=5, font=('Consolas',11)).grid(row=r,column=1,sticky='w')
+            tk.Label(cf, text=_T(note_key), bg=self._BG, fg=self._FG2,
+                     font=('Arial',8,'italic')).grid(row=r,column=2,sticky='w',padx=(6,8))
+        _row(0, 'world_settings.lbl_max_climb', self._max_climb_var, 0, 'world_settings.lbl_max_climb_note')
+        _row(1, 'world_settings.lbl_max_drop',  self._max_drop_var, -1, 'world_settings.lbl_max_drop_note')
+        _row(2, 'world_settings.lbl_max_steps', self._max_steps_var,-1, 'world_settings.lbl_max_steps_note')
+        _row(3, 'world_settings.lbl_max_turns', self._max_turns_var,-1, 'world_settings.lbl_max_turns_note')
+        _row(4, 'world_settings.lbl_max_bh',    self._max_bh_var,   -1, 'world_settings.lbl_max_bh_note')
         # Jazyk programovania
         lf = self._frame(p, _T('world_settings.frame_lang')); lf.pack(fill='x')
         prog_langs = _available_prog_langs()   # [(code, name), ...]
@@ -2834,6 +2945,13 @@ class WorldSettingsDialog(tk.Toplevel):
         w.karel_dir = Direction.from_str(self._dir_var.get())
         try:   s.max_climb = max(0, int(self._max_climb_var.get()))
         except (ValueError, tk.TclError): s.max_climb = 1
+        def _gint(var, lo, default):
+            try:    return max(lo, int(var.get()))
+            except (ValueError, tk.TclError): return default
+        s.max_drop         = _gint(self._max_drop_var,  -1, -1)
+        s.max_steps        = _gint(self._max_steps_var, -1, -1)
+        s.max_turns        = _gint(self._max_turns_var, -1, -1)
+        s.max_brick_height = _gint(self._max_bh_var,    -1, -1)
         s.prog_lang = self._get_prog_lang_code()
         # 3. Zásoby
         for key,(unl,cnt) in self._inv.items():
@@ -3077,7 +3195,8 @@ class App(tk.Tk):
         self._canvas.on_cam_change=self._nav.render_axes
         self._ctrl=ControlPanel(rp,lambda:self._world,
                                  on_action=self._on_direct,
-                                 get_procs=lambda:self._last_procs)
+                                 get_procs=lambda:self._last_procs,
+                                 on_budget=self._on_budget)
         self._ctrl.pack(fill='x',side='top')
         hpane.add(rp,stretch='never',minsize=130)
 
@@ -3190,6 +3309,7 @@ class App(tk.Tk):
         it.on_step=self._on_step
         it.on_error=_safe(self._on_err)
         it.on_finish=_safe(self._on_fin)
+        it.on_budget=_safe(self._on_budget)
         self._interp=it
         threading.Thread(target=it.run,args=(prog,),daemon=True).start()
 
@@ -3254,6 +3374,17 @@ class App(tk.Tk):
         # Vyhodnotenie misie — len pri prirodzenom skončení (nie Stop)
         if not m and self._world.goal_conditions:
             self._check_mission()
+
+    def _on_budget(self, kind):
+        """Vyčerpaný rozpočet krokov/otočení — zastav program a zobraz dialóg OK/Reset."""
+        self._running = False
+        if self._interp: self._interp.stop()
+        self._set_running_ui(False)
+        self._canvas.render()
+        msg = _T('budget.msg_steps') if kind == 'steps' else _T('budget.msg_turns')
+        msg = msg.replace('\\n', '\n')
+        self._status(_T('budget.header'), "#cc8844")
+        BudgetDialog(self, msg, on_reset=self._reset)
 
     def _on_direct(self,ok,err=None):
         self._canvas.after(0,self._canvas.render)
