@@ -76,7 +76,42 @@
 
 ---
 
-## 🟡 Stredná priorita
+## 🚀 STRATEGICKÝ SMER: Karel ako webová aplikácia (Docker)
+
+**Rozhodnutie (jún 2026):** Cieľový stav = Karel beží ako **Docker image (Linux)**,
+backend v Pythone, frontend (vykresľovanie + UI) vo **webovom prehliadači**.
+Používatelia pristupujú cez web, bez inštalácie čohokoľvek.
+
+Blokový editor (Scratch štýl) je **pozastavený** ako samostatný desktop projekt —
+vo web frontende sa spraví natívne cez **Blockly** (žiadne pywebview mosty).
+Prieskum k Blockly je hotový: custom bloky + vlastný generátor → Karel text →
+existujúci interpreter (vzor Otto Blockly / BlocklyDuino).
+
+### Task 1 — Backend do Dockera
+- Extrahovať **core** z `karel2010.py` do modulu bez tkinter závislostí:
+  World, WorldSettings, GoalCondition, evaluate_goals, tokenize/Parser/AST,
+  KarelInterpreter, .karxml I/O, jazykový systém (.lng)
+- Desktop tkinter app ďalej funguje — importuje core (žiadna stratená funkčnosť)
+- Dockerfile: python slim + web server, mount/volume pre svety
+
+### Task 2 — Integračná vrstva (API)
+- Web server (návrh: FastAPI + uvicorn)
+- **WebSocket** pre beh programu: server pošle stav sveta po každom kroku
+  (ekvivalent `on_step`), klient vykresľuje; Stop/Reset ako správy
+- **REST**: zoznam svetov, load/save .karxml, validácia programu, nastavenia
+- Session model: každý pripojený žiak má vlastnú inštanciu World + interpreter
+- Bezpečnostné stropy už existujú (MAX_OPS, MAX_D, KarelBudget) — kritické pre server!
+
+### Task 3 — Web frontend
+- 3D vykresľovanie v prehliadači (návrh: Three.js — kamera, kvadre, tehly, značky)
+- Editor programu (CodeMirror + Karel highlighting), panel príkazov, navigátor,
+  ovládanie, dialógy (intro/misia/budget/limit)
+- i18n — znovu použiť lang/*.ini + lang/interpreter/*.lng (servírovať cez API)
+- Neskôr: **Blockly** ako druhý režim editora (prepínač Text ↔ Bloky)
+
+---
+
+## 🟡 Stredná priorita (desktop)
 
 | # | Úloha |
 |---|-------|
@@ -91,7 +126,6 @@
 | 4 | **Autocomplete** — dopĺňanie kľúčových slov v editore |
 | 5 | **História príkazov** — šípky nahor/dole v command boxe |
 | 6 | **Gramatika do externého súboru** |
-| 7 | **Drag & drop programovanie (Scratch štýl)** — vizuálne bloky namiesto textu; bloky = príkazy/štruktúry, skladajú sa presúvaním |
-| 8 | **Karel ako webová aplikácia** — web interface (prehliadač), bez inštalácie Pythonu |
-| 9 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
-| 10 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
+| 7 | **Drag & drop programovanie (Scratch štýl)** — POZASTAVENÉ pre desktop; spraví sa cez Blockly vo web frontende (viď Strategický smer) |
+| 8 | **Revalidácia 3D grafiky** — textúry na plochách, animácie pohybu Karela |
+| 9 | **Pohľad 1st person** — kamera z očí Karela, pohyb v reálnom čase |
