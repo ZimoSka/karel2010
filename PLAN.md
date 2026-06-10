@@ -109,6 +109,18 @@ existujúci interpreter (vzor Otto Blockly / BlocklyDuino).
 - i18n — znovu použiť lang/*.ini + lang/interpreter/*.lng (servírovať cez API)
 - Neskôr: **Blockly** ako druhý režim editora (prepínač Text ↔ Bloky)
 
+### Rozhodnutia (jún 2026, odsúhlasené)
+- **Model zdieľania:** default rola po otvorení = **učiteľ**. Učiteľ pripraví
+  svet + zadanie + nastavenia → tlačidlo **„Zdieľaj žiakom"** → vygenerujú sa
+  **unikátne persistentné linky** pre žiakov. Link otvorí žiacky mód
+  s automaticky natiahnutým svetom; žiak sa k nemu vie kedykoľvek vrátiť.
+- **Persistencia:** od začiatku navrhnúť úložisko (assignment = snapshot sveta
+  + nastavení; žiacky workspace = program + stav, kľúčované tokenom z linku).
+  Na začiatok súborové úložisko (JSON/karxml na disku/volume), DB až keď treba.
+- **Repo:** web verzia = **nový git projekt (klon)**, vyvíja sa oddelene.
+  Desktop verzia sa mení len on-demand („prihoď aj do desktopu").
+- **Stack:** FastAPI + uvicorn, WebSocket, Three.js, CodeMirror. Docker (linux).
+
 ---
 
 ## 🟡 Stredná priorita (desktop)
