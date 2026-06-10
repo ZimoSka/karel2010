@@ -129,6 +129,7 @@ existujúci interpreter (vzor Otto Blockly / BlocklyDuino).
 |---|-------|
 | 1 | **`StopIfCanNotGo`** — Karel sa zastaví namiesto tichého skip pri stene |
 | 2 | **Počítadlo efektivity** (CodeHS) — v MissionResult zobraziť „vyriešené na N krokov, M otočení" |
+| 3 | **Otočiť logiku zakázaných príkazov** v záložke Príkazy (WorldSettingsDialog): zaškrtnuté = príkaz **viditeľný/povolený** (nie zakázaný) — logickejšie pre učiteľa. Pozor: zmeniť aj ukladanie do `.karxml` (dnes `disabled_cmds`) alebo invertovať len v UI. *(rovnaká zmena aj vo web Karel2030 — viď jeho PLAN U7)* |
 
 ## 🟢 Nižšia priorita
 
